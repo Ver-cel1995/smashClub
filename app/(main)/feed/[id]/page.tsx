@@ -2,8 +2,9 @@ import { getCurrentUser } from '@/shared/lib/auth'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
-import { getPost } from '../queries'
+import { getPost, getPostReactions, getPostComments, getUserVotes } from '../queries'
 import { PostCard } from '@/components/feed/post-card'
+import { CommentSection } from '@/components/feed/comment-section'
 
 interface Props {
     params: Promise<{ id: string }>
@@ -14,14 +15,19 @@ export default async function PostDetailPage({ params }: Props) {
     const user = await getCurrentUser()
     if (!user) return null
 
-    const post = await getPost(id)
+    const [post, reactions, comments, votedFor] = await Promise.all([
+        getPost(id),
+        getPostReactions(id, user.userId),
+        getPostComments(id),
+        getUserVotes(id, user.userId),
+    ])
+
     if (!post) notFound()
 
     const isCoach = user.profile.role === 'coach'
 
     return (
         <div className="p-4 space-y-4">
-            {/* Шапка */}
             <div className="flex items-center gap-3">
                 <Link
                     href="/feed"
@@ -33,15 +39,20 @@ export default async function PostDetailPage({ params }: Props) {
                 <h1 className="text-xl font-bold text-white">Пост</h1>
             </div>
 
-            {/* Пост целиком */}
-            <PostCard post={post} isCoach={isCoach} full />
+            <PostCard
+                post={post}
+                isCoach={isCoach}
+                reactions={reactions}
+                votedFor={votedFor}
+                full
+            />
 
-            {/* Заглушка комментариев */}
-            <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-center">
-                <p className="text-sm text-neutral-500">
-                    💬 Комментарии появятся в следующем этапе
-                </p>
-            </section>
+            <CommentSection
+                postId={id}
+                comments={comments}
+                currentUserId={user.userId}
+                isCoach={isCoach}
+            />
         </div>
     )
 }

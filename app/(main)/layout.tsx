@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { AppHeader } from '@/components/layout/app-header'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import {ReactNode} from "react";
+import {TabsPrefetcher} from "@/components/layout/tabs-prefetcher";
 
 export default async function MainLayout({children}: { children: ReactNode }) {
     const user = await getCurrentUser()
@@ -24,7 +25,7 @@ export default async function MainLayout({children}: { children: ReactNode }) {
                 {/* pb-24 = отступ снизу под bottom nav */}
                 {children}
             </main>
-
+            <TabsPrefetcher />
             <BottomNav />
         </div>
     )

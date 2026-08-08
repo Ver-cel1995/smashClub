@@ -1,6 +1,5 @@
 import { z } from 'zod'
 
-// Переиспользуем препроцессоры
 const toTrimmedString = z.unknown().transform((val) => {
     if (typeof val !== 'string') return ''
     return val.trim()
@@ -12,19 +11,13 @@ const toRawString = z.unknown().transform((val) => {
 })
 
 const toBoolean = z.unknown().transform((val) => {
-    // FormData передаёт чекбоксы как 'on' или отсутствует вообще
     return val === 'on' || val === 'true' || val === true
 })
 
-// Заголовок — опциональный
 const titleSchema = toTrimmedString.pipe(
-    z.string()
-        .max(200, 'Заголовок слишком длинный')
-        // .optional()
-        .or(z.literal(''))
+    z.string().max(200, 'Заголовок слишком длинный').or(z.literal(''))
 )
 
-// Содержимое — обязательное
 const contentSchema = toRawString.pipe(
     z
         .string()
@@ -39,3 +32,28 @@ export const createPostSchema = z.object({
 })
 
 export type CreatePostInput = z.infer<typeof createPostSchema>
+
+// Опрос
+const pollOptionSchema = z.object({
+    id: z.string(),
+    text: z.string().min(1, 'Вариант не может быть пустым').max(200, 'Слишком длинный вариант'),
+    votes: z.number().default(0),
+})
+
+export const createPollSchema = z.object({
+    title: titleSchema,
+    content: toRawString.pipe(
+        z.string().max(5000, 'Текст слишком длинный').or(z.literal('')) // optional error
+    ),
+    poll_question: toTrimmedString.pipe(
+        z.string().min(1, 'Введи вопрос опроса').max(500, 'Вопрос слишком длинный')
+    ),
+    poll_options: z
+        .array(pollOptionSchema)
+        .min(2, 'Минимум 2 варианта')
+        .max(10, 'Максимум 10 вариантов'),
+    poll_multiple_choice: toBoolean,
+    is_pinned: toBoolean,
+})
+
+export type CreatePollInput = z.infer<typeof createPollSchema>

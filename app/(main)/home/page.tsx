@@ -1,6 +1,4 @@
-import { getCurrentUser } from '@/shared/lib/auth'
-import { signOut } from '@/app/(auth)/actions'
-import { Button } from '@/components/ui/button'
+import {getCurrentUser} from '@/shared/lib/auth'
 
 export default async function HomePage() {
     const user = await getCurrentUser()
@@ -42,29 +40,6 @@ export default async function HomePage() {
                     Здесь будет превью последнего поста из ленты
                 </p>
             </section>
-
-            {/* Debug info — потом удалим */}
-            <details className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-                <summary className="text-xs text-neutral-500 cursor-pointer">
-                    Debug info
-                </summary>
-                <div className="mt-2 space-y-1 text-xs text-neutral-500 font-mono">
-                    <p>Email: {user.email}</p>
-                    <p>Role: {user.profile.role}</p>
-                    <p>ID: {user.userId}</p>
-                </div>
-            </details>
-
-            {/* Кнопка выхода */}
-            <form action={signOut}>
-                <Button
-                    type="submit"
-                    variant="primary"
-                    className="w-full border-neutral-800 text-neutral-300 hover:bg-neutral-900"
-                >
-                    Выйти
-                </Button>
-            </form>
         </div>
     )
 }

@@ -1,9 +1,12 @@
-export default function HomeLoading() {
+import { ShuttleLoader } from '@/components/shared/shuttle-loader'
+
+export default function FeedLoading() {
     return (
-        <div className="p-4 space-y-4">
-            <div className="h-24 rounded-2xl bg-neutral-900 animate-pulse" />
-            <div className="h-32 rounded-2xl bg-neutral-900 animate-pulse" />
-            <div className="h-24 rounded-2xl bg-neutral-900 animate-pulse" />
+        <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <ShuttleLoader size={140} />
+            <p className="text-sm text-neutral-500 font-semibold uppercase tracking-wider animate-pulse">
+                Загрузка...
+            </p>
         </div>
     )
 }

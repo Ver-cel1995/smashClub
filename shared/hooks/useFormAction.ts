@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import {FormEvent, useState, useTransition} from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import type { ActionResult } from '@/shared/lib/actions/types'
@@ -23,7 +23,7 @@ export function useFormAction<T = void>(
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [generalError, setGeneralError] = useState<string | null>(null)
 
-    const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setFieldErrors({})
         setGeneralError(null)

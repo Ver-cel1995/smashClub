@@ -1,35 +1,54 @@
 'use client'
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
-import { MoreHorizontal, Pin, Trash2, MessageCircle, Share2, Bookmark } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import {
+    MoreHorizontal,
+    Pin,
+    Trash2,
+    MessageCircle,
+    Share2,
+    Bookmark,
+    Loader2,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { UserAvatar } from '@/components/user-avatar'
 import { PostContent } from './post-content'
 import { PostPoll } from './post-poll'
+import { PostReactions } from './post-reactions'
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { formatRelativeTime, commentWord } from '@/shared/lib/format'
+import { formatRelativeTime } from '@/shared/lib/format'
 import { deletePost, togglePinPost } from '@/app/(main)/feed/actions'
-import type { PostWithAuthor } from '@/app/(main)/feed/queries'
+import type { PostWithAuthor, ReactionGroup } from '@/app/(main)/feed/queries'
 import { cn } from '@/shared/lib/utils'
+import {PostMedia} from "@/components/feed/post-media";
 
 interface PostCardProps {
     post: PostWithAuthor
     isCoach: boolean
-    /** true = детальная страница, false = превью в ленте */
+    reactions?: ReactionGroup[]
     full?: boolean
+    votedFor?: string[]
 }
 
-export function PostCard({ post, isCoach, full = false }: PostCardProps) {
+export function PostCard({
+                             post,
+                             isCoach,
+                             reactions = [],
+                             full = false,
+                             votedFor = []
+                         }: PostCardProps) {
     const router = useRouter()
     const [isPending, startTransition] = useTransition()
     const [isMenuOpen, setIsMenuOpen] = useState(false)
+    const [isNavigating, setIsNavigating] = useState(false)
+
+    const busy = isPending || isNavigating
 
     const handleDelete = () => {
         if (!confirm('Удалить пост?')) return
@@ -56,33 +75,55 @@ export function PostCard({ post, isCoach, full = false }: PostCardProps) {
         })
     }
 
-    // Клик по карточке ведёт на детальную (только в режиме превью)
     const handleCardClick = (e: React.MouseEvent) => {
-        if (full) return
-        // Не переходим если клик по кнопке/меню/ссылке
+        if (full || busy) return
         const target = e.target as HTMLElement
         if (target.closest('button, a, [role="menuitem"]')) return
+        setIsNavigating(true)
         router.push(`/feed/${post.id}`)
     }
 
-    // Опрос — парсим из jsonb
-    const poll = post.post_type === 'poll' && post.poll_question && post.poll_options
-        ? {
-            question: post.poll_question,
-            options: post.poll_options as Array<{ id: string; text: string; votes: number }>,
-            multipleChoice: post.poll_multiple_choice ?? false,
-        }
-        : null
+    const handleCommentClick = (e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (full || busy) return
+        setIsNavigating(true)
+        router.push(`/feed/${post.id}`)
+    }
+
+    const commentsCount = post.comments_count ?? 0
+
+    const poll =
+        post.post_type === 'poll' &&
+        post.poll_question &&
+        post.poll_options
+            ? {
+                question: post.poll_question,
+                options: post.poll_options as Array<{
+                    id: string
+                    text: string
+                    votes: number
+                }>,
+                multipleChoice: post.poll_multiple_choice ?? false,
+            }
+            : null
 
     return (
         <article
             className={cn(
-                'rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden',
-                !full && 'cursor-pointer hover:border-neutral-700 transition-colors'
+                'relative rounded-2xl border border-neutral-800 bg-neutral-900 overflow-hidden',
+                !full && !busy && 'cursor-pointer hover:border-neutral-700 transition-colors',
+                busy && 'pointer-events-none opacity-70'
             )}
             onClick={handleCardClick}
         >
-            {/* Пометка "закреплено" */}
+            {/* Оверлей загрузки */}
+            {busy && (
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/50">
+                    <Loader2 className="h-5 w-5 animate-spin text-lime-400" />
+                </div>
+            )}
+
+            {/* Закреплено */}
             {post.is_pinned && (
                 <div className="flex items-center gap-1.5 border-b border-lime-400/20 bg-lime-400/5 px-4 py-2">
                     <Pin className="h-3 w-3 text-lime-400" />
@@ -131,7 +172,7 @@ export function PostCard({ post, isCoach, full = false }: PostCardProps) {
                                     type="button"
                                     className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-800 hover:text-white transition-colors shrink-0"
                                     aria-label="Меню поста"
-                                    disabled={isPending}
+                                    disabled={busy}
                                     onClick={(e) => e.stopPropagation()}
                                 >
                                     <MoreHorizontal className="h-5 w-5" />
@@ -160,67 +201,45 @@ export function PostCard({ post, isCoach, full = false }: PostCardProps) {
                     )}
                 </div>
 
-                {/* Контент (текст + заголовок) */}
-                <PostContent title={post.title} content={post.content} full={full} />
+                {/* Контент */}
+                <PostContent title={post.title} content={post.content} postId={post.id} full={full} />
 
-                {/* Медиа (фото) — заглушка, реализуем ниже */}
+                {/* Медиа */}
                 {post.media_urls && post.media_urls.length > 0 && (
-                    <PostMediaPreview urls={post.media_urls} full={full} />
+                    <PostMedia urls={post.media_urls} />
                 )}
 
                 {/* Опрос */}
                 {poll && (
                     <PostPoll
+                        postId={post.id}
                         question={poll.question}
                         options={poll.options}
                         multipleChoice={poll.multipleChoice}
+                        votedFor={votedFor}
                     />
                 )}
 
-                {/* Реакции (заглушка — сделаем в следующем этапе) */}
-                <div className="flex items-center gap-2 flex-wrap pt-1">
-                    {post.reactions_count > 0 && (
-                        <button
-                            type="button"
-                            className="flex items-center gap-1.5 rounded-full border border-neutral-800 bg-neutral-950 px-2.5 py-1 text-xs text-neutral-300 hover:border-neutral-700"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <span>❤️</span>
-                            <span className="font-medium">{post.reactions_count}</span>
-                        </button>
-                    )}
-                    <button
-                        type="button"
-                        className="flex items-center gap-1 rounded-full border border-dashed border-neutral-700 px-2.5 py-1 text-xs text-neutral-400 hover:border-neutral-600 hover:text-neutral-300"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <span className="text-sm">+</span>
-                        <span>реакция</span>
-                    </button>
-                </div>
+                {/* Реакции */}
+                <PostReactions postId={post.id} reactions={reactions} />
 
-                {/* Превью комментариев (только в превью-режиме) */}
-                {!full && post.comments_count > 0 && (
-                    <Link
-                        href={`/feed/${post.id}`}
-                        className="block text-sm text-lime-400 hover:text-lime-300 font-medium"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        Показать все {post.comments_count} {commentWord(post.comments_count)}
-                    </Link>
-                )}
-
-                {/* Нижняя панель с иконками (только в превью) */}
+                {/* Нижняя панель */}
                 {!full && (
                     <div className="flex items-center gap-4 pt-2 border-t border-neutral-800/50">
-                        <Link
-                            href={`/feed/${post.id}`}
-                            className="text-neutral-400 hover:text-white transition-colors"
-                            onClick={(e) => e.stopPropagation()}
+                        {/* Комментарии */}
+                        <button
+                            type="button"
+                            onClick={handleCommentClick}
+                            className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors"
                             aria-label="Комментарии"
                         >
                             <MessageCircle className="h-5 w-5" />
-                        </Link>
+                            {commentsCount > 0 && (
+                                <span className="text-xs font-medium">{commentsCount}</span>
+                            )}
+                        </button>
+
+                        {/* Поделиться */}
                         <button
                             type="button"
                             className="text-neutral-400 hover:text-white transition-colors"
@@ -229,6 +248,8 @@ export function PostCard({ post, isCoach, full = false }: PostCardProps) {
                         >
                             <Share2 className="h-5 w-5" />
                         </button>
+
+                        {/* Сохранить */}
                         <button
                             type="button"
                             className="ml-auto text-neutral-400 hover:text-white transition-colors"
@@ -241,16 +262,5 @@ export function PostCard({ post, isCoach, full = false }: PostCardProps) {
                 )}
             </div>
         </article>
-    )
-}
-
-// Заглушка для медиа — реализуем ниже
-function PostMediaPreview({ urls, full }: { urls: string[]; full: boolean }) {
-    return (
-        <div className="rounded-xl overflow-hidden bg-neutral-950 border border-neutral-800">
-            <div className="aspect-video flex items-center justify-center text-neutral-500 text-xs">
-                📷 {urls.length} фото (реализация в следующем шаге)
-            </div>
-        </div>
     )
 }
