@@ -1,0 +1,88 @@
+'use client'
+
+import { useState, useTransition } from 'react'
+import Link from 'next/link'
+import { toast } from 'sonner'
+import { Card } from '@/components/ui/card'
+import { LogoBadge } from '@/components/logo-badge'
+import {Label} from "@/components/ui/label";
+import {Input} from "@/components/ui/input";
+import {Button} from "@/components/ui/button";
+
+export default function ForgotPasswordPage() {
+    const [isPending, startTransition] = useTransition()
+    const [error, setError] = useState<string | null>(null)
+    const [sent, setSent] = useState(false)
+
+    const handleSubmit = (formData: FormData) => {
+        // setError(null)
+        // startTransition(async () => {
+        //     const result = await requestPasswordReset(formData)
+        //     if (!result.success) {
+        //         setError(result.error || 'Что-то пошло не так')
+        //         toast.error(result.error || 'Ошибка')
+        //         return
+        //     }
+        //     setSent(true)
+        //     toast.success('Инструкция отправлена на почту')
+        // })
+    }
+
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-neutral-100 px-4 py-10">
+            <Card className="max-w-sm space-y-6">
+                <LogoBadge />
+
+                <div className="space-y-1 text-center">
+                    <h2 className="text-lg font-semibold text-white">Восстановление пароля</h2>
+                    <p className="text-sm text-neutral-400">
+                        Введите email, указанный при регистрации — мы отправим инструкцию по
+                        восстановлению доступа
+                    </p>
+                </div>
+
+                {sent ? (
+                    <div className="rounded-2xl border border-lime-400/30 bg-lime-400/10 p-4 text-center text-sm text-lime-300">
+                        Если аккаунт с таким email существует, письмо с инструкцией уже отправлено.
+                    </div>
+                ) : (
+                    <form action={handleSubmit} className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="email" className="text-neutral-300">
+                                Email
+                            </Label>
+                            <Input
+                                id="email"
+                                name="email"
+                                type="email"
+                                placeholder="example@mail.com"
+                                required
+                                disabled={isPending}
+                                className="bg-neutral-900 border-neutral-800 text-white"
+                            />
+                        </div>
+
+                        {error && (
+                            <p className="text-sm text-red-400 text-center">{error}</p>
+                        )}
+
+                        <Button
+                            type="submit"
+                            disabled={isPending}
+                            className="w-full bg-lime-400 hover:bg-lime-500 text-neutral-950 font-semibold"
+                        >
+                            {isPending ? 'Отправляем...' : 'Отправить инструкцию'}
+                        </Button>
+                    </form>
+                )}
+
+                <div className="text-center text-sm text-neutral-400">
+                    Вспомнили пароль?{' '}
+                    <Link href="/login" className="text-lime-400 hover:underline font-medium">
+                        Войти
+                    </Link>
+                </div>
+            </Card>
+        </div>
+    )
+}
