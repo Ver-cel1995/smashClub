@@ -1,191 +1,205 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { cn } from '@/shared/lib/utils'
 
 interface ShuttleLoaderProps {
-    size?: number
+    fullScreen?: boolean
+    size?: number | string
     className?: string
 }
 
-export function ShuttleLoader({ size = 200, className }: ShuttleLoaderProps) {
-    const canvasRef = useRef<HTMLCanvasElement>(null)
-    const animRef = useRef<number>(0)
-    const logoRef = useRef<HTMLImageElement | null>(null)
-
-    useEffect(() => {
-        const canvas = canvasRef.current
-        if (!canvas) return
-
-        const context = canvas.getContext('2d')
-        if (!context) return
-
-        const ctx: CanvasRenderingContext2D = context
-
-        const W = 900
-        const H = 900
-        const C = W / 2
-        canvas.width = W
-        canvas.height = H
-
-        const logo = new Image()
-        logo.src = '/images/logo.png'
-        logoRef.current = logo
-
-        function drawShuttle(x: number, y: number, angle: number, scale = 1) {
-            ctx.save()
-            ctx.translate(x, y)
-            ctx.rotate(angle)
-            ctx.scale(scale, scale)
-            ctx.shadowColor = 'rgba(156,255,47,.9)'
-            ctx.shadowBlur = 15
-            ctx.fillStyle = '#fbfff4'
-            ctx.strokeStyle = '#071004'
-            ctx.lineWidth = 2.5
-            for (let i = -2; i <= 2; i++) {
-                ctx.save()
-                ctx.rotate(i * 0.15)
-                ctx.beginPath()
-                ctx.moveTo(0, -10)
-                ctx.quadraticCurveTo(34, -42, 82, -46)
-                ctx.quadraticCurveTo(62, -15, 13, 5)
-                ctx.closePath()
-                ctx.fill()
-                ctx.stroke()
-                ctx.restore()
-            }
-            ctx.strokeStyle = '#75bf20'
-            ctx.lineWidth = 3
-            for (let i = -2; i <= 2; i++) {
-                ctx.beginPath()
-                ctx.moveTo(12, 0)
-                ctx.lineTo(76, -32 + i * 7)
-                ctx.stroke()
-            }
-            ctx.shadowBlur = 8
-            ctx.fillStyle = '#fbfff4'
-            ctx.strokeStyle = '#071004'
-            ctx.lineWidth = 3
-            ctx.beginPath()
-            ctx.ellipse(-11, 6, 21, 26, -0.72, 0, Math.PI * 2)
-            ctx.fill()
-            ctx.stroke()
-            ctx.beginPath()
-            ctx.moveTo(7, -12)
-            ctx.lineTo(26, 7)
-            ctx.lineTo(14, 23)
-            ctx.lineTo(-8, 2)
-            ctx.closePath()
-            ctx.fillStyle = '#111'
-            ctx.fill()
-            ctx.restore()
-        }
-
-        function roundedArc(t: number) {
-            const r = 360
-            ctx.save()
-            ctx.translate(C, C)
-            ctx.rotate(t * 0.9)
-            ctx.lineCap = 'round'
-            ctx.lineWidth = 12
-            ctx.strokeStyle = '#75bf20'
-            ctx.shadowColor = 'rgba(117,191,32,.85)'
-            ctx.shadowBlur = 20
-            ctx.beginPath()
-            ctx.arc(0, 0, r, -1.5, 1.1)
-            ctx.stroke()
-            ctx.strokeStyle = '#f8fff1'
-            ctx.lineWidth = 5
-            ctx.shadowBlur = 10
-            ctx.beginPath()
-            ctx.arc(0, 0, r + 18, 1.8, 2.45)
-            ctx.stroke()
-            ctx.restore()
-        }
-
-        function draw(tms: number) {
-            const t = tms / 1000
-            ctx.clearRect(0, 0, W, H)
-
-            const pulse = 1 + Math.sin(t * 3) * 0.018
-            ctx.save()
-            ctx.translate(C, C)
-            ctx.scale(pulse, pulse)
-            ctx.strokeStyle = 'rgba(117,191,32,.18)'
-            ctx.lineWidth = 34
-            ctx.beginPath()
-            ctx.arc(0, 0, 372, 0, Math.PI * 2)
-            ctx.stroke()
-            ctx.restore()
-
-            ctx.save()
-            ctx.beginPath()
-            ctx.arc(C, C, 310, 0, Math.PI * 2)
-            ctx.clip()
-            ctx.globalAlpha = 0.96
-            const currentLogo = logoRef.current
-            if (currentLogo?.complete && currentLogo.naturalWidth > 0) {
-                ctx.drawImage(currentLogo, C - 310, C - 310, 620, 620)
-            }
-            ctx.restore()
-
-            ctx.save()
-            const grad = ctx.createRadialGradient(C, C, 210, C, C, 360)
-            grad.addColorStop(0, 'rgba(0,0,0,0)')
-            grad.addColorStop(1, 'rgba(0,0,0,.18)')
-            ctx.fillStyle = grad
-            ctx.beginPath()
-            ctx.arc(C, C, 310, 0, Math.PI * 2)
-            ctx.fill()
-            ctx.restore()
-
-            roundedArc(t)
-
-            const a = -Math.PI / 2 + t * 1.65
-            const rr = 365
-            const x = C + Math.cos(a) * rr
-            const y = C + Math.sin(a) * rr
-            drawShuttle(x, y, a + Math.PI * 0.63, 0.72)
-
-            ctx.save()
-            ctx.translate(C, C + 365)
-            ctx.lineCap = 'round'
-            ctx.strokeStyle = 'rgba(255,255,255,.23)'
-            ctx.lineWidth = 8
-            ctx.beginPath()
-            ctx.moveTo(-150, 0)
-            ctx.lineTo(150, 0)
-            ctx.stroke()
-            const w = 70 + (Math.sin(t * 2.4) + 1) * 70
-            ctx.strokeStyle = '#75bf20'
-            ctx.shadowColor = '#75bf20'
-            ctx.shadowBlur = 14
-            ctx.beginPath()
-            ctx.moveTo(-w, 0)
-            ctx.lineTo(w, 0)
-            ctx.stroke()
-            ctx.restore()
-
-            animRef.current = requestAnimationFrame(draw)
-        }
-
-        animRef.current = requestAnimationFrame(draw)
-
-        return () => {
-            cancelAnimationFrame(animRef.current)
-        }
-    }, [])
+export function ShuttleLoader({
+                                  fullScreen = false,
+                                  size = 'min(70vw, 320px)',
+                                  className,
+                              }: ShuttleLoaderProps) {
+    const cssSize = typeof size === 'number' ? `${size}px` : size
 
     return (
         <div
-            className={className}
-            style={{ width: size, height: size }}
+            className={cn(
+                'grid place-items-center',
+                fullScreen && 'fixed inset-0 z-[9999] min-h-dvh',
+                className
+            )}
+            style={{
+                background: fullScreen
+                    ? 'radial-gradient(circle at 50% 42%, #141f0e 0%, #050604 58%, #000 100%)'
+                    : undefined,
+            }}
+            role="status"
+            aria-live="polite"
             aria-label="Загрузка"
         >
-            <canvas
-                ref={canvasRef}
-                className="w-full h-full"
-                style={{ filter: 'drop-shadow(0 0 18px rgba(117,191,32,.26))' }}
-            />
+            <svg
+                className="block h-auto overflow-visible"
+                style={{
+                    width: cssSize,
+                    filter: 'drop-shadow(0 18px 36px rgba(0,0,0,.55))',
+                }}
+                viewBox="0 0 420 460"
+                xmlns="http://www.w3.org/2000/svg"
+            >
+                <defs>
+                    <radialGradient id="blBg" cx="50%" cy="42%" r="64%">
+                        <stop offset="0%" stopColor="#17250f" />
+                        <stop offset="55%" stopColor="#060806" />
+                        <stop offset="100%" stopColor="#000000" />
+                    </radialGradient>
+
+                    <linearGradient id="blGreenStroke" x1="0" x2="1" y1="0" y2="1">
+                        <stop offset="0%" stopColor="#b7ff4a" />
+                        <stop offset="48%" stopColor="#78c522" />
+                        <stop offset="100%" stopColor="#3f8f10" />
+                    </linearGradient>
+
+                    <linearGradient id="blProgress" x1="0" x2="1" y1="0" y2="0">
+                        <stop offset="0%" stopColor="#4b8d15" />
+                        <stop offset="40%" stopColor="#b8ff4a" />
+                        <stop offset="100%" stopColor="#78c522" />
+                    </linearGradient>
+
+                    <filter id="blGlow" x="-40%" y="-40%" width="180%" height="180%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+
+                    <filter id="blStrongGlow" x="-60%" y="-60%" width="220%" height="220%">
+                        <feGaussianBlur stdDeviation="6" result="blur" />
+                        <feMerge>
+                            <feMergeNode in="blur" />
+                            <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                    </filter>
+
+                    <clipPath id="blBadgeClip">
+                        <circle cx="210" cy="190" r="157" />
+                    </clipPath>
+                </defs>
+
+                {/* Фон */}
+                <circle cx="210" cy="190" r="176" fill="url(#blBg)" />
+                <circle cx="210" cy="190" r="171" fill="none" stroke="#23351b" strokeWidth="14" opacity=".55" />
+
+                {/* Эмблема */}
+                <g className="bl-badge">
+                    <circle cx="210" cy="190" r="157" fill="#050605" />
+                    <circle cx="210" cy="190" r="157" fill="none" stroke="#ecffe5" strokeWidth="5" opacity=".9" />
+                    <circle cx="210" cy="190" r="165" fill="none" stroke="url(#blGreenStroke)" strokeWidth="6" filter="url(#blGlow)" />
+
+                    <g clipPath="url(#blBadgeClip)">
+                        {/* Зелёные мазки */}
+                        <g stroke="#78c522" strokeWidth="6" strokeLinecap="round" opacity=".9">
+                            <path className="bl-scratch-1" d="M58 112 L130 74" />
+                            <path className="bl-scratch-2" d="M54 132 L142 86" />
+                            <path className="bl-scratch-3" d="M58 153 L139 112" />
+                            <path className="bl-scratch-4" d="M72 174 L128 147" />
+                        </g>
+
+                        {/* Тёмные следы справа */}
+                        <g stroke="#273122" strokeWidth="5" strokeLinecap="round" opacity=".7">
+                            <path d="M282 62 C326 82 350 111 362 151" />
+                            <path d="M280 85 C323 101 352 135 365 178" />
+                            <path d="M274 110 C310 126 340 159 354 196" />
+                        </g>
+
+                        {/* Волан сверху */}
+                        <g transform="translate(205 86) rotate(-10)" filter="url(#blGlow)">
+                            <g fill="#fbfff5" stroke="#030403" strokeWidth="3">
+                                <path d="M-42 -18 C-20 -68 5 -78 19 -68 C12 -40 -11 -12 -36 7 Z" />
+                                <path d="M-14 -24 C8 -79 36 -87 50 -74 C43 -41 17 -9 -10 10 Z" />
+                                <path d="M18 -22 C49 -70 79 -67 90 -50 C76 -21 48 4 18 15 Z" />
+                                <path d="M48 -10 C82 -45 111 -34 116 -13 C96 9 73 24 43 26 Z" />
+                                <path d="M75 6 C103 -15 126 -5 127 16 C106 31 88 37 66 34 Z" />
+                            </g>
+                            <g stroke="#78c522" strokeWidth="3" strokeLinecap="round">
+                                <path d="M-30 1 L9 -63" />
+                                <path d="M-3 5 L42 -70" />
+                                <path d="M25 12 L83 -48" />
+                                <path d="M51 22 L113 -15" />
+                            </g>
+                            <ellipse cx="-60" cy="25" rx="25" ry="31" transform="rotate(-40 -60 25)" fill="#fbfff5" stroke="#030403" strokeWidth="4" />
+                            <path d="M-37 0 L-8 28 L-25 47 L-57 17 Z" fill="#050505" />
+                        </g>
+
+                        {/* Текст */}
+                        <text x="210" y="177" textAnchor="middle" className="bl-main-text" fill="#fbfff5" stroke="#050505" strokeWidth="6" paintOrder="stroke">
+                            БАДМИНТОН
+                        </text>
+
+                        <rect x="98" y="190" width="224" height="39" rx="8" fill="#0b0f08" stroke="#78c522" strokeWidth="2.5" opacity=".98" />
+                        <text x="210" y="219" textAnchor="middle" className="bl-city-text" fill="#8ee02a">
+                            КУЩЕВСКАЯ
+                        </text>
+
+                        <g transform="translate(210 250)">
+                            <line x1="-130" y1="0" x2="-77" y2="0" stroke="#78c522" strokeWidth="4" strokeLinecap="round" />
+                            <line x1="77" y1="0" x2="130" y2="0" stroke="#78c522" strokeWidth="4" strokeLinecap="round" />
+                            <text x="0" y="5" textAnchor="middle" className="bl-slogan-text" fill="#fbfff5">
+                                ТРЕНИРУЙСЯ • ИГРАЙ • ПОБЕЖДАЙ
+                            </text>
+                        </g>
+
+                        {/* Ракетки */}
+                        <g transform="translate(210 286)" fill="none" stroke="#fbfff5" strokeLinecap="round" opacity=".96">
+                            <g className="bl-racket-left">
+                                <line x1="-55" y1="43" x2="-10" y2="-4" strokeWidth="4" />
+                                <ellipse cx="-24" cy="-23" rx="19" ry="28" transform="rotate(-33 -24 -23)" strokeWidth="3" />
+                                <path d="M-38 -36 L-11 -15 M-46 -23 L-18 -2 M-30 -49 L-4 -28" strokeWidth="1.7" opacity=".85" />
+                            </g>
+                            <g className="bl-racket-right">
+                                <line x1="55" y1="43" x2="10" y2="-4" strokeWidth="4" />
+                                <ellipse cx="24" cy="-23" rx="19" ry="28" transform="rotate(33 24 -23)" strokeWidth="3" />
+                                <path d="M38 -36 L11 -15 M46 -23 L18 -2 M30 -49 L4 -28" strokeWidth="1.7" opacity=".85" />
+                            </g>
+                            <polygon points="0,-14 5,-3 17,-2 8,6 10,18 0,12 -10,18 -8,6 -17,-2 -5,-3" fill="#78c522" stroke="none" />
+                        </g>
+                    </g>
+                </g>
+
+                {/* Вращающиеся кольца */}
+                <g className="bl-spin-ring" filter="url(#blStrongGlow)">
+                    <circle cx="210" cy="190" r="177" fill="none" stroke="url(#blGreenStroke)" strokeWidth="8" strokeLinecap="round" strokeDasharray="310 210" />
+                </g>
+                <g className="bl-counter-ring">
+                    <circle cx="210" cy="190" r="187" fill="none" stroke="#fbfff5" strokeWidth="3" strokeLinecap="round" strokeDasharray="92 492" opacity=".95" />
+                </g>
+
+                {/* Волан на орбите */}
+                <g className="bl-shuttle-orbit" filter="url(#blStrongGlow)">
+                    <g className="bl-shuttle" transform="translate(210 8) rotate(40) scale(.5)">
+                        <g fill="#fbfff5" stroke="#020402" strokeWidth="5">
+                            <path d="M20 -16 C67 -67 132 -73 153 -59 C121 -27 70 0 22 13 Z" />
+                            <path d="M17 -18 C55 -83 115 -94 138 -79 C114 -37 65 -6 20 12 Z" transform="rotate(-13)" />
+                            <path d="M21 -11 C67 -56 124 -45 141 -28 C109 -7 67 14 23 16 Z" transform="rotate(14)" />
+                        </g>
+                        <g stroke="#78c522" strokeWidth="6" strokeLinecap="round">
+                            <path d="M29 7 L134 -55" />
+                            <path d="M29 7 L139 -27" />
+                            <path d="M29 7 L122 -75" />
+                        </g>
+                        <ellipse cx="-17" cy="20" rx="29" ry="35" transform="rotate(-42 -17 20)" fill="#fbfff5" stroke="#020402" strokeWidth="6" />
+                        <path d="M9 -15 L40 15 L21 38 L-12 5 Z" fill="#050505" />
+                    </g>
+                </g>
+
+                {/* Loading блок */}
+                <g transform="translate(210 410)">
+                    <text x="0" y="-32" textAnchor="middle" className="bl-loading-text" fill="#fbfff5">
+                        ЗАГРУЗКА
+                    </text>
+                    <circle className="bl-dot-1" cx="61" cy="-36" r="3" fill="#8ee02a" />
+                    <circle className="bl-dot-2" cx="73" cy="-36" r="3" fill="#8ee02a" />
+                    <circle className="bl-dot-3" cx="85" cy="-36" r="3" fill="#8ee02a" />
+
+                    <rect x="-120" y="-12" width="240" height="14" rx="7" fill="#151a12" stroke="#405331" strokeWidth="1.5" />
+                    <rect className="bl-progress-fill" x="-116" y="-8" width="232" height="6" rx="3" fill="url(#blProgress)" filter="url(#blGlow)" />
+                    <rect className="bl-progress-shine" x="-22" y="-10" width="44" height="10" rx="5" fill="#ffffff" opacity=".42" />
+                </g>
+            </svg>
         </div>
     )
 }

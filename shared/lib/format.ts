@@ -1,5 +1,7 @@
 import { formatDistanceToNow, format } from 'date-fns'
 import { ru } from 'date-fns/locale'
+import { isToday, isTomorrow, isYesterday, parseISO } from 'date-fns'
+
 
 /**
  * "2 часа назад", "5 минут назад"
@@ -46,3 +48,56 @@ export const commentWord = (n: number) => pluralize(n, ['комментарий'
 export const reactionWord = (n: number) => pluralize(n, ['реакция', 'реакции', 'реакций'])
 export const peopleWord = (n: number) => pluralize(n, ['человек', 'человека', 'человек'])
 export const voteWord = (n: number) => pluralize(n, ['голос', 'голоса', 'голосов'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+export function formatDayMonth(date: string | Date): string {
+    const d = typeof date === 'string' ? parseISO(date) : date
+    return format(d, 'd MMMM', { locale: ru })
+}
+
+/** "понедельник, 15 января" */
+export function formatFullDate(date: string | Date): string {
+    const d = typeof date === 'string' ? parseISO(date) : date
+    return format(d, 'EEEE, d MMMM', { locale: ru })
+}
+
+/** Сегодня / Завтра / Вчера / 15 января */
+export function formatSmartDate(date: string | Date): string {
+    const d = typeof date === 'string' ? parseISO(date) : date
+    if (isToday(d)) return 'Сегодня'
+    if (isTomorrow(d)) return 'Завтра'
+    if (isYesterday(d)) return 'Вчера'
+    return formatDayMonth(d)
+}
+
+/** День недели: "пн", "вт" */
+export function formatWeekdayShort(date: string | Date): string {
+    const d = typeof date === 'string' ? parseISO(date) : date
+    return format(d, 'EEEEEE', { locale: ru })
+}
+
+/** Число: "15" */
+export function formatDayNumber(date: string | Date): string {
+    const d = typeof date === 'string' ? parseISO(date) : date
+    return format(d, 'd')
+}
+
+/** Время: "18:00 – 20:00" */
+export function formatTimeRange(start: string, end: string): string {
+    return `${start.slice(0, 5)} – ${end.slice(0, 5)}`
+}

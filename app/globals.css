@@ -1,2 +1,130 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
+
+
+
+
+
+
+
+
+
+
+
+
+/* ===== Shuttle Loader Animations ===== */
+.bl-badge {
+    transform-origin: 210px 190px;
+    animation: bl-badge-pulse 1.9s ease-in-out infinite;
+}
+.bl-spin-ring {
+    transform-origin: 210px 190px;
+    animation: bl-spin 1.35s linear infinite;
+}
+.bl-counter-ring {
+    transform-origin: 210px 190px;
+    animation: bl-spin-reverse 2.7s linear infinite;
+}
+.bl-shuttle-orbit {
+    transform-origin: 210px 190px;
+    animation: bl-spin 1.55s linear infinite;
+}
+.bl-shuttle {
+    transform-origin: center;
+    animation: bl-shuttle-pop 0.78s ease-in-out infinite;
+}
+.bl-scratch-1 { animation: bl-scratch 1.2s ease-in-out infinite; }
+.bl-scratch-2 { animation: bl-scratch 1.2s ease-in-out 0.14s infinite; }
+.bl-scratch-3 { animation: bl-scratch 1.2s ease-in-out 0.28s infinite; }
+.bl-scratch-4 { animation: bl-scratch 1.2s ease-in-out 0.42s infinite; }
+.bl-progress-fill {
+    transform-box: fill-box;
+    transform-origin: left center;
+    animation: bl-progress-scale 1.45s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.bl-progress-shine {
+    animation: bl-progress-shine 1.45s cubic-bezier(0.65, 0, 0.35, 1) infinite;
+}
+.bl-dot-1 { animation: bl-dot 1.05s ease-in-out 0s infinite; }
+.bl-dot-2 { animation: bl-dot 1.05s ease-in-out 0.16s infinite; }
+.bl-dot-3 { animation: bl-dot 1.05s ease-in-out 0.32s infinite; }
+.bl-racket-left {
+    transform-origin: 210px 280px;
+    animation: bl-racket-left 1.55s ease-in-out infinite;
+}
+.bl-racket-right {
+    transform-origin: 210px 280px;
+    animation: bl-racket-right 1.55s ease-in-out infinite;
+}
+
+.bl-main-text {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 45px;
+    font-weight: 950;
+    letter-spacing: -1.4px;
+}
+.bl-city-text {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 27px;
+    font-weight: 950;
+    letter-spacing: 0.5px;
+}
+.bl-slogan-text {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 14px;
+    font-weight: 850;
+    letter-spacing: 0.3px;
+}
+.bl-loading-text {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 15px;
+    font-weight: 850;
+    letter-spacing: 2.4px;
+}
+
+@keyframes bl-spin { to { transform: rotate(360deg); } }
+@keyframes bl-spin-reverse { to { transform: rotate(-360deg); } }
+@keyframes bl-badge-pulse {
+    0%, 100% { transform: scale(1); opacity: 0.98; }
+    50% { transform: scale(1.018); opacity: 1; }
+}
+@keyframes bl-shuttle-pop {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.08); }
+}
+@keyframes bl-scratch {
+    0%, 100% { opacity: 0.28; transform: translateX(0); }
+    50% { opacity: 1; transform: translateX(8px); }
+}
+@keyframes bl-progress-scale {
+    0% { transform: scaleX(0.05); opacity: 0.72; }
+    48% { transform: scaleX(1); opacity: 1; }
+    100% { transform: scaleX(0.05); opacity: 0.72; }
+}
+@keyframes bl-progress-shine {
+    0% { transform: translateX(-172px); opacity: 0; }
+    18% { opacity: 1; }
+    52% { transform: translateX(172px); opacity: 1; }
+    100% { transform: translateX(172px); opacity: 0; }
+}
+@keyframes bl-dot {
+    0%, 100% { opacity: 0.2; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-3px); }
+}
+@keyframes bl-racket-left {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(4deg); }
+}
+@keyframes bl-racket-right {
+    0%, 100% { transform: rotate(3deg); }
+    50% { transform: rotate(-4deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bl-badge, .bl-spin-ring, .bl-counter-ring, .bl-shuttle-orbit, .bl-shuttle,
+    .bl-scratch-1, .bl-scratch-2, .bl-scratch-3, .bl-scratch-4,
+    .bl-progress-fill, .bl-progress-shine, .bl-dot-1, .bl-dot-2, .bl-dot-3,
+    .bl-racket-left, .bl-racket-right {
+        animation: none !important;
+    }
+}
