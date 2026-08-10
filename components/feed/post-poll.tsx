@@ -8,13 +8,13 @@ import {cn} from '@/shared/lib/utils'
 import {voteWord} from '@/shared/lib/format'
 import { useProgressAction } from "@/shared/hooks/use-progress-action"
 
-interface PollOption {
+type PollOption = {
     id: string
     text: string
     votes: number
 }
 
-interface PostPollProps {
+type PostPollProps = {
     postId: string
     question: string
     options: PollOption[]
@@ -29,7 +29,7 @@ export function PostPoll({
                              multipleChoice,
                              votedFor,
                          }: PostPollProps) {
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
     const hasVoted = votedFor.length > 0
 
     const [optimisticOptions, updateOptimistic] = useOptimistic(
@@ -74,7 +74,7 @@ export function PostPoll({
     const currentVotedFor = optimisticOptions.votedFor
 
     const handleVote = (optionId: string) => {
-        startTransition(async () => {
+        runAction(async () => {
             updateOptimistic({ optionId })
 
             const result = await votePoll(postId, optionId)

@@ -6,7 +6,7 @@ import { getPost, getPostReactions, getPostComments, getUserVotes } from '../que
 import { PostCard } from '@/components/feed/post-card'
 import { CommentSection } from '@/components/feed/comment-section'
 
-interface Props {
+type Props = {
     params: Promise<{ id: string }>
 }
 

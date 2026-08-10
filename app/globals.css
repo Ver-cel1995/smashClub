@@ -6,6 +6,79 @@ body {
     color: white;
 }
 
+.logo-text {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1px;
+
+    background: linear-gradient(
+            90deg,
+            #06345B 0%,
+            #123F68 25%,
+            #55A82D 55%,
+            #C5E900 72%,
+            #FF8A00 100%
+    );
+
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+@layer base {
+    html,
+    body {
+        /* Отключаем "прыжок" при появлении keyboard на iOS */
+        overscroll-behavior-y: none;
+        /* Отключаем pull-to-refresh */
+        overscroll-behavior: contain;
+        /* Смуф-скролл на iOS */
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Скроллится только контейнер основной страницы */
+    #__next,
+    main {
+        height: 100%;
+        overflow-y: auto;
+    }
+
+    /* Убираем tap-highlight на iOS */
+    * {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Убираем стандартный outline у кнопок/инпутов на iOS */
+    button,
+    input,
+    textarea,
+    select {
+        -webkit-appearance: none;
+        appearance: none;
+    }
+
+    /* Отключаем автоузумкание при фокусе на iOS (шрифт < 16px триггерит зум) */
+    input,
+    textarea,
+    select {
+        font-size: 16px;
+    }
+}
+
+@layer utilities {
+    /* Safe area padding для контейнеров */
+    .safe-top {
+        padding-top: env(safe-area-inset-top);
+    }
+    .safe-bottom {
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    .safe-x {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+    }
+}
+
 
 
 

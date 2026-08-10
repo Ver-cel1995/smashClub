@@ -5,7 +5,7 @@ import { ArrowLeft } from 'lucide-react'
 import { CreatePostForm } from '@/components/feed/create-post-form'
 import { CreatePollForm } from '@/components/feed/create-poll-form'
 
-interface Props {
+type Props = {
     searchParams: Promise<{ type?: string }>
 }
 

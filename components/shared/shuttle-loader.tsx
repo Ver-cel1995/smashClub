@@ -2,7 +2,7 @@
 
 import { cn } from '@/shared/lib/utils'
 
-interface ShuttleLoaderProps {
+type ShuttleLoaderProps = {
     fullScreen?: boolean
     size?: number | string
     className?: string

@@ -6,7 +6,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { getFirstName } from '@/shared/lib/formatName'
 import {toast} from "sonner";
 
-interface AppHeaderProps {
+type AppHeaderProps = {
     userName: string
     userAvatarUrl?: string | null
     isCoach?: boolean

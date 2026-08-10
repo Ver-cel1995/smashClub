@@ -12,7 +12,7 @@ import { useConfirm } from '@/shared/lib/confirm/confirm-context'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import { CommentInput } from '@/components/feed/comment-input'
 
-interface CommentSectionProps {
+type CommentSectionProps = {
     postId: string
     comments: CommentWithAuthor[]
     currentUserId: string

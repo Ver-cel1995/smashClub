@@ -39,11 +39,11 @@ function formatFileSize(bytes: number): string {
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export interface PhotoUploadHandle {
+export type PhotoUploadHandle = {
     getFiles: () => File[]
 }
 
-interface FilePreview {
+type FilePreview = {
     file: File
     url: string
     isImage: boolean
@@ -51,7 +51,7 @@ interface FilePreview {
     savedPercent?: number
 }
 
-interface PhotoUploadProps {
+type PhotoUploadProps = {
     disabled?: boolean
 }
 

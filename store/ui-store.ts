@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-interface UIState {
+type UIState = {
     /** Глобальный навигационный loading */
     isNavigating: boolean
     setNavigating: (v: boolean) => void

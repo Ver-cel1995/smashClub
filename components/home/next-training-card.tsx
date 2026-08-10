@@ -32,7 +32,7 @@ const NO_COACH_STATUSES = new Set(['no_coach_open', 'tournament_trip'])
 
 export function NextTrainingCard({ training, currentUserId }: Props) {
     const [openDialog, setOpenDialog] = useState(false)
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
     const [optimisticStatus, setOptimisticStatus] = useState<AttendanceStatus | null>(
         training.my_status
     )
@@ -50,7 +50,7 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
         const prev = optimisticStatus
         setOptimisticStatus(status)
 
-        startTransition(async () => {
+        runAction(async () => {
             const res = await setTrainingAttendance(training.id, status)
             if (!res.success) {
                 setOptimisticStatus(prev)

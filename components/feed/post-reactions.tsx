@@ -9,7 +9,7 @@ import { useDebouncedToggle } from '@/shared/hooks/use-debounced-toggle'
 import { LottieEmoji } from '@/components/shared/lottie-emoji'
 import { AVAILABLE_EMOJI_IDS } from '@/shared/emojis/registry'
 
-interface PostReactionsProps {
+type PostReactionsProps = {
     postId: string
     reactions: ReactionGroup[]
 }

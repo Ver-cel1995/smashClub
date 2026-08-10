@@ -26,7 +26,7 @@ import {cn} from '@/shared/lib/utils'
 import type {TrainingStatus} from '@/types'
 import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
-interface BulkChangeDialogProps {
+type BulkChangeDialogProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
 }
@@ -45,7 +45,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
     const [endDate, setEndDate] = useState<Date | null>(null)
     const [status, setStatus] = useState<TrainingStatus>('cancelled')
     const [customNote, setCustomNote] = useState('')
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     const meta = TRAINING_STATUS_META[status]
 
@@ -60,7 +60,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
         const s = format(startDate, 'yyyy-MM-dd')
         const ed = format(endDate, 'yyyy-MM-dd')
 
-        startTransition(async () => {
+        runAction(async () => {
             const result = await updateTrainingsInRange(s, ed, status, customNote)
 
             if (result.success) {

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 
-interface AppState {
+type AppState = {
     // Текущий пользователь (кэш на клиенте)
     userId: string | null
     isCoach: boolean

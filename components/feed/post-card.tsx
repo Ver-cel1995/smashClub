@@ -30,7 +30,7 @@ import { useProgressRouter } from '@/shared/hooks/use-progress-router'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import { useConfirm } from '@/shared/lib/confirm/confirm-context'
 
-interface PostCardProps {
+type PostCardProps = {
     post: PostWithAuthor
     isCoach: boolean
     reactions?: ReactionGroup[]

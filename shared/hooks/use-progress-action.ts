@@ -13,11 +13,11 @@ import {doneProgress, startProgress} from "@/store/route-progress";
  * })
  */
 export function useProgressAction() {
-    const [isPending, startTransition] = useTransition()
+    const [isPending, runAction] = useTransition()
 
     const run = useCallback((action: () => Promise<unknown> | unknown) => {
         startProgress()
-        startTransition(async () => {
+        runAction(async () => {
             try {
                 await action()
             } finally {

@@ -1,5 +1,6 @@
 import { createClient } from '@/shared/lib/supabase/server'
 import type { Profile, Post, PostComment } from '@/types'
+import {cache} from "react";
 
 export type PostWithAuthor = Post & {
     author: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'role'>

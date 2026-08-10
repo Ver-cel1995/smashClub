@@ -55,7 +55,7 @@ function PlayerRow({
                    }: {
     player: RepairSummaryCoach['players'][number]
 }) {
-    const [isPending, startTransition] = useTransition()
+    const [isPending, runAction] = useTransition()
     const [expanded, setExpanded] = useState(false)
 
     const hasUnpaid = player.unpaid_cost > 0
@@ -71,7 +71,7 @@ function PlayerRow({
     const modelRows = Array.from(byModel.entries())
 
     const handleRemind = () => {
-        startTransition(async () => {
+        runAction(async () => {
             const res = await remindRepairPayment(player.profile.id)
             if (res.success) {
                 toast.success(`Напоминание отправлено: ${player.profile.full_name}`)

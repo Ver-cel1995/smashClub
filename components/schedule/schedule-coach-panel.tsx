@@ -13,7 +13,7 @@ import type { TrainingWithMeta } from '@/app/(main)/schedule/queries'
 import { useConfirm } from '@/shared/lib/confirm/confirm-context'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 
-interface ScheduleCoachPanelProps {
+type ScheduleCoachPanelProps = {
     trainings: TrainingWithMeta[]
 }
 

@@ -25,11 +25,10 @@ type Props = {
     initialMonths: string[] // не используем, оставлен для совместимости
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function GalleryTab(_props: Props) {
     const [groups, setGroups] = useState<GalleryPostGroup[]>([])
     const [month, setMonth] = useState<number | null>(null) // null = все
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     // Lightbox
     const [lightbox, setLightbox] = useState<{
@@ -38,7 +37,7 @@ export function GalleryTab(_props: Props) {
     } | null>(null)
 
     useEffect(() => {
-        startTransition(async () => {
+        runAction(async () => {
             const data = await fetchGalleryGroupsAction({
                 month: month ?? undefined,
             })

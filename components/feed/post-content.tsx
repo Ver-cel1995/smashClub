@@ -13,7 +13,7 @@ const LONG_POST_CHARS = 400
 
 type State = 'collapsed' | 'partial' | 'full'
 
-interface PostContentProps {
+type PostContentProps = {
     title?: string | null
     content: string
     /** ID поста для перехода на полную страницу */

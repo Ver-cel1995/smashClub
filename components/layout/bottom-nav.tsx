@@ -22,7 +22,7 @@ export function BottomNav() {
     const pathname = usePathname()
     const router = useProgressRouter()
     const [pendingHref, setPendingHref] = useState<string | null>(null)
-    const [isPending, startTransition] = useTransition()
+    const [isPending, runAction] = useTransition()
 
     const navLocked = isPending || pendingHref !== null
 
@@ -46,7 +46,7 @@ export function BottomNav() {
 
         setPendingHref(href)
 
-        startTransition(() => {
+        runAction(() => {
             router.push(href)
         })
     }

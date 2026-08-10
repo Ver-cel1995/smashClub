@@ -7,7 +7,7 @@ import { addComment } from '@/app/(main)/feed/actions'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import { TextareaWithEmoji, type TextareaWithEmojiHandle } from '@/components/shared/textarea-with-emoji'
 
-interface CommentInputProps {
+type CommentInputProps = {
     postId: string
     parentCommentId?: string
     placeholder?: string

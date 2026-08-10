@@ -23,7 +23,7 @@ import type { TrainingWithMeta } from '@/app/(main)/schedule/queries'
 import type { TrainingStatus } from '@/types'
 import { EditDayDialog } from './edit-day-dialog'
 
-interface ScheduleCalendarProps {
+type ScheduleCalendarProps = {
     trainings: TrainingWithMeta[]
     isCoach: boolean
 }

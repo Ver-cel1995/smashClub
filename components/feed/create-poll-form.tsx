@@ -1,6 +1,6 @@
 'use client'
 
-import {useState} from 'react'
+import {FormEvent, useState} from 'react'
 import {Loader2, Pin, Plus, Trash2} from 'lucide-react'
 import {Button} from '@/components/ui/button'
 import {Input} from '@/components/ui/input'
@@ -13,7 +13,7 @@ import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 export function CreatePollForm() {
     const router = useProgressRouter()
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     const [question, setQuestion] = useState('')
     const [description, setDescription] = useState('')
@@ -46,7 +46,7 @@ export function CreatePollForm() {
         setOptions(options.map((o) => (o.id === id ? { ...o, text } : o)))
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault()
         setError(null)
 
@@ -72,7 +72,7 @@ export function CreatePollForm() {
         formData.set('poll_multiple_choice', multipleChoice ? 'on' : '')
         formData.set('is_pinned', isPinned ? 'on' : '')
 
-        startTransition(async () => {
+        runAction(async () => {
             const result = await createPoll(formData)
 
             if (result.success) {

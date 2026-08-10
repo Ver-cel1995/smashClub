@@ -10,13 +10,13 @@ import {Button} from "@/components/ui/button";
 import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 export default function ForgotPasswordPage() {
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
     const [error, setError] = useState<string | null>(null)
     const [sent, setSent] = useState(false)
 
     const handleSubmit = (formData: FormData) => {
         // setError(null)
-        // startTransition(async () => {
+        // runAction(async () => {
         //     const result = await requestPasswordReset(formData)
         //     if (!result.success) {
         //         setError(result.error || 'Что-то пошло не так')

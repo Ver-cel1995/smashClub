@@ -4,7 +4,7 @@ import { useProgressRouter } from '@/shared/hooks/use-progress-router'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import {ActionResult} from "@/shared/lib/actions/types";
 
-interface UseFormActionOptions {
+type UseFormActionOptions = {
     redirectTo?: string
     successMessage?: string
     onSuccess?: () => void

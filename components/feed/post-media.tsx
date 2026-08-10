@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 
-interface PostMediaProps {
+type PostMediaProps = {
     urls: string[]
 }
 

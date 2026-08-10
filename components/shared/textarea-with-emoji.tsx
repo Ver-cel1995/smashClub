@@ -5,14 +5,14 @@ import { Smile } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { EmojiKeyboard } from '@/components/feed/emoji-keyboard'
 
-export interface TextareaWithEmojiHandle {
+export type TextareaWithEmojiHandle = {
     focus: () => void
     blur: () => void
     getValue: () => string
     setValue: (value: string) => void
 }
 
-interface Props {
+type Props = {
     value: string
     onChange: (value: string) => void
     placeholder?: string

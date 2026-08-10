@@ -40,13 +40,13 @@ function PlayerRow({
                    }: {
     player: RepairSummaryCoach['players'][number]
 }) {
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     const typesLabel = getRepairTypesLabel(player.rackets)
     const hasUnpaid = player.unpaid_cost > 0
 
     const handleRemind = () => {
-        startTransition(async () => {
+        runAction(async () => {
             const res = await remindRepairPayment(player.profile.id)
             if (res.success) {
                 toast.success('Напоминание отправлено')

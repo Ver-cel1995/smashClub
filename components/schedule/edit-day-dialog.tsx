@@ -16,7 +16,7 @@ import type {TrainingStatus} from '@/types'
 import type {TrainingWithMeta} from '@/app/(main)/schedule/queries'
 import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
-interface EditDayDialogProps {
+type EditDayDialogProps = {
     open: boolean
     onOpenChange: (open: boolean) => void
     trainings: TrainingWithMeta[]
@@ -42,14 +42,14 @@ export function EditDayDialog({
     const [status, setStatus] = useState<TrainingStatus>(first.status)
     const [note, setNote] = useState(first.status_note || '')
     const [substitute, setSubstitute] = useState(first.substitute_name || '')
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     const dateLabel = format(date, 'd MMMM', { locale: ru })
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
 
-        startTransition(async () => {
+        runAction(async () => {
             // Обновляем все тренировки этого дня
             const results = await Promise.all(
                 trainings.map((t) =>
