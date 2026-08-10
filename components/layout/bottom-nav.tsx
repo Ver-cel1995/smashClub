@@ -1,16 +1,10 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import {
-    Home,
-    Newspaper,
-    Trophy,
-    Calendar,
-    User,
-    Loader2,
-} from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
+import {useEffect, useState, useTransition} from 'react'
+import {usePathname} from 'next/navigation'
+import {Calendar, Home, Loader2, Newspaper, Trophy, User,} from 'lucide-react'
+import {cn} from '@/shared/lib/utils'
+import {useProgressRouter} from "@/shared/hooks/use-progress-router";
 
 const navItems = [
     { href: '/home', label: 'Дом', icon: Home },
@@ -26,7 +20,7 @@ function isItemActive(pathname: string, href: string) {
 
 export function BottomNav() {
     const pathname = usePathname()
-    const router = useRouter()
+    const router = useProgressRouter()
     const [pendingHref, setPendingHref] = useState<string | null>(null)
     const [isPending, startTransition] = useTransition()
 

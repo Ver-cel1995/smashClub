@@ -19,10 +19,14 @@ const POST_SELECT = '*, author:author_id(id, full_name, avatar_url, role)'
 
 export async function getPosts(): Promise<PostWithAuthor[]> {
     const supabase = await createClient()
+    const nowIso = new Date().toISOString()
 
     const { data, error } = await supabase
         .from('posts')
         .select(POST_SELECT)
+        .or(
+            `post_type.neq.auto,auto_expires_at.gt.${nowIso},and(post_type.eq.auto,auto_expires_at.is.null)`
+        )
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 

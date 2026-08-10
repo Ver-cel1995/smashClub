@@ -1,16 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import {useState} from 'react'
 import Link from 'next/link'
-import { toast } from 'sonner'
-import { Card } from '@/components/ui/card'
-import { LogoBadge } from '@/components/logo-badge'
+import {Card} from '@/components/ui/card'
+import {LogoBadge} from '@/components/logo-badge'
 import {Label} from "@/components/ui/label";
 import {Input} from "@/components/ui/input";
 import {Button} from "@/components/ui/button";
+import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 export default function ForgotPasswordPage() {
-    const [isPending, startTransition] = useTransition()
+    const [isPending, startTransition] = useProgressAction()
     const [error, setError] = useState<string | null>(null)
     const [sent, setSent] = useState(false)
 

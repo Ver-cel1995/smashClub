@@ -19,6 +19,16 @@ export type TournamentMatch = Database['public']['Tables']['tournament_matches']
 
 export type Guest = Database['public']['Tables']['guests']['Row']
 
+export type Trip = Database['public']['Tables']['trips']['Row']
+export type TripParticipant = Database['public']['Tables']['trip_participants']['Row']
+export type RepairRacket = Database['public']['Tables']['repair_rackets']['Row']
+export type RepairBatch = Database['public']['Tables']['repair_batches']['Row']
+export type TrainingScheduleTemplate = Database['public']['Tables']['training_schedule_template']['Row']
+
+export type TripParticipantStatus = Database['public']['Enums']['trip_participant_status']
+export type RacketStatus = Database['public']['Enums']['racket_status']
+export type RepairType = Database['public']['Enums']['repair_type']
+
 // Enums
 export type UserRole = Database['public']['Enums']['user_role']
 export type TrainingStatus = Database['public']['Enums']['training_status']
@@ -30,8 +40,42 @@ export type PostWithAuthor = Post & {
     author: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'role'>
 }
 
+// Расширенные типы для home
+export type TripWithParticipants = Trip & {
+    participants: (TripParticipant & {
+        profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>
+    })[]
+    my_status: TripParticipantStatus | null
+}
+
 export type TrainingWithAttendance = Training & {
     attendance: (TrainingAttendance & {
-        player: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>
+        profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>
     })[]
+    my_status: AttendanceStatus | null
+    going_count: number
+    not_going_count: number
+}
+
+export type RepairSummaryPlayer = {
+    rackets: (RepairRacket & {
+        batch: Pick<
+            RepairBatch,
+            'id' | 'actual_send_date' | 'expected_return_date' | 'planned_send_date'
+        > | null
+    })[]
+    total_cost: number
+}
+
+export type RepairSummaryCoach = {
+    players_count: number
+    rackets_count: number
+    total_cost: number
+    unpaid_cost: number
+    players: {
+        profile: Pick<Profile, 'id' | 'full_name' | 'avatar_url'>
+        rackets: RepairRacket[]
+        total_cost: number
+        unpaid_cost: number
+    }[]
 }

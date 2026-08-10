@@ -1,9 +1,10 @@
-import { ShuttleLoader } from '@/components/shared/shuttle-loader'
+import { TrainingCardSkeleton, PostCardSkeleton } from '@/components/home/skeletons'
 
-export default function FeedLoading() {
+export default function HomeLoading() {
     return (
-        <div className="flex flex-col items-center justify-center py-20 gap-4">
-            <ShuttleLoader size={140} />
+        <div className="flex flex-col gap-3 p-4 pb-24">
+            <TrainingCardSkeleton />
+            <PostCardSkeleton />
         </div>
     )
 }

@@ -1,54 +1,66 @@
+import { redirect } from 'next/navigation'
 import { getCurrentUser } from '@/shared/lib/auth'
-import { getNextTraining } from '@/app/(main)/schedule/queries'
+import {
+    getActiveCoachAnnouncement,
+    getUpcomingAffectedTraining,
+    getNextTrainingWithAttendance,
+    getNextTripWithParticipants,
+    getRepairForPlayer,
+    getRepairForCoach,
+    getHomeFeedPost,
+} from './queries'
+import { ScheduleNoteCard } from '@/components/home/schedule-note-card'
 import { NextTrainingCard } from '@/components/home/next-training-card'
-import { signOut } from '@/app/(auth)/actions'
-import { Button } from '@/components/ui/button'
+import { NextTripCard } from '@/components/home/next-trip-card'
+import { RepairCardPlayer } from '@/components/home/repair-card-player'
+import { RepairCardCoach } from '@/components/home/repair-card-coach'
+import { PinnedFeedCard } from '@/components/home/pinned-feed-card'
+
+export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
     const user = await getCurrentUser()
-    if (!user) return null
+    if (!user) redirect('/login')
 
-    const nextTraining = await getNextTraining(user.userId)
+    // const attendance = (training.attendance ?? []) as any[]
+
+    const isCoach = user.profile.role === 'coach'
+
+    const [
+        announcement,
+        affectedTraining,
+        training,
+        trip,
+        repairPlayer,
+        repairCoach,
+        homePost,
+    ] = await Promise.all([
+        getActiveCoachAnnouncement(),
+        getUpcomingAffectedTraining(),
+        getNextTrainingWithAttendance(user.userId),
+        getNextTripWithParticipants(user.userId),
+        isCoach ? Promise.resolve(null) : getRepairForPlayer(user.userId),
+        isCoach ? getRepairForCoach() : Promise.resolve(null),
+        getHomeFeedPost(),
+    ])
 
     return (
-        <div className="p-4 space-y-4">
-            {/* Ближайшая тренировка */}
-            {nextTraining ? (
-                <NextTrainingCard training={nextTraining} />
-            ) : (
-                <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-                    <p className="text-sm text-neutral-500">Нет предстоящих тренировок</p>
-                </section>
+        <div className="flex flex-col gap-3 p-4 pb-24">
+            <ScheduleNoteCard
+                announcement={announcement}
+                affectedTraining={affectedTraining}
+            />
+
+            {training && (
+                <NextTrainingCard training={training} currentUserId={user.userId} />
             )}
 
-            {/* Заглушка ленты */}
-            <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-                <div className="flex items-center gap-2 mb-2">
-                    <span className="text-lg">📰</span>
-                    <h2 className="text-sm font-semibold text-white">Из ленты</h2>
-                </div>
-                <p className="text-sm text-neutral-400">
-                    Последние посты появятся здесь
-                </p>
-            </section>
+            {trip && <NextTripCard trip={trip} currentUserId={user.userId} />}
 
-            <details className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-                <summary className="text-xs text-neutral-500 cursor-pointer">Debug</summary>
-                <div className="mt-2 space-y-1 text-xs text-neutral-500 font-mono">
-                    <p>Role: {user.profile.role}</p>
-                    <p>ID: {user.userId}</p>
-                </div>
-            </details>
+            {!isCoach && repairPlayer && <RepairCardPlayer data={repairPlayer} />}
+            {isCoach && repairCoach && <RepairCardCoach data={repairCoach} />}
 
-            <form action={signOut}>
-                <Button
-                    type="submit"
-                    variant="primary"
-                    className="w-full border-neutral-800 text-neutral-300 hover:bg-neutral-900"
-                >
-                    Выйти
-                </Button>
-            </form>
+            {homePost && <PinnedFeedCard post={homePost} />}
         </div>
     )
 }

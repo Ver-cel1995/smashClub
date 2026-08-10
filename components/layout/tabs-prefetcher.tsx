@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import {useEffect} from 'react'
+import {useProgressRouter} from "@/shared/hooks/use-progress-router";
 
 const routesToPrefetch = [
     '/home',
@@ -21,7 +21,7 @@ type IdleWindow = Window & {
 }
 
 export function TabsPrefetcher() {
-    const router = useRouter()
+    const router = useProgressRouter()
 
     useEffect(() => {
         const w = window as IdleWindow

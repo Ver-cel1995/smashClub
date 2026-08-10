@@ -1,14 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import {Trash2, Reply, Send, Loader2} from 'lucide-react'
+import { useState } from 'react'
+import { Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { UserAvatar } from '@/components/user-avatar'
-import { Button } from '@/components/ui/button'
 import { formatRelativeTime } from '@/shared/lib/format'
-import { addComment, deleteComment } from '@/app/(main)/feed/actions'
+import { deleteComment } from '@/app/(main)/feed/actions'
 import { cn } from '@/shared/lib/utils'
 import type { CommentWithAuthor } from '@/app/(main)/feed/queries'
+import { useConfirm } from '@/shared/lib/confirm/confirm-context'
+import { useProgressAction } from '@/shared/hooks/use-progress-action'
+import { CommentInput } from '@/components/feed/comment-input'
 
 interface CommentSectionProps {
     postId: string
@@ -23,7 +25,6 @@ export function CommentSection({
                                    currentUserId,
                                    isCoach,
                                }: CommentSectionProps) {
-    // Группируем: корневые + ответы
     const rootComments = comments.filter((c) => !c.parent_comment_id)
     const replies = comments.filter((c) => c.parent_comment_id)
 
@@ -36,7 +37,6 @@ export function CommentSection({
                 Комментарии ({comments.length})
             </h3>
 
-            {/* Список комментариев */}
             <div className="space-y-3">
                 {rootComments.map((comment) => (
                     <CommentItem
@@ -50,7 +50,6 @@ export function CommentSection({
                 ))}
             </div>
 
-            {/* Форма нового комментария */}
             <CommentInput postId={postId} />
         </div>
     )
@@ -72,17 +71,22 @@ function CommentItem({
     isReply?: boolean
 }) {
     const [showReplyInput, setShowReplyInput] = useState(false)
-    const [isPending, startTransition] = useTransition()
+    const [runAction, isPending] = useProgressAction()
+    const confirm = useConfirm()
 
-    const canDelete =
-        comment.author_id === currentUserId ||
-        (comment.author?.id === currentUserId) ||
-        isCoach
+    const canDelete = comment.author_id === currentUserId || isCoach
 
-    const handleDelete = () => {
-        if (!confirm('Удалить комментарий?')) return
+    const handleDelete = async () => {
+        const ok = await confirm({
+            title: 'Удалить комментарий?',
+            description: 'Это действие нельзя отменить.',
+            confirmText: 'Удалить',
+            cancelText: 'Отмена',
+            variant: 'danger',
+        })
+        if (!ok) return
 
-        startTransition(async () => {
+        runAction(async () => {
             const result = await deleteComment(comment.id, postId)
             if (result.success) {
                 toast.success('Комментарий удалён')
@@ -99,36 +103,36 @@ function CommentItem({
                     name={comment.author.full_name}
                     avatarUrl={comment.author.avatar_url}
                     size="sm"
+                    src={''}
                 />
 
-                <div className="flex-1 min-w-0">
+                <div className="min-w-0 flex-1">
                     <div className="rounded-2xl bg-neutral-800/50 px-3 py-2">
-                        <div className="flex items-center gap-2 mb-0.5">
-              <span className="text-xs font-semibold text-white truncate">
-                {comment.author.full_name}
-              </span>
+                        <div className="mb-0.5 flex items-center gap-2">
+                            <span className="truncate text-xs font-semibold text-white">
+                                {comment.author.full_name}
+                            </span>
                             {comment.author.role === 'coach' && (
                                 <span className="shrink-0 rounded-full border border-lime-400/30 bg-lime-400/10 px-1 py-0.5 text-[8px] font-bold uppercase text-lime-400">
-                  Тренер
-                </span>
+                                    Тренер
+                                </span>
                             )}
                         </div>
-                        <p className="text-sm text-neutral-200 whitespace-pre-wrap break-words">
+                        <p className="whitespace-pre-wrap break-words text-sm text-neutral-200">
                             {comment.content}
                         </p>
                     </div>
 
-                    {/* Мета */}
-                    <div className="flex items-center gap-3 mt-1 px-1">
-            <span className="text-[11px] text-neutral-500">
-              {formatRelativeTime(comment.created_at)}
-            </span>
+                    <div className="mt-1 flex items-center gap-3 px-1">
+                        <span className="text-[11px] text-neutral-500">
+                            {formatRelativeTime(comment.created_at)}
+                        </span>
 
                         {!isReply && (
                             <button
                                 type="button"
                                 onClick={() => setShowReplyInput(!showReplyInput)}
-                                className="text-[11px] text-neutral-400 hover:text-lime-400 font-medium transition-colors"
+                                className="text-[11px] font-medium text-neutral-400 transition-colors hover:text-lime-400"
                             >
                                 Ответить
                             </button>
@@ -140,8 +144,8 @@ function CommentItem({
                                 onClick={handleDelete}
                                 disabled={isPending}
                                 className={cn(
-                                    'text-[11px] text-neutral-500 hover:text-red-400 transition-colors',
-                                    'disabled:opacity-40 disabled:pointer-events-none'
+                                    'text-[11px] text-neutral-500 transition-colors hover:text-red-400',
+                                    'disabled:pointer-events-none disabled:opacity-40'
                                 )}
                             >
                                 {isPending ? (
@@ -155,7 +159,6 @@ function CommentItem({
                 </div>
             </div>
 
-            {/* Ответы */}
             {replies.map((reply) => (
                 <CommentItem
                     key={reply.id}
@@ -168,96 +171,17 @@ function CommentItem({
                 />
             ))}
 
-            {/* Форма ответа */}
             {showReplyInput && (
                 <div className="ml-10">
                     <CommentInput
                         postId={postId}
                         parentCommentId={comment.id}
-                        onSubmitted={() => setShowReplyInput(false)}
                         placeholder={`Ответить ${comment.author.full_name}...`}
                         autoFocus
+                        onSubmitted={() => setShowReplyInput(false)}
                     />
                 </div>
             )}
         </div>
-    )
-}
-
-function CommentInput({
-                          postId,
-                          parentCommentId,
-                          onSubmitted,
-                          placeholder = 'Написать комментарий...',
-                          autoFocus = false,
-                      }: {
-    postId: string
-    parentCommentId?: string
-    onSubmitted?: () => void
-    placeholder?: string
-    autoFocus?: boolean
-}) {
-    const [text, setText] = useState('')
-    const [isPending, startTransition] = useTransition()
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        if (!text.trim() || isPending) return
-
-        startTransition(async () => {
-            const result = await addComment(postId, text, parentCommentId)
-
-            if (result.success) {
-                setText('')
-                onSubmitted?.()
-            } else {
-                toast.error(result.error || 'Ошибка')
-            }
-        })
-    }
-
-    return (
-        <form onSubmit={handleSubmit} className="flex items-end gap-2">
-      <textarea
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder={placeholder}
-          disabled={isPending}
-          autoFocus={autoFocus}
-          rows={1}
-          className={cn(
-              'flex-1 resize-none rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-2.5 text-sm text-white',
-              'placeholder:text-neutral-500',
-              'focus:outline-none focus:border-lime-400/60 focus:ring-1 focus:ring-lime-400/20',
-              'disabled:opacity-50 disabled:cursor-not-allowed'
-          )}
-          onInput={(e) => {
-              const target = e.target as HTMLTextAreaElement
-              target.style.height = 'auto'
-              target.style.height = Math.min(target.scrollHeight, 120) + 'px'
-          }}
-          onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSubmit(e)
-              }
-          }}
-      />
-
-            <Button
-                type="submit"
-                disabled={isPending || !text.trim()}
-                className={cn(
-                    'h-10 w-10 shrink-0 rounded-full bg-lime-400 hover:bg-lime-500 text-neutral-950',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-            >
-                {isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                    <Send className="h-4 w-4" />
-                )}
-            </Button>
-        </form>
     )
 }

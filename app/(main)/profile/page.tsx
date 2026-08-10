@@ -1,77 +1,183 @@
+// import Link from 'next/link'
+// import { redirect } from 'next/navigation'
+// import { Settings, ChevronRight, HelpCircle, LogOut } from 'lucide-react'
+// import { getCurrentUser } from '@/shared/lib/auth'
+// import {
+//     getProfilePayments,
+//     getUserRackets,
+//     getUserUpcomingTournaments,
+// } from './queries'
+// import { ProfileHeader } from '@/components/profile/profile-header'
+// import { ProfileStats } from '@/components/profile/profile-stats'
+// import { ProfilePaymentsCard } from '@/components/profile/profile-payments-card'
+// import { ProfileRacketsCard } from '@/components/profile/profile-rackets-card'
+// import { ProfileTournamentsCard } from '@/components/profile/profile-tournaments-card'
+// import { ProfileAchievements } from '@/components/profile/profile-achievements'
+// import { ProfileSignOutButton } from '@/components/profile/profile-sign-out-button'
+//
+// export const dynamic = 'force-dynamic'
+//
+// export default async function ProfilePage() {
+//     const user = await getCurrentUser()
+//     if (!user) redirect('/login')
+//
+//     const [payments, rackets, tournaments] = await Promise.all([
+//         getProfilePayments(user.userId),
+//         getUserRackets(user.userId),
+//         getUserUpcomingTournaments(user.userId),
+//     ])
+//
+//     return (
+//         <div className="flex flex-col gap-3 p-4 pb-24">
+//             <ProfileHeader profile={user.profile} />
+//             <ProfileStats profile={user.profile} />
+//
+//             {payments.total > 0 && <ProfilePaymentsCard payments={payments} />}
+//
+//             {/* Ракетки — всегда показываем, чтобы можно было создать первую заявку */}
+//             <ProfileRacketsCard rackets={rackets} />
+//
+//             {tournaments.length > 0 && (
+//                 <ProfileTournamentsCard tournaments={tournaments} />
+//             )}
+//
+//             <ProfileAchievements />
+//
+//             {/* Настройки / Помощь / Выйти */}
+//             <div className="mt-4 space-y-1 rounded-2xl border border-neutral-800 bg-neutral-900 p-1">
+//                 <Link
+//                     href="/profile/settings"
+//                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"
+//                 >
+//                     <Settings className="h-4 w-4 text-neutral-400" />
+//                     Настройки
+//                     <ChevronRight className="ml-auto h-4 w-4 text-neutral-500" />
+//                 </Link>
+//                 <Link
+//                     href="/help"
+//                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"
+//                 >
+//                     <HelpCircle className="h-4 w-4 text-neutral-400" />
+//                     Помощь
+//                     <ChevronRight className="ml-auto h-4 w-4 text-neutral-500" />
+//                 </Link>
+//                 <ProfileSignOutButton />
+//             </div>
+//         </div>
+//     )
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { redirect } from 'next/navigation'
+import Link from 'next/link'
+import { Settings, ChevronRight, HelpCircle } from 'lucide-react'
 import { getCurrentUser } from '@/shared/lib/auth'
-import { UserAvatar } from '@/components/user-avatar'
-import { signOut } from '@/app/(auth)/actions'
-import { Button } from '@/components/ui/button'
+import {
+    getProfilePayments,
+    getUserRackets,
+    getUserUpcomingTournaments,
+} from './queries'
+import { getRepairForCoach } from '@/app/(main)/home/queries'
+import { ProfileHeader } from '@/components/profile/profile-header'
+import { ProfileStats } from '@/components/profile/profile-stats'
+import { ProfilePaymentsCard } from '@/components/profile/profile-payments-card'
+import { ProfileRacketsCard } from '@/components/profile/profile-rackets-card'
+import { ProfileCoachRacketsCard } from '@/components/profile/profile-coach-rackets-card'
+import { ProfileTournamentsCard } from '@/components/profile/profile-tournaments-card'
+import { ProfileAchievements } from '@/components/profile/profile-achievements'
+import { ProfileSignOutButton } from '@/components/profile/profile-sign-out-button'
+
+export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
     const user = await getCurrentUser()
-    if (!user) return null
+    if (!user) redirect('/login')
 
-    const { profile } = user
+    const isCoach = user.profile.role === 'coach'
+
+    const [payments, rackets, tournaments, coachRepair] = await Promise.all([
+        isCoach ? Promise.resolve(null) : getProfilePayments(user.userId),
+        isCoach ? Promise.resolve([]) : getUserRackets(user.userId),
+        getUserUpcomingTournaments(user.userId),
+        isCoach ? getRepairForCoach() : Promise.resolve(null),
+    ])
 
     return (
-        <div className="p-4 space-y-4">
-            {/* Шапка профиля */}
-            <section className="flex flex-col items-center text-center py-6">
-                <UserAvatar
-                    name={profile.full_name}
-                    avatarUrl={profile.avatar_url}
-                    size="xl"
-                />
-                <h1 className="mt-4 text-2xl font-bold text-white">
-                    {profile.full_name}
-                </h1>
-                {profile.age_group && (
-                    <p className="text-sm text-neutral-400">{profile.age_group}</p>
-                )}
-            </section>
+        <div className="flex flex-col gap-3 p-4 pb-24">
+            <ProfileHeader profile={user.profile} />
+            <ProfileStats profile={user.profile} />
 
-            {/* Статистика */}
-            <section className="grid grid-cols-3 gap-3">
-                <StatCard label="Рейтинг" value={profile.rating_overall} />
-                <StatCard label="Турниров" value={profile.tournaments_played} />
-                <StatCard label="Побед" value={profile.matches_won} />
-            </section>
+            {!isCoach && payments && payments.total > 0 && (
+                <ProfilePaymentsCard payments={payments} />
+            )}
 
-            {/* Заглушки будущих секций */}
-            <SectionPlaceholder icon="💰" title="К оплате" />
-            <SectionPlaceholder icon="🎾" title="Мои ракетки" />
-            <SectionPlaceholder icon="🏆" title="Ближайшие турниры" />
-            <SectionPlaceholder icon="🏅" title="Достижения" />
+            {isCoach ? (
+                <ProfileCoachRacketsCard data={coachRepair} />
+            ) : (
+                <ProfileRacketsCard rackets={rackets} />
+            )}
 
-            {/* Выход */}
-            <form action={signOut}>
-                <Button
-                    type="submit"
-                    variant="primary"
-                    className="w-full border-neutral-800 text-neutral-300 hover:bg-neutral-900"
+            {tournaments.length > 0 && (
+                <ProfileTournamentsCard tournaments={tournaments} />
+            )}
+
+            <ProfileAchievements />
+
+            <div className="mt-4 space-y-1 rounded-2xl border border-neutral-800 bg-neutral-900 p-1">
+                <Link
+                    href="/profile/settings"
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"
                 >
-                    Выйти
-                </Button>
-            </form>
-        </div>
-    )
-}
-
-function StatCard({ label, value }: { label: string; value: number | null }) {
-    return (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 text-center">
-            <p className="text-xl font-bold text-lime-400">{value}</p>
-            <p className="mt-1 text-[11px] text-neutral-500 uppercase tracking-wider">
-                {label}
-            </p>
-        </div>
-    )
-}
-
-function SectionPlaceholder({ icon, title }: { icon: string; title: string }) {
-    return (
-        <section className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
-            <div className="flex items-center gap-2">
-                <span className="text-lg">{icon}</span>
-                <h2 className="text-sm font-semibold text-white">{title}</h2>
+                    <Settings className="h-4 w-4 text-neutral-400" />
+                    Настройки
+                    <ChevronRight className="ml-auto h-4 w-4 text-neutral-500" />
+                </Link>
+                <Link
+                    href="/help"
+                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"
+                >
+                    <HelpCircle className="h-4 w-4 text-neutral-400" />
+                    Помощь
+                    <ChevronRight className="ml-auto h-4 w-4 text-neutral-500" />
+                </Link>
+                <ProfileSignOutButton />
             </div>
-            <p className="mt-2 text-xs text-neutral-500">Скоро будет доступно</p>
-        </section>
+        </div>
     )
 }

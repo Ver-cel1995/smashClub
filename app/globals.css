@@ -2,7 +2,9 @@
 @plugin "tailwindcss-animate";
 
 
-
+body {
+    color: white;
+}
 
 
 

@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Bell, Users } from 'lucide-react'
 import { UserAvatar } from '@/components/user-avatar'
 import { getFirstName } from '@/shared/lib/formatName'
+import {toast} from "sonner";
 
 interface AppHeaderProps {
     userName: string
@@ -26,7 +27,7 @@ export function AppHeader({
             <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
                 {/* Левая часть — аватар и приветствие */}
                 <Link href="/profile" className="flex items-center gap-3">
-                    <UserAvatar name={userName} avatarUrl={userAvatarUrl} size="md" />
+                    <UserAvatar name={userName} avatarUrl={userAvatarUrl} size="md" src={""} />
                     <div>
                         <p className="text-xs text-neutral-500">Привет,</p>
                         <div className="flex items-center gap-2">
@@ -53,15 +54,12 @@ export function AppHeader({
                     </Link>
 
                     <button
-                        className="relative rounded-lg p-2 text-neutral-400 hover:bg-neutral-900 hover:text-white transition-colors"
+                        type="button"
+                        onClick={() => toast.info('Уведомления скоро появятся', { duration: 2000 })}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl text-neutral-300 transition hover:bg-neutral-800/60"
                         aria-label="Уведомления"
                     >
                         <Bell className="h-5 w-5" />
-                        {unreadCount > 0 && (
-                            <span className="absolute right-1.5 top-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-lime-400 px-1 text-[10px] font-bold text-neutral-950">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-                        )}
                     </button>
                 </div>
             </div>

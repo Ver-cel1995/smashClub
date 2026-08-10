@@ -1,21 +1,22 @@
 'use client'
 
-import { useState, useRef, useActionState } from 'react'
-import { useRouter } from 'next/navigation'
-import { Pin, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { PhotoUpload, type PhotoUploadHandle } from './photo-upload'
-import { createPost } from '@/app/(main)/feed/actions'
-import { cn } from '@/shared/lib/utils'
-import { useEffect } from 'react'
+import {useActionState, useRef, useState} from 'react'
+import {useRouter} from 'next/navigation'
+import {Loader2, Pin} from 'lucide-react'
+import {toast} from 'sonner'
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
+import {Label} from '@/components/ui/label'
+import {PhotoUpload, type PhotoUploadHandle} from './photo-upload'
+import {createPost} from '@/app/(main)/feed/actions'
+import {cn} from '@/shared/lib/utils'
+import {useProgressRouter} from "@/shared/hooks/use-progress-router";
+import {TextareaWithEmoji} from "@/components/shared/textarea-with-emoji";
 
 const MAX_CONTENT_LENGTH = 5000
 
 export function CreatePostForm() {
-    const router = useRouter()
+    const router = useProgressRouter()
     const photoRef = useRef<PhotoUploadHandle>(null)
     const formRef = useRef<HTMLFormElement>(null)
 
@@ -94,22 +95,13 @@ export function CreatePostForm() {
             {remainingChars}
           </span>
                 </div>
-                <textarea
-                    id="content"
+                <TextareaWithEmoji
                     name="content"
-                    rows={6}
-                    placeholder="Что расскажешь клубу?"
-                    disabled={isPending}
                     value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    className={cn(
-                        'block w-full rounded-2xl border bg-neutral-900 px-4 py-3.5 text-sm text-white placeholder:text-neutral-500 resize-none',
-                        'focus:outline-none focus:ring-2',
-                        getFieldError('content')
-                            ? 'border-red-500/60 focus:border-red-500 focus:ring-red-500/20'
-                            : 'border-neutral-800 focus:border-lime-400/60 focus:ring-lime-400/20',
-                        'disabled:cursor-not-allowed disabled:opacity-60'
-                    )}
+                    onChange={setContent}
+                    placeholder="Расскажи что-нибудь..."
+                    maxLength={2000}
+                    minHeight={120}
                 />
                 {getFieldError('content') && (
                     <p className="text-xs text-red-400">{getFieldError('content')}</p>

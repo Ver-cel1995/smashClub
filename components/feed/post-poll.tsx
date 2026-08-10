@@ -1,11 +1,12 @@
 'use client'
 
-import { useTransition, useOptimistic } from 'react'
-import { Loader2, Check } from 'lucide-react'
-import { toast } from 'sonner'
-import { votePoll } from '@/app/(main)/feed/actions'
-import { cn } from '@/shared/lib/utils'
-import { voteWord } from '@/shared/lib/format'
+import {useOptimistic} from 'react'
+import {Check, Loader2} from 'lucide-react'
+import {toast} from 'sonner'
+import {votePoll} from '@/app/(main)/feed/actions'
+import {cn} from '@/shared/lib/utils'
+import {voteWord} from '@/shared/lib/format'
+import { useProgressAction } from "@/shared/hooks/use-progress-action"
 
 interface PollOption {
     id: string
@@ -28,7 +29,7 @@ export function PostPoll({
                              multipleChoice,
                              votedFor,
                          }: PostPollProps) {
-    const [isPending, startTransition] = useTransition()
+    const [isPending, startTransition] = useProgressAction()
     const hasVoted = votedFor.length > 0
 
     const [optimisticOptions, updateOptimistic] = useOptimistic(

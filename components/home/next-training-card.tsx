@@ -1,113 +1,193 @@
 'use client'
 
-import { useTransition } from 'react'
-import { Check, X, Loader2, Users } from 'lucide-react'
-import { toast } from 'sonner'
-import { setAttendance } from '@/app/(main)/schedule/actions'
-import { formatSmartDate, formatTimeRange } from '@/shared/lib/format'
-import { TRAINING_STATUS_META } from '@/shared/lib/training-status'
-import { cn } from '@/shared/lib/utils'
-import type { TrainingWithMeta } from '@/app/(main)/schedule/queries'
+import {useState} from 'react'
+import {Ban, Calendar, Check, Clock, Users, X} from 'lucide-react'
+import {toast} from 'sonner'
+import {Button} from '@/components/ui/button'
+import {cn} from '@/shared/lib/utils'
+import {formatDateRange, formatTrainingDate} from '@/shared/lib/format'
+import {setTrainingAttendance} from '@/app/(main)/home/actions'
+import {TrainingAttendanceDialog} from './training-attendance-dialog'
+import type {AttendanceStatus, TrainingWithAttendance} from '@/types'
+import {TRAINING_STATUS_META} from "@/shared/lib/training-status";
+import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
-interface NextTrainingCardProps {
-    training: TrainingWithMeta
+type Props = {
+    training: TrainingWithAttendance
+    currentUserId: string
 }
 
-export function NextTrainingCard({ training }: NextTrainingCardProps) {
-    const [isPending, startTransition] = useTransition()
+/**
+ * ПРАВИЛО: при отсутствии тренера
+ *
+ * school (пн, ср) — вход ЗАПРЕЩЁН всем
+ * main (вт, чт, сб) — зал открыт для взрослых
+ *
+ * Если правило для school изменится (станет можно приходить),
+ * просто удалите 'school' из CLOSED_WHEN_NO_COACH
+ * и добавьте 'school' в OPEN_FOR_ADULTS_STATUSES (если нужно)
+ */
+const CLOSED_WHEN_NO_COACH: Set<string> = new Set(['school'])
+const NO_COACH_STATUSES = new Set(['no_coach_open', 'tournament_trip'])
 
-    const meta = TRAINING_STATUS_META[training.status]
-    const isCancelled = training.status === 'cancelled' || training.status === 'holiday'
+export function NextTrainingCard({ training, currentUserId }: Props) {
+    const [openDialog, setOpenDialog] = useState(false)
+    const [isPending, startTransition] = useProgressAction()
+    const [optimisticStatus, setOptimisticStatus] = useState<AttendanceStatus | null>(
+        training.my_status
+    )
 
-    const handleAttendance = (status: 'going' | 'not_going') => {
+    const isNoCoach = NO_COACH_STATUSES.has(training.status)
+    const isSchool = training.training_group === 'school'
+
+    // school + без тренера = закрыто для всех
+    const isClosedCompletely = isNoCoach && CLOSED_WHEN_NO_COACH.has(training.training_group ?? '')
+
+    // main + без тренера = открыто для взрослых
+    const showAdultsNote = isNoCoach && !isClosedCompletely
+
+    const handleAttendance = (status: AttendanceStatus) => {
+        const prev = optimisticStatus
+        setOptimisticStatus(status)
+
         startTransition(async () => {
-            const result = await setAttendance(training.id, status)
-            if (result.success) {
-                toast.success(status === 'going' ? '✓ Иду' : 'Не иду')
-            } else {
-                toast.error(result.error || 'Ошибка')
+            const res = await setTrainingAttendance(training.id, status)
+            if (!res.success) {
+                setOptimisticStatus(prev)
+                toast.error(res.error)
             }
         })
     }
 
+    const isGoing = optimisticStatus === 'going'
+    const isNotGoing = optimisticStatus === 'not_going'
+
+    const handleCardClick = () => {
+        // Не открываем модалку если зал закрыт полностью
+        if (!isClosedCompletely) {
+            setOpenDialog(true)
+        }
+    }
+
     return (
-        <section className={cn('rounded-2xl border p-4 space-y-3', meta.borderColor, meta.bgColor)}>
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <span className="text-lg">{meta.icon}</span>
-                    <h2 className="text-sm font-semibold text-white">Ближайшая тренировка</h2>
+        <>
+            <div
+                role={isClosedCompletely ? undefined : 'button'}
+                tabIndex={isClosedCompletely ? undefined : 0}
+                onClick={handleCardClick}
+                onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
+                className={cn(
+                    'rounded-2xl border border-border bg-card p-4 text-left transition',
+                    !isClosedCompletely && 'active:scale-[0.99]'
+                )}
+            >
+                {training.status !== 'normal' && (() => {
+                    const meta = TRAINING_STATUS_META[training.status]
+                    return (
+                        <div className="mb-3">
+                            <div
+                                className={cn(
+                                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    meta.bgColor,
+                                    meta.borderColor,
+                                    meta.color
+                                )}
+                            >
+                                <span>{meta.icon}</span>
+                                <span>{meta.label}</span>
+                            </div>
+                        </div>
+                    )
+                })()}
+
+                <div className="mb-1 flex items-center gap-2 text-lg font-semibold">
+                    <Calendar className="h-5 w-5 text-primary" />
+                    {formatTrainingDate(training.date)}
                 </div>
-                {!isCancelled && training.going_count > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-neutral-400">
-                        <Users className="h-3.5 w-3.5" />
-                        <span className="font-medium">{training.going_count}</span>
+
+                <div className="mb-2 flex items-center gap-2 text-sm text-foreground/80">
+                    <Clock className="h-4 w-4" />
+                    {formatDateRange(training.start_time, training.end_time)}
+                </div>
+
+                {isClosedCompletely && (
+                    <div className="mb-2 flex items-center gap-2 rounded-lg bg-red-500/10 p-2 text-xs text-red-400">
+                        <Ban className="h-3.5 w-3.5 shrink-0" />
+                        Зал закрыт — вход запрещён
                     </div>
                 )}
-            </div>
 
-            <div>
-                <p className="text-base font-bold text-white capitalize">
-                    {formatSmartDate(training.date)}
-                </p>
-                <p className="text-sm text-neutral-400">
-                    {formatTimeRange(training.start_time, training.end_time)}
-                </p>
-                {training.status !== 'normal' && (
-                    <p className={cn('text-xs mt-1', meta.color)}>{meta.label}</p>
+                {showAdultsNote && (
+                    <div className="mb-2 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-300">
+                        Зал открыт только для взрослых
+                    </div>
                 )}
+
                 {training.status_note && (
-                    <p className="text-xs text-neutral-500 mt-1">{training.status_note}</p>
+                    <p className="mb-3 text-xs text-muted-foreground">
+                        {training.status_note}
+                    </p>
+                )}
+
+                {!isClosedCompletely && (
+                    <>
+                        <div className="mb-3 flex items-center gap-1 text-xs text-muted-foreground">
+                            <Users className="h-3.5 w-3.5" />
+                            {training.going_count} придут
+                        </div>
+
+                        <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isPending}
+                                onClick={() => handleAttendance('going')}
+                                className={cn(
+                                    'flex-1 gap-2 transition-all duration-200',
+                                    isGoing
+                                        ? 'border-lime-500/40 bg-lime-500/10 text-lime-400 hover:bg-lime-500/15'
+                                        : 'hover:border-lime-500/20 hover:text-lime-400'
+                                )}
+                            >
+                                <Check
+                                    className={cn(
+                                        'h-4 w-4 transition-all duration-200',
+                                        isGoing ? 'text-lime-400' : 'text-muted-foreground'
+                                    )}
+                                />
+                                Я приду
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={isPending}
+                                onClick={() => handleAttendance('not_going')}
+                                className={cn(
+                                    'flex-1 gap-2 transition-all duration-200',
+                                    isNotGoing
+                                        ? 'border-rose-500/30 bg-rose-500/8 text-rose-300 hover:bg-rose-500/12'
+                                        : 'hover:border-rose-500/20 hover:text-rose-300'
+                                )}
+                            >
+                                <X
+                                    className={cn(
+                                        'h-4 w-4 transition-all duration-200',
+                                        isNotGoing ? 'text-rose-400' : 'text-muted-foreground'
+                                    )}
+                                />
+                                Не приду
+                            </Button>
+                        </div>
+                    </>
                 )}
             </div>
 
-            {/* Кнопки приду/не приду */}
-            {!isCancelled && (
-                <div className="grid grid-cols-2 gap-2">
-                    <button
-                        type="button"
-                        onClick={() => handleAttendance('going')}
-                        disabled={isPending}
-                        className={cn(
-                            'flex items-center justify-center gap-2 rounded-xl border py-2.5 transition-all active:scale-95',
-                            training.my_status === 'going'
-                                ? 'border-lime-400/50 bg-lime-400/20'
-                                : 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600',
-                            'disabled:opacity-60'
-                        )}
-                    >
-                        {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-lime-400" />
-                        ) : (
-                            <Check className={cn('h-4 w-4', training.my_status === 'going' ? 'text-lime-400' : 'text-neutral-400')} />
-                        )}
-                        <span className={cn('text-sm font-semibold', training.my_status === 'going' ? 'text-lime-400' : 'text-neutral-300')}>
-              Иду
-            </span>
-                    </button>
-
-                    <button
-                        type="button"
-                        onClick={() => handleAttendance('not_going')}
-                        disabled={isPending}
-                        className={cn(
-                            'flex items-center justify-center gap-2 rounded-xl border py-2.5 transition-all active:scale-95',
-                            training.my_status === 'not_going'
-                                ? 'border-red-400/50 bg-red-400/20'
-                                : 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600',
-                            'disabled:opacity-60'
-                        )}
-                    >
-                        {isPending ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-red-400" />
-                        ) : (
-                            <X className={cn('h-4 w-4', training.my_status === 'not_going' ? 'text-red-400' : 'text-neutral-400')} />
-                        )}
-                        <span className={cn('text-sm font-semibold', training.my_status === 'not_going' ? 'text-red-400' : 'text-neutral-300')}>
-              Не иду
-            </span>
-                    </button>
-                </div>
-            )}
-        </section>
+            <TrainingAttendanceDialog
+                open={openDialog}
+                onOpenChange={setOpenDialog}
+                training={training}
+                currentUserId={currentUserId}
+            />
+        </>
     )
 }

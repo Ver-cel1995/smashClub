@@ -11,8 +11,9 @@ const sizeClasses: Record<Size, string> = {
     xl: 'h-24 w-24 text-2xl',
 }
 
-interface UserAvatarProps {
+type UserAvatarProps = {
     name: string
+    src: string
     avatarUrl?: string | null
     size?: Size
     className?: string

@@ -58,7 +58,7 @@ export const TRAINING_STATUS_META: Record<
         dotColor: 'bg-purple-400',
     },
     tournament_trip: {
-        label: 'Клуб на турнире',
+        label: 'На турнире',
         shortLabel: 'Турнир',
         icon: '🏆',
         color: 'text-rose-400',

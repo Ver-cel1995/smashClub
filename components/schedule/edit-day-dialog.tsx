@@ -1,24 +1,20 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
-import { format } from 'date-fns'
-import { ru } from 'date-fns/locale'
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { updateTrainingStatus } from '@/app/(main)/schedule/actions'
-import { TRAINING_STATUS_META } from '@/shared/lib/training-status'
-import { cn } from '@/shared/lib/utils'
-import type { TrainingStatus } from '@/types'
-import type { TrainingWithMeta } from '@/app/(main)/schedule/queries'
+import {useState} from 'react'
+import {Loader2} from 'lucide-react'
+import {toast} from 'sonner'
+import {format} from 'date-fns'
+import {ru} from 'date-fns/locale'
+import {Dialog, DialogContent, DialogHeader, DialogTitle,} from '@/components/ui/dialog'
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
+import {Label} from '@/components/ui/label'
+import {updateTrainingStatus} from '@/app/(main)/schedule/actions'
+import {TRAINING_STATUS_META} from '@/shared/lib/training-status'
+import {cn} from '@/shared/lib/utils'
+import type {TrainingStatus} from '@/types'
+import type {TrainingWithMeta} from '@/app/(main)/schedule/queries'
+import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 interface EditDayDialogProps {
     open: boolean
@@ -46,7 +42,7 @@ export function EditDayDialog({
     const [status, setStatus] = useState<TrainingStatus>(first.status)
     const [note, setNote] = useState(first.status_note || '')
     const [substitute, setSubstitute] = useState(first.substitute_name || '')
-    const [isPending, startTransition] = useTransition()
+    const [isPending, startTransition] = useProgressAction()
 
     const dateLabel = format(date, 'd MMMM', { locale: ru })
 

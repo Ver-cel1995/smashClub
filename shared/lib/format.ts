@@ -1,4 +1,4 @@
-import { formatDistanceToNow, format } from 'date-fns'
+import { formatDistanceToNow, format, isSameMonth, isSameYear } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { isToday, isTomorrow, isYesterday, parseISO } from 'date-fns'
 
@@ -55,13 +55,20 @@ export const voteWord = (n: number) => pluralize(n, ['голос', 'голоса
 
 
 
+/** "18:00:00" -> "18:00" */
+
+export function formatTime(time: string): string {
+    return time.slice(0, 5)
+}
 
 
-
-
-
-
-
+/** Сегодня, Ср" / "Завтра, Чт" / "12 января, Пт */
+export function formatTrainingDate(date: string | Date): string {
+    const d = new Date(date)
+    if (isToday(d)) return `Сегодня, ${format(d, 'EEEEEE', { locale: ru })}`
+    if (isTomorrow(d)) return `Завтра, ${format(d, 'EEEEEE', { locale: ru })}`
+    return format(d, 'd MMMM, EEEEEE', { locale: ru })
+}
 
 
 
@@ -98,6 +105,19 @@ export function formatDayNumber(date: string | Date): string {
 }
 
 /** Время: "18:00 – 20:00" */
-export function formatTimeRange(start: string, end: string): string {
+export function formatDateRange(start: string, end: string = ""): string {
     return `${start.slice(0, 5)} – ${end.slice(0, 5)}`
+}
+
+export function formatDateRangeMouth(start: string, end: string | null): string {
+    const s = new Date(start)
+    if (!end) return format(s, 'd MMMM', { locale: ru })
+    const e = new Date(end)
+    if (isSameMonth(s, e)) {
+        return `${format(s, 'd')}–${format(e, 'd MMMM', { locale: ru })}`
+    }
+    if (isSameYear(s, e)) {
+        return `${format(s, 'd MMM', { locale: ru })} — ${format(e, 'd MMM', { locale: ru })}`
+    }
+    return `${format(s, 'd MMM yyyy', { locale: ru })} — ${format(e, 'd MMM yyyy', { locale: ru })}`
 }

@@ -1,9 +1,10 @@
 'use server'
 
-import { createClient } from '@/shared/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
-import { createPostSchema, createPollSchema } from '@/shared/lib/validations/post'
-import type { ActionResult } from '@/shared/lib/actions/types'
+import {createClient} from '@/shared/lib/supabase/server'
+import {revalidatePath} from 'next/cache'
+import {createPollSchema, createPostSchema} from '@/shared/lib/validations/post'
+import type {ActionResult} from '@/shared/lib/actions/types'
+import {GalleryFilters, getGalleryGroups} from "@/app/(main)/feed/gallery-queries";
 
 function extractFieldErrors(error: unknown): Record<string, string> {
     if (
@@ -453,3 +454,8 @@ export async function deleteComment(
     revalidatePath('/feed')
     return { success: true }
 }
+
+export async function fetchGalleryGroupsAction(filters: GalleryFilters) {
+    return getGalleryGroups(filters)
+}
+

@@ -1,10 +1,10 @@
 'use server'
 
-import { createClient } from '@/shared/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
-import { signInSchema, signUpSchema } from '@/shared/lib/validations/auth'
-import type { ActionResult } from '@/shared/lib/actions/types'
+import {createClient} from '@/shared/lib/supabase/server'
+import {revalidatePath} from 'next/cache'
+import {redirect} from 'next/navigation'
+import {signInSchema, signUpSchema} from '@/shared/lib/validations/auth'
+import type {ActionResult} from '@/shared/lib/actions/types'
 
 /**
  * Преобразует ZodError в объект { field: message }
@@ -103,11 +103,4 @@ export async function signUp(formData: FormData): Promise<ActionResult> {
     // 3. Успех — редирект
     revalidatePath('/', 'layout')
     redirect('/home')
-}
-
-export async function signOut() {
-    const supabase = await createClient()
-    await supabase.auth.signOut()
-    revalidatePath('/', 'layout')
-    redirect('/login')
 }

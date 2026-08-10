@@ -1,15 +1,14 @@
 import { getCurrentUser } from '@/shared/lib/auth'
 import { getPosts, getReactionsForPosts, getVotesForPosts } from './queries'
-import { PostCard } from '@/components/feed/post-card'
-import { CreatePostFab } from '@/components/feed/create-post-fab'
-import { EmptyState } from '@/components/shared/empty-state'
+import { FeedTabs } from '@/components/feed/feed-tabs'
 
 export default async function FeedPage() {
     const user = await getCurrentUser()
     if (!user) return null
 
-    const posts = await getPosts()
     const isCoach = user.profile.role === 'coach'
+
+    const posts = await getPosts()
 
     const postIds = posts.map((p) => p.id)
     const pollPostIds = posts.filter((p) => p.post_type === 'poll').map((p) => p.id)
@@ -19,35 +18,19 @@ export default async function FeedPage() {
         getVotesForPosts(pollPostIds, user.userId),
     ])
 
+    const reactionsObj: Record<string, any[]> = {}
+    reactionsMap.forEach((v, k) => { reactionsObj[k] = v })
+
+    const votesObj: Record<string, string[]> = {}
+    votesMap.forEach((v, k) => { votesObj[k] = v })
+
     return (
-        <div className="p-4 space-y-4">
-            <h1 className="text-2xl font-bold text-white">Лента</h1>
-
-            {posts.length === 0 ? (
-                <EmptyState
-                    icon="📰"
-                    title="Пока пусто"
-                    description={
-                        isCoach
-                            ? 'Напиши первый пост — расскажи о ближайших планах'
-                            : 'Скоро здесь появятся новости от тренера'
-                    }
-                />
-            ) : (
-                <div className="space-y-3">
-                    {posts.map((post) => (
-                        <PostCard
-                            key={post.id}
-                            post={post}
-                            isCoach={isCoach}
-                            reactions={reactionsMap.get(post.id) || []}
-                            votedFor={votesMap.get(post.id) || []}
-                        />
-                    ))}
-                </div>
-            )}
-
-            {isCoach && <CreatePostFab />}
-        </div>
+        <FeedTabs
+            posts={posts}
+            reactionsMap={reactionsObj}
+            votesMap={votesObj}
+            isCoach={isCoach}
+            galleryMonths={[]}
+        />
     )
 }

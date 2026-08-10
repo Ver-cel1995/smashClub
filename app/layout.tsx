@@ -25,6 +25,14 @@ export default function RootLayout({children}: {children: ReactNode}) {
           theme="dark"
           position="top-center"
           richColors
+          toastOptions={{
+              style: {
+                  background: 'rgb(23 23 23)',
+                  border: '1px solid rgb(64 64 64)',
+                  color: 'rgb(245 245 245)',
+              },
+          }}
+          offset={70}
       />
       </body>
       </html>

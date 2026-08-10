@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { cn } from '@/shared/lib/utils'
+import {useState} from 'react'
+import {cn} from '@/shared/lib/utils'
+import {useProgressRouter} from "@/shared/hooks/use-progress-router";
 
 /** Сколько строк показывать в свёрнутом виде */
 const COLLAPSED_LINES = 4
@@ -23,7 +23,7 @@ interface PostContentProps {
 }
 
 export function PostContent({ title, content, postId, full = false }: PostContentProps) {
-    const router = useRouter()
+    const router = useProgressRouter()
     const [state, setState] = useState<State>('collapsed')
 
     // На полной странице — показываем всё

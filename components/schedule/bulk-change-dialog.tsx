@@ -1,34 +1,30 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
-import { toast } from 'sonner'
+import {useState} from 'react'
+import {ChevronLeft, ChevronRight, Loader2} from 'lucide-react'
+import {toast} from 'sonner'
 import {
-    format,
-    startOfMonth,
-    endOfMonth,
-    startOfWeek,
-    endOfWeek,
-    eachDayOfInterval,
-    isSameMonth,
-    isSameDay,
-    isBefore,
     addMonths,
+    eachDayOfInterval,
+    endOfMonth,
+    endOfWeek,
+    format,
+    isBefore,
+    isSameDay,
+    isSameMonth,
+    startOfMonth,
+    startOfWeek,
     subMonths,
 } from 'date-fns'
-import { ru } from 'date-fns/locale'
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { updateTrainingsInRange } from '@/app/(main)/schedule/actions'
-import { TRAINING_STATUS_META } from '@/shared/lib/training-status'
-import { cn } from '@/shared/lib/utils'
-import type { TrainingStatus } from '@/types'
+import {ru} from 'date-fns/locale'
+import {Dialog, DialogContent, DialogHeader, DialogTitle,} from '@/components/ui/dialog'
+import {Button} from '@/components/ui/button'
+import {Label} from '@/components/ui/label'
+import {updateTrainingsInRange} from '@/app/(main)/schedule/actions'
+import {TRAINING_STATUS_META} from '@/shared/lib/training-status'
+import {cn} from '@/shared/lib/utils'
+import type {TrainingStatus} from '@/types'
+import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 interface BulkChangeDialogProps {
     open: boolean
@@ -49,7 +45,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
     const [endDate, setEndDate] = useState<Date | null>(null)
     const [status, setStatus] = useState<TrainingStatus>('cancelled')
     const [customNote, setCustomNote] = useState('')
-    const [isPending, startTransition] = useTransition()
+    const [isPending, startTransition] = useProgressAction()
 
     const meta = TRAINING_STATUS_META[status]
 

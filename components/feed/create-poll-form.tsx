@@ -1,19 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Trash2, Pin, Loader2 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { createPoll } from '@/app/(main)/feed/actions'
-import { cn } from '@/shared/lib/utils'
-import { toast } from 'sonner'
-import { useRouter } from 'next/navigation'
-import { useTransition } from 'react'
+import {useState} from 'react'
+import {Loader2, Pin, Plus, Trash2} from 'lucide-react'
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
+import {Label} from '@/components/ui/label'
+import {createPoll} from '@/app/(main)/feed/actions'
+import {cn} from '@/shared/lib/utils'
+import {toast} from 'sonner'
+import {useProgressRouter} from "@/shared/hooks/use-progress-router";
+import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 export function CreatePollForm() {
-    const router = useRouter()
-    const [isPending, startTransition] = useTransition()
+    const router = useProgressRouter()
+    const [isPending, startTransition] = useProgressAction()
 
     const [question, setQuestion] = useState('')
     const [description, setDescription] = useState('')

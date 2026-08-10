@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useRef, useImperativeHandle, forwardRef } from 'react'
-import { ImagePlus, X, GripVertical, FileText, File as FileIcon } from 'lucide-react'
+import { ImagePlus, X, GripVertical, Loader2 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { toast } from 'sonner'
+import { compressImage } from '@/shared/lib/image-compress'
 
 const MAX_FILES = 10
 const MAX_SIZE_MB = 20
@@ -46,6 +47,8 @@ interface FilePreview {
     file: File
     url: string
     isImage: boolean
+    /** Экономия от сжатия в процентах (только для фото) */
+    savedPercent?: number
 }
 
 interface PhotoUploadProps {
@@ -55,6 +58,7 @@ interface PhotoUploadProps {
 export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
     function PhotoUpload({ disabled }, ref) {
         const [previews, setPreviews] = useState<FilePreview[]>([])
+        const [compressing, setCompressing] = useState(0) // счётчик файлов в обработке
         const inputRef = useRef<HTMLInputElement>(null)
         const [dragIndex, setDragIndex] = useState<number | null>(null)
         const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -63,20 +67,20 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
             getFiles: () => previews.map((p) => p.file),
         }))
 
-        const handleFiles = (files: FileList | null) => {
+        const handleFiles = async (files: FileList | null) => {
             if (!files) return
 
-            const newFiles = Array.from(files)
-            const totalAfter = previews.length + newFiles.length
+            const incoming = Array.from(files)
+            const totalAfter = previews.length + incoming.length
 
             if (totalAfter > MAX_FILES) {
                 toast.error(`Максимум ${MAX_FILES} файлов`)
                 return
             }
 
-            const valid: FilePreview[] = []
-
-            for (const file of newFiles) {
+            // Предварительная валидация (размер + тип)
+            const filtered: File[] = []
+            for (const file of incoming) {
                 if (file.size > MAX_SIZE_MB * 1024 * 1024) {
                     toast.error(`${file.name} слишком большой (макс ${MAX_SIZE_MB}MB)`)
                     continue
@@ -85,20 +89,52 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
                     toast.error(`${file.name} — неподдерживаемый формат`)
                     continue
                 }
-                valid.push({
-                    file,
-                    url: isImage(file.type) ? URL.createObjectURL(file) : '',
-                    isImage: isImage(file.type),
-                })
+                filtered.push(file)
             }
 
-            setPreviews((prev) => [...prev, ...valid])
+            if (filtered.length === 0) return
+
+            setCompressing((n) => n + filtered.length)
+
+            // Сжимаем параллельно, но каждый добавляем в state как только готов —
+            // так пользователь видит превью по мере обработки
+            await Promise.all(
+                filtered.map(async (file) => {
+                    try {
+                        const finalFile = isImage(file.type)
+                            ? await compressImage(file, {
+                                maxSizeMB: 0.8,
+                                maxWidthOrHeight: 1920,
+                                useWebp: true,
+                            })
+                            : file
+
+                        const savedPercent = isImage(file.type) && finalFile.size < file.size
+                            ? Math.round((1 - finalFile.size / file.size) * 100)
+                            : 0
+
+                        const preview: FilePreview = {
+                            file: finalFile,
+                            url: isImage(finalFile.type) ? URL.createObjectURL(finalFile) : '',
+                            isImage: isImage(finalFile.type),
+                            savedPercent: savedPercent > 0 ? savedPercent : undefined,
+                        }
+
+                        setPreviews((prev) => [...prev, preview])
+                    } catch (e) {
+                        console.error('[photo-upload] compress failed:', e)
+                        toast.error(`${file.name} — не удалось обработать`)
+                    } finally {
+                        setCompressing((n) => Math.max(0, n - 1))
+                    }
+                })
+            )
         }
 
         const removeFile = (index: number) => {
             setPreviews((prev) => {
                 const removed = prev[index]
-                if (removed.url) URL.revokeObjectURL(removed.url)
+                if (removed?.url) URL.revokeObjectURL(removed.url)
                 return prev.filter((_, i) => i !== index)
             })
         }
@@ -130,6 +166,7 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
 
         const imageCount = previews.filter((p) => p.isImage).length
         const docCount = previews.filter((p) => !p.isImage).length
+        const isBusy = compressing > 0
 
         return (
             <div className="space-y-3">
@@ -143,7 +180,7 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
                         handleFiles(e.target.files)
                         e.target.value = ''
                     }}
-                    disabled={disabled}
+                    disabled={disabled || isBusy}
                 />
 
                 {/* Фото-превью (сетка) */}
@@ -152,49 +189,63 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
                         {previews
                             .map((p, i) => ({ ...p, originalIndex: i }))
                             .filter((p) => p.isImage)
-                            .map((p) => (
-                                <div
-                                    key={p.originalIndex}
-                                    draggable={!disabled}
-                                    onDragStart={() => handleDragStart(p.originalIndex)}
-                                    onDragOver={(e) => handleDragOver(e, p.originalIndex)}
-                                    onDrop={() => handleDrop(p.originalIndex)}
-                                    onDragEnd={() => {
-                                        setDragIndex(null)
-                                        setDragOverIndex(null)
-                                    }}
-                                    className={cn(
-                                        'relative aspect-square rounded-xl overflow-hidden border-2 transition-all group',
-                                        dragOverIndex === p.originalIndex
-                                            ? 'border-lime-400 scale-105'
-                                            : 'border-neutral-800',
-                                        dragIndex === p.originalIndex && 'opacity-50'
-                                    )}
-                                >
-                                    <img
-                                        src={p.url}
-                                        alt={p.file.name}
-                                        className="h-full w-full object-cover"
-                                    />
-                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors" />
-                                    <div className="absolute top-1 left-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <GripVertical className="h-4 w-4 text-white drop-shadow" />
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() => removeFile(p.originalIndex)}
-                                        disabled={disabled}
-                                        className="absolute top-1 right-1 rounded-full bg-black/60 p-1 text-white hover:bg-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                            .map((p) => {
+                                const isCover =
+                                    p.originalIndex ===
+                                    previews.findIndex((pr) => pr.isImage)
+
+                                return (
+                                    <div
+                                        key={p.originalIndex}
+                                        draggable={!disabled}
+                                        onDragStart={() => handleDragStart(p.originalIndex)}
+                                        onDragOver={(e) => handleDragOver(e, p.originalIndex)}
+                                        onDrop={() => handleDrop(p.originalIndex)}
+                                        onDragEnd={() => {
+                                            setDragIndex(null)
+                                            setDragOverIndex(null)
+                                        }}
+                                        className={cn(
+                                            'group relative aspect-square overflow-hidden rounded-xl border-2 transition-all',
+                                            dragOverIndex === p.originalIndex
+                                                ? 'scale-105 border-lime-400'
+                                                : 'border-neutral-800',
+                                            dragIndex === p.originalIndex && 'opacity-50'
+                                        )}
                                     >
-                                        <X className="h-3.5 w-3.5" />
-                                    </button>
-                                    {p.originalIndex === previews.findIndex((pr) => pr.isImage) && (
-                                        <div className="absolute bottom-1 left-1 rounded bg-lime-400 px-1.5 py-0.5 text-[9px] font-bold text-neutral-950">
-                                            Обложка
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img
+                                            src={p.url}
+                                            alt={p.file.name}
+                                            className="h-full w-full object-cover"
+                                        />
+                                        <div className="absolute inset-0 bg-black/0 transition-colors group-hover:bg-black/30" />
+                                        <div className="absolute left-1 top-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                            <GripVertical className="h-4 w-4 text-white drop-shadow" />
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+                                        <button
+                                            type="button"
+                                            onClick={() => removeFile(p.originalIndex)}
+                                            disabled={disabled}
+                                            className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white opacity-0 transition-colors hover:bg-red-500 group-hover:opacity-100"
+                                        >
+                                            <X className="h-3.5 w-3.5" />
+                                        </button>
+
+                                        {isCover && (
+                                            <div className="absolute bottom-1 left-1 rounded bg-lime-400 px-1.5 py-0.5 text-[9px] font-bold text-neutral-950">
+                                                Обложка
+                                            </div>
+                                        )}
+
+                                        {p.savedPercent && (
+                                            <div className="absolute bottom-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-[9px] font-medium text-lime-400">
+                                                −{p.savedPercent}%
+                                            </div>
+                                        )}
+                                    </div>
+                                )
+                            })}
                     </div>
                 )}
 
@@ -210,17 +261,18 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
                                     className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-900 p-3"
                                 >
                                     <span className="text-2xl">{getFileIcon(p.file.type)}</span>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-white truncate">{p.file.name}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm text-white">{p.file.name}</p>
                                         <p className="text-xs text-neutral-500">
-                                            {ACCEPTED_TYPES[p.file.type] || 'Файл'} · {formatFileSize(p.file.size)}
+                                            {ACCEPTED_TYPES[p.file.type] || 'Файл'} ·{' '}
+                                            {formatFileSize(p.file.size)}
                                         </p>
                                     </div>
                                     <button
                                         type="button"
                                         onClick={() => removeFile(p.originalIndex)}
                                         disabled={disabled}
-                                        className="rounded-lg p-1.5 text-neutral-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                        className="rounded-lg p-1.5 text-neutral-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
                                     >
                                         <X className="h-4 w-4" />
                                     </button>
@@ -229,24 +281,33 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
                     </div>
                 )}
 
+                {/* Индикатор сжатия */}
+                {isBusy && (
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/50 p-3 text-xs text-neutral-400">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-lime-400" />
+                        Обрабатываем {compressing}{' '}
+                        {compressing === 1 ? 'файл' : compressing < 5 ? 'файла' : 'файлов'}...
+                    </div>
+                )}
+
                 {/* Кнопка добавить */}
                 {previews.length < MAX_FILES && (
                     <button
                         type="button"
                         onClick={() => inputRef.current?.click()}
-                        disabled={disabled}
+                        disabled={disabled || isBusy}
                         className={cn(
                             'flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-neutral-700 p-4 text-sm text-neutral-400',
-                            'hover:border-neutral-600 hover:text-neutral-300 transition-colors',
-                            'disabled:opacity-40 disabled:pointer-events-none'
+                            'transition-colors hover:border-neutral-600 hover:text-neutral-300',
+                            'disabled:pointer-events-none disabled:opacity-40'
                         )}
                     >
                         <ImagePlus className="h-5 w-5" />
                         <span>
-              {previews.length === 0
-                  ? 'Добавить фото или документ'
-                  : `Добавить ещё (${previews.length}/${MAX_FILES})`}
-            </span>
+                            {previews.length === 0
+                                ? 'Добавить фото или документ'
+                                : `Добавить ещё (${previews.length}/${MAX_FILES})`}
+                        </span>
                     </button>
                 )}
             </div>

@@ -1,16 +1,12 @@
-'use client'
-
-import {FormEvent, useState, useTransition} from 'react'
-import { useRouter } from 'next/navigation'
+import { useState, type FormEvent } from 'react'
 import { toast } from 'sonner'
-import type { ActionResult } from '@/shared/lib/actions/types'
+import { useProgressRouter } from '@/shared/hooks/use-progress-router'
+import { useProgressAction } from '@/shared/hooks/use-progress-action'
+import {ActionResult} from "@/shared/lib/actions/types";
 
 interface UseFormActionOptions {
-    /** Куда перейти после успешного выполнения */
     redirectTo?: string
-    /** Сообщение toast при успехе */
     successMessage?: string
-    /** Колбэк при успехе */
     onSuccess?: () => void
 }
 
@@ -18,8 +14,8 @@ export function useFormAction<T = void>(
     action: (formData: FormData) => Promise<ActionResult<T>>,
     options: UseFormActionOptions = {}
 ) {
-    const router = useRouter()
-    const [isPending, startTransition] = useTransition()
+    const router = useProgressRouter()
+    const [runAction, isPending] = useProgressAction() // [функция, boolean]
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [generalError, setGeneralError] = useState<string | null>(null)
 
@@ -30,7 +26,7 @@ export function useFormAction<T = void>(
 
         const formData = new FormData(e.currentTarget)
 
-        startTransition(async () => {
+        runAction(async () => {
             const result = await action(formData)
 
             if (result.success) {
