@@ -232,39 +232,25 @@ export const getHomeFeedPost = cache(
         (Post & { author: Pick<Profile, 'id' | 'full_name' | 'avatar_url'> }) | null
     > => {
         const supabase = await createClient()
+        const { data, error } = await supabase
 
-        const baseSelect = `
+            .from('posts')
+            .select(`
             *,
             author:profiles!posts_author_id_fkey(id, full_name, avatar_url)
-        `
-
-        const pinnedRes = await supabase
-            .from('posts')
-            .select(baseSelect)
-            .eq('is_pinned', true)
+        `)
             .in('post_type', ['text', 'media'])
             .is('trip_id', null)
             .is('tournament_id', null)
-            .order('pinned_at', { ascending: false, nullsFirst: false })
-            .limit(1)
-            .maybeSingle()
-
-        if (pinnedRes.data) return pinnedRes.data as any
-
-        const latestRes = await supabase
-            .from('posts')
-            .select(baseSelect)
-            .in('post_type', ['text', 'media'])
-            .is('trip_id', null)
-            .is('tournament_id', null)
+            .order('is_pinned', { ascending: false, nullsFirst: false })
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle()
 
-        if (latestRes.error) {
-            console.error('[getHomeFeedPost]', latestRes.error)
+        if (error) {
+            console.error('[getHomeFeedPost]', error)
             return null
         }
-        return (latestRes.data as any) ?? null
+        return (data as any) ?? null
     }
 )

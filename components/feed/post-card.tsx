@@ -1,34 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import {
-    Bookmark,
-    Loader2,
-    MessageCircle,
-    MoreHorizontal,
-    Pin,
-    Share2,
-    Trash2,
-} from 'lucide-react'
-import { toast } from 'sonner'
-import { UserAvatar } from '@/components/user-avatar'
-import { PostContent } from './post-content'
-import { PostPoll } from './post-poll'
-import { PostReactions } from './post-reactions'
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { formatRelativeTime } from '@/shared/lib/format'
-import { deletePost, togglePinPost } from '@/app/(main)/feed/actions'
-import type { PostWithAuthor, ReactionGroup } from '@/app/(main)/feed/queries'
-import { cn } from '@/shared/lib/utils'
-import { PostMedia } from '@/components/feed/post-media'
-import { useProgressRouter } from '@/shared/hooks/use-progress-router'
-import { useProgressAction } from '@/shared/hooks/use-progress-action'
-import { useConfirm } from '@/shared/lib/confirm/confirm-context'
+import {memo, useState} from 'react'
+import {Bookmark, Loader2, MessageCircle, MoreHorizontal, Pin, Share2, Trash2,} from 'lucide-react'
+import {toast} from 'sonner'
+import {UserAvatar} from '@/components/user-avatar'
+import {PostContent} from './post-content'
+import {PostReactions} from './post-reactions'
+import {formatRelativeTime} from '@/shared/lib/format'
+import {deletePost, togglePinPost} from '@/app/(main)/feed/actions'
+import type {PostWithAuthor, ReactionGroup} from '@/app/(main)/feed/queries'
+import {cn} from '@/shared/lib/utils'
+import {useProgressRouter} from '@/shared/hooks/use-progress-router'
+import {useProgressAction} from '@/shared/hooks/use-progress-action'
+import {useConfirm} from '@/shared/lib/confirm/confirm-context'
+import dynamic from "next/dynamic";
 
 type PostCardProps = {
     post: PostWithAuthor
@@ -38,7 +23,38 @@ type PostCardProps = {
     votedFor?: string[]
 }
 
-export function PostCard({
+// Lazy-load для медиа и опросов
+const PostMedia = dynamic(
+    () => import('./post-media').then((m) => m.PostMedia),
+    { ssr: true, loading: () => <div className="h-40 animate-pulse rounded-xl bg-neutral-800" /> }
+)
+
+const PostPoll = dynamic(
+    () => import('./post-poll').then((m) => m.PostPoll),
+    { ssr: true }
+)
+
+// Dropdown только для тренера
+const DropdownMenu = dynamic(
+    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenu),
+    { ssr: false }
+)
+const DropdownMenuContent = dynamic(
+    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuContent),
+    { ssr: false }
+)
+const DropdownMenuItem = dynamic(
+    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuItem),
+    { ssr: false }
+)
+const DropdownMenuTrigger = dynamic(
+    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuTrigger),
+    { ssr: false }
+)
+
+
+
+export const PostCard = memo(function PostCard({
                              post,
                              isCoach,
                              reactions = [],
@@ -52,6 +68,8 @@ export function PostCard({
     const [isNavigating, setIsNavigating] = useState(false)
 
     const busy = isPending || isNavigating
+
+
 
     const handleDelete = async () => {
         const ok = await confirm({
@@ -126,14 +144,14 @@ export function PostCard({
         >
             {busy && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/50">
-                    <Loader2 className="h-5 w-5 animate-spin text-lime-400" />
+                    <Loader2 className="h-5 w-5 animate-spin text-accent" />
                 </div>
             )}
 
             {post.is_pinned && (
-                <div className="flex items-center gap-1.5 border-b border-lime-400/20 bg-lime-400/5 px-4 py-2">
-                    <Pin className="h-3 w-3 text-lime-400" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-lime-400">
+                <div className="flex items-center gap-1.5 border-b border-accent bg-accent-muted px-4 py-2">
+                    <Pin className="h-3 w-3 text-accent" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">
                         Закреплено
                     </span>
                 </div>
@@ -147,7 +165,6 @@ export function PostCard({
                             name={post.author.full_name}
                             avatarUrl={post.author.avatar_url}
                             size="md"
-                            src={''}
                         />
                         <div className="min-w-0">
                             <div className="flex flex-wrap items-center gap-2">
@@ -155,7 +172,7 @@ export function PostCard({
                                     {post.author.full_name}
                                 </p>
                                 {post.author.role === 'coach' && (
-                                    <span className="shrink-0 rounded-full border border-lime-400/30 bg-lime-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-lime-400">
+                                    <span className="shrink-0 rounded-full border border-accent bg-accent-muted px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">
                                         Тренер
                                     </span>
                                 )}
@@ -267,4 +284,4 @@ export function PostCard({
             </div>
         </article>
     )
-}
+})

@@ -18,14 +18,13 @@ export function ProfileHeader({ profile }: Props) {
                     name={profile.full_name}
                     avatarUrl={profile.avatar_url}
                     size="xl"
-                    src={''}
                 />
             </div>
 
             <div>
                 <h2 className="text-lg font-bold text-white">{profile.full_name}</h2>
                 {profile.role === 'coach' && (
-                    <span className="-translate-x-1/2 rounded-full border border-lime-400/40 bg-lime-400/15 px-2 py-0.5 text-[10px] font-bold uppercase text-lime-400">
+                    <span className="rounded-full border border-accent bg-accent-muted px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
                         Тренер
                     </span>
                 )}

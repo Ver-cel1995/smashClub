@@ -48,7 +48,7 @@ export function ProfilePaymentsCard({ payments }: Props) {
                         <PaymentRow label="Ремонт ракеток" amount={payments.repair} />
                         <div className="mt-3 flex items-center justify-between border-t border-neutral-800 pt-3">
                             <span className="text-sm font-semibold text-white">Итого</span>
-                            <span className="text-lg font-bold text-lime-400">
+                            <span className="text-lg font-bold text-accent">
                                 {payments.total}₽
                             </span>
                         </div>

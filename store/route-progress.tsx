@@ -32,7 +32,6 @@ export const useProgressStore = create<ProgressState>((set, get) => ({
     reset: () => set({ active: false, progress: 0 }),
 }))
 
-// Публичные хелперы для вызова из любого места (в т.ч. вне React)
 export const startProgress = () => useProgressStore.getState().start()
 export const doneProgress = () => useProgressStore.getState().done()
 
@@ -91,7 +90,7 @@ export function RouteProgress() {
     return (
         <div className="pointer-events-none fixed left-0 right-0 top-0 z-[9999] h-0.5 bg-transparent">
             <div
-                className="h-full bg-lime-400 shadow-[0_0_10px_rgba(163,230,53,0.8)] transition-[width] duration-200 ease-out"
+                className="h-full bg-[var(--accent-color,#a3e635)] shadow-[0_0_10px_var(--accent-glow,rgba(163,230,53,0.8))] transition-[width] duration-200 ease-out"
                 style={{ width: `${progress}%` }}
             />
         </div>

@@ -88,7 +88,7 @@ function Section({
                             <UserAvatar
                                 name={p.profile.full_name}
                                 avatarUrl={p.profile.avatar_url}
-                                size={"sm"} src={""}                            />
+                                size={"sm"}/>
                             <span className={muted ? 'text-sm text-muted-foreground' : 'text-sm'}>
                 {p.profile.full_name}
               </span>

@@ -1,9 +1,15 @@
 'use client'
 
-import { useRef } from 'react'
-import Lottie, { type LottieRefCurrentProps } from 'lottie-react'
+import { memo, useRef } from 'react'
+import { type LottieRefCurrentProps } from 'lottie-react'
 import { cn } from '@/shared/lib/utils'
 import { getEmoji, type EmojiId } from '@/shared/emojis/registry'
+import dynamic from "next/dynamic";
+
+const Lottie = dynamic(() => import('lottie-react'), {
+    ssr: false,
+    loading: () => <span className="inline-block h-full w-full" />,
+})
 
 type Props = {
     /** ID эмодзи из реестра */
@@ -17,20 +23,20 @@ type Props = {
     className?: string
 }
 
-export function LottieEmoji({
-                                emojiId,
-                                size = 32,
-                                autoplay = true,
-                                loop = true,
-                                playOnHover = false,
-                                playOnce = false,
-                                className,
-                            }: Props) {
+export const LottieEmoji = memo(function LottieEmoji({
+                                                         emojiId,
+                                                         size = 32,
+                                                         autoplay = true,
+                                                         loop = true,
+                                                         playOnHover = false,
+                                                         playOnce = false,
+                                                         className,
+                                                     }: Props) {
     const ref = useRef<LottieRefCurrentProps>(null)
     const emoji = getEmoji(emojiId)
 
     if (!emoji) {
-        // Фолбэк — показываем ничего, чтобы не крашилось
+        // Фолбэк
         console.warn(`[LottieEmoji] Unknown emojiId: ${emojiId}`)
         return null
     }
@@ -56,4 +62,4 @@ export function LottieEmoji({
             />
         </div>
     )
-}
+})

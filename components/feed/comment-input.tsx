@@ -67,7 +67,7 @@ export function CommentInput({
                 type="button"
                 onClick={handleSubmit}
                 disabled={isPending || !text.trim()}
-                className="shrink-0 rounded-xl bg-lime-400 p-2.5 text-neutral-950 transition-transform active:scale-95 disabled:opacity-40"
+                className="shrink-0 rounded-xl bg-accent p-2.5 transition-transform active:scale-95 disabled:opacity-40"
                 aria-label="Отправить"
             >
                 <Send className="h-4 w-4" />

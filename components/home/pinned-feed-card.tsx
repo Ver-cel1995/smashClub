@@ -47,7 +47,7 @@ export function PinnedFeedCard({ post }: Props) {
                         <UserAvatar
                             name={post.author.full_name}
                             avatarUrl={post.author.avatar_url}
-                            size={"sm"} src={""}                        />
+                            size={"sm"}/>
                         <span className="text-xs font-medium">{post.author.full_name}</span>
                         <span className="text-xs text-muted-foreground">
               {formatRelativeTime(post.created_at)}

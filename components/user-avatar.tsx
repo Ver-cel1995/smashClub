@@ -1,6 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getInitials } from '@/shared/lib/formatName'
 import { cn } from '@/shared/lib/utils'
+import {memo} from "react";
 
 type Size = 'sm' | 'md' | 'lg' | 'xl'
 
@@ -13,24 +14,24 @@ const sizeClasses: Record<Size, string> = {
 
 type UserAvatarProps = {
     name: string
-    src: string
+    src?: string
     avatarUrl?: string | null
     size?: Size
     className?: string
 }
 
-export function UserAvatar({
-                               name,
-                               avatarUrl,
-                               size = 'md',
-                               className,
+export const UserAvatar = memo(function UserAvatar({
+                                                       name,
+                                                       avatarUrl,
+                                                       size = 'md',
+                                                       className,
                            }: UserAvatarProps) {
     return (
         <Avatar className={cn(sizeClasses[size], className)}>
             {avatarUrl && <AvatarImage src={avatarUrl} alt={name} />}
-            <AvatarFallback className="bg-lime-400/10 text-lime-400 font-semibold border border-lime-400/20">
+            <AvatarFallback className="bg-accent-muted text-accent font-semibold border border-accent">
                 {getInitials(name)}
             </AvatarFallback>
         </Avatar>
     )
-}
+})

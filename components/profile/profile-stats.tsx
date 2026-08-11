@@ -18,7 +18,7 @@ export function ProfileStats({ profile }: Props) {
                     key={it.label}
                     className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 text-center"
                 >
-                    <div className="text-xl font-bold text-lime-400">{it.value}</div>
+                    <div className="text-xl font-bold text-accent">{it.value}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-wider text-neutral-500">
                         {it.label}
                     </div>

@@ -103,6 +103,10 @@ const nextConfig: NextConfig = {
             'date-fns',
             'sonner',
             'lottie-react',
+            '@supabase/ssr',
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-popover',
         ],
     },
 

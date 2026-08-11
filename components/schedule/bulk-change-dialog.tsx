@@ -179,8 +179,9 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
                         </Button>
                         <Button
                             type="submit"
+                            variant="secondary"
                             disabled={isPending || !startDate || !endDate}
-                            className="flex-1 bg-lime-400 hover:bg-lime-500 text-neutral-950 font-semibold"
+                            className="flex-1 font-semibold"
                         >
                             {isPending ? (
                                 <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
@@ -263,8 +264,8 @@ function MiniCalendar({
                             className={cn(
                                 'text-[11px] py-1 rounded transition-colors',
                                 !inMonth && 'opacity-20',
-                                inRange && !rangeStart && !rangeEnd && 'bg-lime-400/20 text-lime-300',
-                                (rangeStart || rangeEnd) && 'bg-lime-400 text-neutral-950 font-bold',
+                                inRange && !rangeStart && !rangeEnd && 'bg-accent-muted text-accent',
+                                (rangeStart || rangeEnd) && 'bg-accent font-bold',
                                 !inRange && !rangeStart && !rangeEnd && 'text-white hover:bg-neutral-800'
                             )}
                         >

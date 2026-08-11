@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import {useMemo, useState} from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
     format,
@@ -40,8 +40,22 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
 
     const days = eachDayOfInterval({ start: calendarStart, end: calendarEnd })
 
-    const getTrainingsForDay = (date: Date) =>
-        trainings.filter((t) => isSameDay(parseISO(t.date), date))
+    const trainingsByDate = useMemo(() => {
+        const map = new Map<string, TrainingWithMeta[]>()
+        for (const t of trainings) {
+            // t.date usually looks like '2026-08-10' or ISO date string
+            const key = t.date.slice(0, 10)
+            const list = map.get(key) || []
+            list.push(t)
+            map.set(key, list)
+        }
+        return map
+    }, [trainings])
+
+    const getTrainingsForDay = (date: Date) => {
+        const key = format(date, 'yyyy-MM-dd')
+        return trainingsByDate.get(key) || []
+    }
 
     const selectedTrainings = selectedDate
         ? getTrainingsForDay(selectedDate)
@@ -100,15 +114,15 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
                             className={cn(
                                 'relative flex flex-col items-center gap-0.5 rounded-xl py-2 transition-all',
                                 !inMonth && 'opacity-30',
-                                today && !selected && 'bg-lime-400/10 border border-lime-400/30',
-                                selected && 'bg-lime-400 text-neutral-950',
+                                today && !selected && 'bg-accent-muted border border-accent',
+                                selected && 'bg-accent font-bold',
                                 !today && !selected && 'hover:bg-neutral-900'
                             )}
                         >
               <span
                   className={cn(
                       'text-sm font-medium',
-                      selected ? 'text-neutral-950' : today ? 'text-lime-400' : 'text-white'
+                      selected ? 'text-neutral-950' : today ? 'text-accent' : 'text-white'
                   )}
               >
                 {format(day, 'd')}
@@ -146,14 +160,14 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
                 <button
                     type="button"
                     onClick={() => setEditOpen(true)}
-                    className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3 text-sm font-medium text-lime-400 hover:bg-neutral-800 transition-colors"
+                    className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3 text-sm font-medium text-accent hover:bg-neutral-800 transition-colors"
                 >
                     Редактировать {format(selectedDate, 'd MMMM', { locale: ru })}
                 </button>
             )}
 
             {/* Диалог редактирования */}
-            {isCoach && selectedDate && selectedTrainings.length > 0 && (
+            {isCoach && selectedDate && selectedTrainings.length > 0 && editOpen && (
                 <EditDayDialog
                     open={editOpen}
                     onOpenChange={setEditOpen}

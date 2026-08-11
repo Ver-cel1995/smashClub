@@ -89,8 +89,8 @@ export function NextTripCard({ trip, currentUserId }: Props) {
                                     key={p.id}
                                     name={p.profile.full_name}
                                     avatarUrl={p.profile.avatar_url}
-                                    size={"lg"}
-                                    className="ring-2 ring-card" src={""}                                />
+                                    size="lg"
+                                    className="ring-2 ring-card"                                />
                             ))}
                             {going.length > MAX_AVATARS_SHOWN && (
                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-2 ring-card">
@@ -123,12 +123,14 @@ export function NextTripCard({ trip, currentUserId }: Props) {
                 </div>
             </div>
 
-            <TripParticipantsDialog
-                open={openDialog}
-                onOpenChange={setOpenDialog}
-                trip={trip}
-                currentUserId={currentUserId}
-            />
+            {openDialog && (
+                <TripParticipantsDialog
+                    open={openDialog}
+                    onOpenChange={setOpenDialog}
+                    trip={trip}
+                    currentUserId={currentUserId}
+                />
+            )}
         </>
     )
 }

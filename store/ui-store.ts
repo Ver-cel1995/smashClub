@@ -1,28 +1,23 @@
 import { create } from 'zustand'
 
-type UIState = {
-    /** Глобальный навигационный loading */
-    isNavigating: boolean
-    setNavigating: (v: boolean) => void
-
-    /** Текущий pending action (для блокировки UI) */
-    pendingAction: string | null
-    setPendingAction: (action: string | null) => void
-
-    /** FAB */
+interface UIStore {
     fabOpen: boolean
+    isNavigating: boolean
+    pendingAction: string | null
+
     setFabOpen: (open: boolean) => void
     toggleFab: () => void
+    setNavigating: (v: boolean) => void
+    setPendingAction: (a: string | null) => void
 }
 
-export const useUIStore = create<UIState>((set) => ({
-    isNavigating: false,
-    setNavigating: (v) => set({ isNavigating: v }),
-
-    pendingAction: null,
-    setPendingAction: (action) => set({ pendingAction: action }),
-
+export const useUIStore = create<UIStore>((set) => ({
     fabOpen: false,
-    setFabOpen: (open) => set({ fabOpen: open }),
+    isNavigating: false,
+    pendingAction: null,
+
+    setFabOpen: (fabOpen) => set({ fabOpen }),
     toggleFab: () => set((s) => ({ fabOpen: !s.fabOpen })),
+    setNavigating: (isNavigating) => set({ isNavigating }),
+    setPendingAction: (pendingAction) => set({ pendingAction }),
 }))

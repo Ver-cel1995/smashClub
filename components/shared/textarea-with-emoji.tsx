@@ -3,7 +3,19 @@
 import { forwardRef, useImperativeHandle, useRef, useState, useEffect } from 'react'
 import { Smile } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
-import { EmojiKeyboard } from '@/components/feed/emoji-keyboard'
+import dynamic from "next/dynamic";
+
+const EmojiKeyboard = dynamic(
+    () => import('@/components/feed/emoji-keyboard').then((m) => m.EmojiKeyboard),
+    {
+        ssr: false,
+        loading: () => (
+            <div className="flex h-[280px] items-center justify-center bg-neutral-900">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-lime-400 border-t-transparent" />
+            </div>
+        ),
+    }
+)
 
 export type TextareaWithEmojiHandle = {
     focus: () => void
@@ -96,7 +108,7 @@ export const TextareaWithEmoji = forwardRef<TextareaWithEmojiHandle, Props>(
         return (
             <div
                 className={cn(
-                    'overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 transition-colors focus-within:border-lime-400/40',
+                    'overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-950 transition-colors focus-within:border-accent',
                     disabled && 'opacity-60',
                     className
                 )}
@@ -124,7 +136,7 @@ export const TextareaWithEmoji = forwardRef<TextareaWithEmojiHandle, Props>(
                         className={cn(
                             'absolute right-2 top-2 rounded-lg p-1.5 transition-colors',
                             emojiOpen
-                                ? 'text-lime-400'
+                                ? 'text-accent'
                                 : 'text-neutral-500 hover:text-neutral-300'
                         )}
                         aria-label="Эмодзи"

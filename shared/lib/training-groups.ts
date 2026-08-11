@@ -4,9 +4,9 @@ export const TRAINING_GROUPS = {
         shortLabel: 'Осн',
         days: 'вт / чт / сб',
         time: '18:00 – 20:00',
-        color: 'text-lime-400',
-        bgColor: 'bg-lime-400/10',
-        borderColor: 'border-lime-400/30',
+        color: 'text-accent',
+        bgColor: 'bg-accent-muted',
+        borderColor: 'border-accent',
     },
     school: {
         label: 'Школьники',

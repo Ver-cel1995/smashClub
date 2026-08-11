@@ -1,7 +1,7 @@
 {
   "name": "SmashClub",
   "short_name": "SmashClub",
-  "description": "Бадминтон Кущёвская",
+  "description": "Клуб бадминтона Кущёвская",
   "start_url": "/home",
   "display": "standalone",
   "orientation": "portrait",
@@ -9,16 +9,16 @@
   "theme_color": "#0a0a0a",
   "icons": [
     {
-      "src": "/favicon.svg",
+      "src": "/icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
-      "src": "/logo.svg",
+      "src": "/icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

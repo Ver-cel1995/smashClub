@@ -11,6 +11,7 @@ import {CITY_OPTIONS} from '@/shared/lib/cities'
 import {updateProfile} from '@/app/(main)/profile/actions'
 import {createClient} from '@/shared/lib/supabase/client'
 import type {Profile} from '@/types'
+import {ThemeSelector} from '@/components/theme/theme-selector'
 
 type Props = {
     profile: Profile
@@ -97,7 +98,6 @@ export function SettingsForm({ profile }: Props) {
                         name={fullName || 'Игрок'}
                         avatarUrl={avatarUrl}
                         size="xl"
-                        src={''}
                     />
                     <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
                         {avatarUploading ? (
@@ -155,6 +155,9 @@ export function SettingsForm({ profile }: Props) {
                     ))}
                 </select>
             </div>
+
+            {/* Тема */}
+            <ThemeSelector />
 
             <Button
                 variant="secondary"

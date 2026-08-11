@@ -1,161 +1,125 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
+:root {
+    --accent-color: #a3e635;
+    --accent-hover: #84cc16;
+    --accent-glow: rgba(163, 230, 53, 0.4);
+    --accent-foreground: #09090b;
+    --accent-muted: rgba(163, 230, 53, 0.12);
+    --accent-border: rgba(163, 230, 53, 0.3);
 
-body {
-    color: white;
+    --bg-main: #0f131d;
+    --bg-card: #171c2c;
+    --bg-input: #121624;
+    --border-card: #252d47;
+    --text-main: #ffffff;
+    --text-muted: #8a94a6;
 }
 
-.logo-text {
-    font-size: 42px;
-    font-weight: 800;
-    letter-spacing: -1px;
-
-    background: linear-gradient(
-            90deg,
-            #06345B 0%,
-            #123F68 25%,
-            #55A82D 55%,
-            #C5E900 72%,
-            #FF8A00 100%
-    );
-
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+/* ===== Тёмная тема (Dark Theme - по макету дизайна) ===== */
+html.dark,
+html[data-theme="dark"] {
+    color-scheme: dark;
+    --bg-main: #0f131d;
+    --bg-card: #171c2c;
+    --bg-input: #121624;
+    --border-card: #252d47;
+    --text-main: #ffffff;
+    --text-muted: #8a94a6;
+    background-color: var(--bg-main);
+    color: var(--text-main);
 }
 
-@layer base {
-    html,
-    body {
-        /* Отключаем "прыжок" при появлении keyboard на iOS */
-        overscroll-behavior-y: none;
-        /* Отключаем pull-to-refresh */
-        overscroll-behavior: contain;
-        /* Смуф-скролл на iOS */
-        -webkit-overflow-scrolling: touch;
-    }
-
-    /* Скроллится только контейнер основной страницы */
-    #__next,
-    main {
-        height: 100%;
-        overflow-y: auto;
-    }
-
-    /* Убираем tap-highlight на iOS */
-    * {
-        -webkit-tap-highlight-color: transparent;
-    }
-
-    /* Убираем стандартный outline у кнопок/инпутов на iOS */
-    button,
-    input,
-    textarea,
-    select {
-        -webkit-appearance: none;
-        appearance: none;
-    }
-
-    /* Отключаем автоузумкание при фокусе на iOS (шрифт < 16px триггерит зум) */
-    input,
-    textarea,
-    select {
-        font-size: 16px;
-    }
+html.dark body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
 }
 
-@layer utilities {
-    /* Safe area padding для контейнеров */
-    .safe-top {
-        padding-top: env(safe-area-inset-top);
-    }
-    .safe-bottom {
-        padding-bottom: env(safe-area-inset-bottom);
-    }
-    .safe-x {
-        padding-left: env(safe-area-inset-left);
-        padding-right: env(safe-area-inset-right);
-    }
+/* ===== Светлая тема (Light Theme - чистый современный UI) ===== */
+html.light,
+html[data-theme="light"] {
+    color-scheme: light;
+    --bg-main: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-input: #f8fafc;
+    --border-card: #e2e8f0;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    background-color: var(--bg-main);
+    color: var(--text-main);
 }
 
+html.light body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+}
 
+/* Адаптивные вспомогательные классы для Светлой и Тёмной темы */
+html.light .bg-neutral-950,
+html.light .bg-neutral-900 {
+    background-color: var(--bg-card) !important;
+}
 
+html.light .bg-neutral-800,
+html.light .bg-neutral-950\/50,
+html.light .bg-neutral-900\/50 {
+    background-color: #f8fafc !important;
+}
 
+html.light .border-neutral-800,
+html.light .border-neutral-700 {
+    border-color: var(--border-card) !important;
+}
 
+html.light .text-white,
+html.light .text-neutral-100,
+html.light .text-neutral-200 {
+    color: var(--text-main) !important;
+}
 
+html.light .text-neutral-300,
+html.light .text-neutral-400,
+html.light .text-neutral-500 {
+    color: var(--text-muted) !important;
+}
 
+/* ===== Динамические Акцентные Классы (Акцент везде одинаковый!) ===== */
+.bg-accent {
+    background-color: var(--accent-color) !important;
+    color: var(--accent-foreground) !important;
+}
 
+.bg-accent-hover:hover {
+    background-color: var(--accent-hover) !important;
+}
 
-/* ===== Shuttle Loader Animations ===== */
+.text-accent {
+    color: var(--accent-color) !important;
+}
+
+.border-accent {
+    border-color: var(--accent-border) !important;
+}
+
+.bg-accent-muted {
+    background-color: var(--accent-muted) !important;
+    color: var(--accent-color) !important;
+}
+
+.shadow-accent {
+    box-shadow: 0 8px 20px -6px var(--accent-glow) !important;
+}
+
+/* ===== Shuttle Loader & CSS Animations ===== */
 .bl-badge {
     transform-origin: 210px 190px;
     animation: bl-badge-pulse 1.9s ease-in-out infinite;
-}
-.bl-spin-ring {
-    transform-origin: 210px 190px;
-    animation: bl-spin 1.35s linear infinite;
-}
-.bl-counter-ring {
-    transform-origin: 210px 190px;
-    animation: bl-spin-reverse 2.7s linear infinite;
-}
-.bl-shuttle-orbit {
-    transform-origin: 210px 190px;
-    animation: bl-spin 1.55s linear infinite;
-}
-.bl-shuttle {
-    transform-origin: center;
-    animation: bl-shuttle-pop 0.78s ease-in-out infinite;
-}
-.bl-scratch-1 { animation: bl-scratch 1.2s ease-in-out infinite; }
-.bl-scratch-2 { animation: bl-scratch 1.2s ease-in-out 0.14s infinite; }
-.bl-scratch-3 { animation: bl-scratch 1.2s ease-in-out 0.28s infinite; }
-.bl-scratch-4 { animation: bl-scratch 1.2s ease-in-out 0.42s infinite; }
-.bl-progress-fill {
-    transform-box: fill-box;
-    transform-origin: left center;
-    animation: bl-progress-scale 1.45s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-.bl-progress-shine {
-    animation: bl-progress-shine 1.45s cubic-bezier(0.65, 0, 0.35, 1) infinite;
-}
-.bl-dot-1 { animation: bl-dot 1.05s ease-in-out 0s infinite; }
-.bl-dot-2 { animation: bl-dot 1.05s ease-in-out 0.16s infinite; }
-.bl-dot-3 { animation: bl-dot 1.05s ease-in-out 0.32s infinite; }
-.bl-racket-left {
-    transform-origin: 210px 280px;
-    animation: bl-racket-left 1.55s ease-in-out infinite;
-}
-.bl-racket-right {
-    transform-origin: 210px 280px;
     animation: bl-racket-right 1.55s ease-in-out infinite;
 }
 
-.bl-main-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 45px;
-    font-weight: 950;
-    letter-spacing: -1.4px;
-}
-.bl-city-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 27px;
-    font-weight: 950;
-    letter-spacing: 0.5px;
-}
-.bl-slogan-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 14px;
-    font-weight: 850;
-    letter-spacing: 0.3px;
-}
-.bl-loading-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 15px;
-    font-weight: 850;
-    letter-spacing: 2.4px;
-}
+
+
 
 @keyframes bl-spin { to { transform: rotate(360deg); } }
 @keyframes bl-spin-reverse { to { transform: rotate(-360deg); } }
@@ -202,4 +166,30 @@ body {
     .bl-racket-left, .bl-racket-right {
         animation: none !important;
     }
+}
+
+
+
+
+
+
+
+
+.logo-text {
+    font-size: 42px;
+    font-weight: 800;
+    letter-spacing: -1px;
+
+    background: linear-gradient(
+            90deg,
+            #06345B 0%,
+            #123F68 25%,
+            #55A82D 55%,
+            #C5E900 72%,
+            #FF8A00 100%
+    );
+
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
 }

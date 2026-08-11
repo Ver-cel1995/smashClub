@@ -43,7 +43,7 @@ export function CreatePostFab() {
                         'flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all active:scale-95',
                         fabOpen
                             ? 'bg-neutral-700 text-white rotate-45'
-                            : 'bg-lime-400 hover:bg-lime-500 text-neutral-950 shadow-lime-400/20'
+                            : 'bg-accent shadow-accent'
                     )}
                     aria-label={fabOpen ? 'Закрыть' : 'Создать'}
                 >
@@ -69,7 +69,7 @@ function FabOption({ href,icon,label,onClick }: { // todo
       <span className="rounded-full bg-neutral-900 border border-neutral-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg">
         {label}
       </span>
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-lime-400 text-neutral-950 shadow-lg shadow-lime-400/20">
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent shadow-accent">
         {icon}
       </span>
         </Link>

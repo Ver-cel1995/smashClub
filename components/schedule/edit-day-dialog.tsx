@@ -159,8 +159,9 @@ export function EditDayDialog({
                         </Button>
                         <Button
                             type="submit"
+                            variant="secondary"
                             disabled={isPending}
-                            className="flex-1 bg-lime-400 hover:bg-lime-500 text-neutral-950 font-semibold"
+                            className="flex-1 font-semibold"
                         >
                             {isPending ? (
                                 <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />

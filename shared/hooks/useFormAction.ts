@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import {useState, type FormEvent, useCallback} from 'react'
 import { toast } from 'sonner'
 import { useProgressRouter } from '@/shared/hooks/use-progress-router'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
@@ -19,7 +19,9 @@ export function useFormAction<T = void>(
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
     const [generalError, setGeneralError] = useState<string | null>(null)
 
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const { redirectTo, successMessage, onSuccess } = options
+
+    const handleSubmit = useCallback((e: FormEvent<HTMLFormElement>) => {
         e.preventDefault()
         setFieldErrors({})
         setGeneralError(null)
@@ -30,12 +32,12 @@ export function useFormAction<T = void>(
             const result = await action(formData)
 
             if (result.success) {
-                if (options.successMessage) {
-                    toast.success(options.successMessage)
+                if (successMessage) {
+                    toast.success(successMessage)
                 }
-                options.onSuccess?.()
-                if (options.redirectTo) {
-                    router.push(options.redirectTo)
+                onSuccess?.()
+                if (redirectTo) {
+                    router.push(redirectTo)
                 }
             } else {
                 if (result.fieldErrors) {
@@ -45,13 +47,15 @@ export function useFormAction<T = void>(
                 toast.error(result.error)
             }
         })
-    }
+    }, [action, runAction, router, redirectTo, successMessage, onSuccess])
+
+    const getFieldError = useCallback((field: string) => fieldErrors[field], [fieldErrors])
 
     return {
         isPending,
         fieldErrors,
         generalError,
         handleSubmit,
-        getFieldError: (field: string) => fieldErrors[field],
+        getFieldError
     }
 }

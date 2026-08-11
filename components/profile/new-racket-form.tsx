@@ -140,10 +140,10 @@ export function NewRacketForm() {
             </button>
 
             {/* Итог */}
-            <div className="sticky bottom-20 z-10 flex items-center justify-between rounded-2xl border border-lime-400/30 bg-lime-400/5 p-4">
+            <div className="sticky bottom-20 z-10 flex items-center justify-between rounded-2xl border border-accent bg-accent-muted p-4">
                 <div>
                     <div className="text-xs uppercase text-neutral-500">Итого</div>
-                    <div className="text-2xl font-bold text-lime-400">{totalCost}₽</div>
+                    <div className="text-2xl font-bold text-accent">{totalCost}₽</div>
                 </div>
                 <Button
                     variant="secondary"
@@ -323,14 +323,14 @@ function ActionToggle({
             className={cn(
                 'flex items-center gap-2 rounded-xl border p-3 text-left transition',
                 active
-                    ? 'border-lime-400/40 bg-lime-400/10'
+                    ? 'border-accent bg-accent-muted'
                     : 'border-neutral-800 bg-neutral-950 hover:border-neutral-700'
             )}
         >
             <div
                 className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-lg',
-                    active ? 'bg-lime-400/20 text-lime-400' : 'bg-neutral-900 text-neutral-500'
+                    active ? 'bg-accent-muted text-accent' : 'bg-neutral-900 text-neutral-500'
                 )}
             >
                 {icon}
