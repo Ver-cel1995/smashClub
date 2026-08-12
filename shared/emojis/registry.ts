@@ -9,11 +9,7 @@
  * Добавляй новые id, но не переименовывай существующие.
  */
 export const EMOJI_REGISTRY = {
-    fire: {
-        id: 'fire',
-        animationData: "авыа",
-        label: 'Огонь',
-    },
+
 } as const
 
 export type EmojiId = keyof typeof EMOJI_REGISTRY
