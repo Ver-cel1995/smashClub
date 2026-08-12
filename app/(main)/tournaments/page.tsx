@@ -12,9 +12,6 @@ export default function TestPdfPage() {
         <div className="space-y-6 p-4">
             <div>
                 <h1 className="text-2xl font-bold text-strong">Тест AI-парсинга PDF</h1>
-                <p className="text-sm text-muted mt-1">
-                    Загрузи PDF-положение соревнований и посмотри, что распознает AI
-                </p>
             </div>
 
             <TournamentPdfDropzone
@@ -22,7 +19,7 @@ export default function TestPdfPage() {
                     setResult(data)
                     setPdfInfo(pdf)
                 }}
-                onManual={() => alert('Форма будет позже — сначала проверяем AI')}
+                onManual={() => alert('чуть позже - как только аишка заработает')}
             />
 
             {result && (
