@@ -1,32 +1,22 @@
 'use client'
 
-import {useState} from 'react'
-import {Ban, Calendar, Check, Clock, Users, X} from 'lucide-react'
-import {toast} from 'sonner'
-import {Button} from '@/components/ui/button'
-import {cn} from '@/shared/lib/utils'
-import {formatDateRange, formatTrainingDate} from '@/shared/lib/format'
-import {setTrainingAttendance} from '@/app/(main)/home/actions'
-import {TrainingAttendanceDialog} from './training-attendance-dialog'
-import type {AttendanceStatus, TrainingWithAttendance} from '@/types'
-import {TRAINING_STATUS_META} from "@/shared/lib/training-status";
-import {useProgressAction} from "@/shared/hooks/use-progress-action";
+import { useState } from 'react'
+import { Ban, Check, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/shared/lib/utils'
+import { formatDateRange, formatTrainingDate } from '@/shared/lib/format'
+import { setTrainingAttendance } from '@/app/(main)/home/actions'
+import { TrainingAttendanceDialog } from './training-attendance-dialog'
+import type { AttendanceStatus, TrainingWithAttendance } from '@/types'
+import { TRAINING_STATUS_META } from "@/shared/lib/training-status"
+import { useProgressAction } from "@/shared/hooks/use-progress-action"
 
 type Props = {
     training: TrainingWithAttendance
     currentUserId: string
 }
 
-/**
- * ПРАВИЛО: при отсутствии тренера
- *
- * school (пн, ср) — вход ЗАПРЕЩЁН всем
- * main (вт, чт, сб) — зал открыт для взрослых
- *
- * Если правило для school изменится (станет можно приходить),
- * просто удалите 'school' из CLOSED_WHEN_NO_COACH
- * и добавьте 'school' в OPEN_FOR_ADULTS_STATUSES (если нужно)
- */
 const CLOSED_WHEN_NO_COACH: Set<string> = new Set(['school'])
 const NO_COACH_STATUSES = new Set(['no_coach_open', 'tournament_trip'])
 
@@ -38,12 +28,8 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
     )
 
     const isNoCoach = NO_COACH_STATUSES.has(training.status)
-    const isSchool = training.training_group === 'school'
 
-    // school + без тренера = закрыто для всех
     const isClosedCompletely = isNoCoach && CLOSED_WHEN_NO_COACH.has(training.training_group ?? '')
-
-    // main + без тренера = открыто для взрослых
     const showAdultsNote = isNoCoach && !isClosedCompletely
 
     const handleAttendance = (status: AttendanceStatus) => {
@@ -63,7 +49,6 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
     const isNotGoing = optimisticStatus === 'not_going'
 
     const handleCardClick = () => {
-        // Не открываем модалку если зал закрыт полностью
         if (!isClosedCompletely) {
             setOpenDialog(true)
         }
@@ -77,37 +62,34 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
                 onClick={handleCardClick}
                 onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
                 className={cn(
-                    'rounded-2xl border border-border bg-card p-4 text-left transition',
+                    'rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] p-4 text-left transition',
                     !isClosedCompletely && 'active:scale-[0.99]'
                 )}
             >
-                {training.status !== 'normal' && (() => {
-                    const meta = TRAINING_STATUS_META[training.status]
-                    return (
-                        <div className="mb-3">
-                            <div
+                <div className="mb-2 flex items-center justify-between">
+                    <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                        Ближайшая тренировка
+                    </span>
+                    {training.status !== 'normal' && (() => {
+                        const meta = TRAINING_STATUS_META[training.status]
+                        return (
+                            <span
                                 className={cn(
-                                    'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase',
                                     meta.bgColor,
                                     meta.borderColor,
                                     meta.color
                                 )}
                             >
                                 <span>{meta.icon}</span>
-                                <span>{meta.label}</span>
-                            </div>
-                        </div>
-                    )
-                })()}
-
-                <div className="mb-1 flex items-center gap-2 text-lg font-semibold">
-                    <Calendar className="h-5 w-5 text-primary" />
-                    {formatTrainingDate(training.date)}
+                                <span>{meta.shortLabel}</span>
+                            </span>
+                        )
+                    })()}
                 </div>
 
-                <div className="mb-2 flex items-center gap-2 text-sm text-foreground/80">
-                    <Clock className="h-4 w-4" />
-                    {formatDateRange(training.start_time, training.end_time)}
+                <div className="mb-1 text-base font-bold text-[var(--text-main)]">
+                    {formatTrainingDate(training.date)} • {formatDateRange(training.start_time, training.end_time)}
                 </div>
 
                 {isClosedCompletely && (
@@ -118,63 +100,42 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
                 )}
 
                 {showAdultsNote && (
-                    <div className="mb-2 rounded-lg bg-amber-500/10 p-2 text-xs text-amber-300">
-                        Зал открыт только для взрослых
-                    </div>
-                )}
-
-                {training.status_note && (
-                    <p className="mb-3 text-xs text-muted-foreground">
-                        {training.status_note}
+                    <p className="mb-3 text-xs italic text-[var(--text-muted)]">
+                        Зал открыт для взрослых
                     </p>
                 )}
 
                 {!isClosedCompletely && (
                     <>
-                        <div className="mb-3 flex items-center gap-1 text-xs text-muted-foreground">
-                            <Users className="h-3.5 w-3.5" />
-                            {training.going_count} придут
+                        <div className="mb-3 flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                            <span className="text-sm">🏸</span>
+                            <span>{training.going_count} придут</span>
                         </div>
 
                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button
-                                size="sm"
-                                variant="outline"
+                                size="md"
+                                variant={isGoing ? 'secondary' : 'outline'}
                                 disabled={isPending}
                                 onClick={() => handleAttendance('going')}
                                 className={cn(
-                                    'flex-1 gap-2 transition-all duration-200',
+                                    'flex-1 gap-2 font-bold transition-all duration-200',
                                     isGoing
-                                        ? 'border-accent bg-accent-muted text-accent'
+                                        ? 'bg-accent shadow-accent'
                                         : 'hover:border-accent hover:text-accent'
                                 )}
                             >
-                                <Check
-                                    className={cn(
-                                        'h-4 w-4 transition-all duration-200',
-                                        isGoing ? 'text-accent' : 'text-muted-foreground'
-                                    )}
-                                />
+                                <Check className="h-4 w-4" />
                                 Я приду
                             </Button>
                             <Button
-                                size="sm"
-                                variant="outline"
+                                size="md"
+                                variant={isNotGoing ? 'danger' : 'outline'}
                                 disabled={isPending}
                                 onClick={() => handleAttendance('not_going')}
-                                className={cn(
-                                    'flex-1 gap-2 transition-all duration-200',
-                                    isNotGoing
-                                        ? 'border-rose-500/30 bg-rose-500/8 text-rose-300 hover:bg-rose-500/12'
-                                        : 'hover:border-rose-500/20 hover:text-rose-300'
-                                )}
+                                className="flex-1 gap-2 font-semibold"
                             >
-                                <X
-                                    className={cn(
-                                        'h-4 w-4 transition-all duration-200',
-                                        isNotGoing ? 'text-rose-400' : 'text-muted-foreground'
-                                    )}
-                                />
+                                <X className="h-4 w-4" />
                                 Не приду
                             </Button>
                         </div>

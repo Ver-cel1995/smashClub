@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Pin } from 'lucide-react'
+import { Pin, MessageCircle, Heart, Image as ImageIcon } from 'lucide-react'
 import { UserAvatar } from '@/components/user-avatar'
 import { formatRelativeTime } from '@/shared/lib/format'
 import type { Post, Profile } from '@/types'
@@ -11,16 +11,17 @@ type Props = {
 
 export function PinnedFeedCard({ post }: Props) {
     const firstImage = post.media_urls?.[0]
+    const photoCount = post.media_urls?.length ?? 0
 
     return (
-        <div>
-            <div className="mb-2 flex items-center justify-between px-1">
-        <span className="text-xs font-medium uppercase text-muted-foreground">
-          Лента
-        </span>
+        <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+                <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                    Лента
+                </span>
                 <Link
                     href="/feed"
-                    className="text-xs text-primary hover:underline"
+                    className="text-xs font-medium text-accent hover:underline"
                 >
                     Все новости
                 </Link>
@@ -28,10 +29,50 @@ export function PinnedFeedCard({ post }: Props) {
 
             <Link
                 href={`/feed/${post.id}`}
-                className="block overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.99]"
+                className="block overflow-hidden rounded-2xl border border-[var(--border-card)] bg-[var(--bg-card)] transition active:scale-[0.99]"
             >
+                <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                            <UserAvatar
+                                name={post.author.full_name}
+                                avatarUrl={post.author.avatar_url}
+                                size="sm"
+                            />
+                            <div>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-xs font-semibold text-[var(--text-main)]">
+                                        {post.author.full_name}
+                                    </span>
+                                    <span className="rounded-full border border-accent bg-accent-muted px-1.5 py-0.2 text-[8px] font-bold uppercase text-accent">
+                                        ТРЕНЕР
+                                    </span>
+                                </div>
+                                <span className="text-[10px] text-[var(--text-muted)]">
+                                    {formatRelativeTime(post.created_at)}
+                                </span>
+                            </div>
+                        </div>
+                        {post.is_pinned && (
+                            <Pin className="h-3.5 w-3.5 text-accent" />
+                        )}
+                    </div>
+
+                    {post.title && (
+                        <h3 className="line-clamp-2 text-sm font-bold text-[var(--text-main)]">
+                            {post.title}
+                        </h3>
+                    )}
+
+                    {post.content && (
+                        <p className="line-clamp-2 text-xs text-[var(--text-muted)]">
+                            {post.content}
+                        </p>
+                    )}
+                </div>
+
                 {firstImage && (
-                    <div className="relative aspect-video w-full">
+                    <div className="relative aspect-video w-full overflow-hidden">
                         <Image
                             src={firstImage}
                             alt={post.title ?? 'Пост'}
@@ -42,32 +83,18 @@ export function PinnedFeedCard({ post }: Props) {
                     </div>
                 )}
 
-                <div className="p-3">
-                    <div className="mb-2 flex items-center gap-2">
-                        <UserAvatar
-                            name={post.author.full_name}
-                            avatarUrl={post.author.avatar_url}
-                            size="sm"
-                        />
-                        <span className="text-xs font-medium">{post.author.full_name}</span>
-                        <span className="text-xs text-muted-foreground">
-              {formatRelativeTime(post.created_at)}
-            </span>
-                        {post.is_pinned && (
-                            <Pin className="ml-auto h-3.5 w-3.5 text-primary" />
-                        )}
-                    </div>
-
-                    {post.title && (
-                        <h3 className="mb-1 line-clamp-2 text-sm font-semibold">
-                            {post.title}
-                        </h3>
+                <div className="flex items-center gap-4 px-4 py-3 text-xs text-[var(--text-muted)] border-t border-[var(--border-card)]/60">
+                    {photoCount > 0 && (
+                        <span className="flex items-center gap-1">
+                            <ImageIcon className="h-3.5 w-3.5" /> {photoCount} фото
+                        </span>
                     )}
-                    {post.content && (
-                        <p className="line-clamp-3 text-xs text-foreground/80">
-                            {post.content}
-                        </p>
-                    )}
+                    <span className="flex items-center gap-1">
+                        <MessageCircle className="h-3.5 w-3.5" /> {post.comments_count ?? 0}
+                    </span>
+                    <span className="flex items-center gap-1">
+                        <Heart className="h-3.5 w-3.5" />
+                    </span>
                 </div>
             </Link>
         </div>
