@@ -110,30 +110,49 @@ export async function parseTournamentPdfAction(
 
     const buffer = await fileData.arrayBuffer()
 
-    // Парсинг через OpenAI
+    // Парсинг через Gemini
     try {
-        const parsed = await parseTournamentPdf(buffer)
+        const parsed = await parseTournamentPdf(new Uint8Array(buffer))
         return { success: true, data: parsed }
     } catch (err) {
         console.error('AI parsing failed:', err)
 
-        // Различаем типы ошибок для более понятного сообщения
         const message = err instanceof Error ? err.message : ''
+        const lower = message.toLowerCase()
 
-        if (message.includes('rate_limit') || message.includes('429')) {
+        // 404 — модель не найдена / удалена
+        if (lower.includes('404') || lower.includes('not_found') || lower.includes('no longer available')) {
+            return {
+                success: false,
+                error: 'Модель AI недоступна. Обратись к разработчику для обновления.',
+            }
+        }
+
+        // 401/403 — проблемы с ключом
+        if (lower.includes('401') || lower.includes('403') || lower.includes('api key') || lower.includes('permission_denied')) {
+            return {
+                success: false,
+                error: 'Ошибка доступа к AI. Обратись к разработчику.',
+            }
+        }
+
+        // 429 — rate limit / quota
+        if (lower.includes('429') || lower.includes('rate_limit') || lower.includes('quota') || lower.includes('resource_exhausted')) {
             return {
                 success: false,
                 error: 'Слишком много запросов к AI. Попробуй через минуту.',
             }
         }
 
-        if (message.includes('insufficient_quota')) {
+        // 400 — проблема с самим запросом/файлом
+        if (lower.includes('400') || lower.includes('invalid_argument')) {
             return {
                 success: false,
-                error: 'Исчерпан лимит AI на сегодня. Заполни поля вручную.',
+                error: 'Не удалось прочитать PDF. Попробуй другой файл.',
             }
         }
 
+        // Всё остальное — общая ошибка
         return {
             success: false,
             error: 'Не удалось автоматически распознать положение. Заполни поля вручную.',
