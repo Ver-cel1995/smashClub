@@ -22,12 +22,12 @@ export function ThemeSelector() {
     ]
 
     return (
-        <div className="space-y-5 rounded-2xl border border-neutral-800 bg-neutral-900 p-5 dark:border-neutral-800 dark:bg-neutral-900">
+        <div className="space-y-5 rounded-2xl border border-card bg-card p-5">
             <div>
-                <h3 className="text-sm font-semibold text-white dark:text-white">
+                <h3 className="text-sm font-semibold text-strong">
                     Тема оформления
                 </h3>
-                <p className="text-xs text-neutral-400">
+                <p className="text-xs text-muted">
                     Выберите режим отображения интерфейса ({resolvedTheme === 'dark' ? 'Тёмный' : 'Светлый'} активен)
                 </p>
 
@@ -44,8 +44,8 @@ export function ThemeSelector() {
                                 className={cn(
                                     'flex flex-col items-center justify-center gap-1.5 rounded-xl border py-2.5 px-2 transition-all',
                                     isActive
-                                        ? 'border-[var(--accent-color)] bg-[var(--accent-muted)] text-[var(--accent-color)] font-medium'
-                                        : 'border-neutral-800 bg-neutral-950 text-neutral-400 hover:border-neutral-700 hover:text-white'
+                                        ? 'border-accent bg-accent-muted text-accent font-medium'
+                                        : 'border-card bg-subtle text-muted hover:border-strong hover:text-strong'
                                 )}
                             >
                                 <Icon className="h-4 w-4" />
@@ -56,11 +56,11 @@ export function ThemeSelector() {
                 </div>
             </div>
 
-            <div className="border-t border-neutral-800/80 pt-4">
-                <h3 className="text-sm font-semibold text-white">
+            <div className="border-t border-subtle pt-4">
+                <h3 className="text-sm font-semibold text-strong">
                     Акцентный цвет
                 </h3>
-                <p className="text-xs text-neutral-400 mb-3">
+                <p className="text-xs text-muted mb-3">
                     Глобально меняет цвет ключевых элементов, кнопок и плашек
                 </p>
 
@@ -76,8 +76,8 @@ export function ThemeSelector() {
                                 className={cn(
                                     'group flex flex-col items-center gap-1.5 rounded-xl border p-2 transition-all',
                                     isSelected
-                                        ? 'border-white bg-neutral-800 shadow-md scale-105'
-                                        : 'border-neutral-800/80 bg-neutral-950/60 hover:border-neutral-700'
+                                        ? 'border-strong bg-subtle shadow-card scale-105'
+                                        : 'border-card bg-subtle hover:border-strong'
                                 )}
                             >
                                 <div
@@ -91,7 +91,7 @@ export function ThemeSelector() {
                                         />
                                     )}
                                 </div>
-                                <span className="text-[11px] font-medium text-neutral-300 truncate w-full text-center">
+                                <span className="text-[11px] font-medium text-main truncate w-full text-center">
                                     {palette.name}
                                 </span>
                             </button>

@@ -1,7 +1,11 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
+/* ============================================================
+   БАЗОВЫЕ ПЕРЕМЕННЫЕ (дефолт = dark)
+   ============================================================ */
 :root {
+    /* Акцент */
     --accent-color: #a3e635;
     --accent-hover: #84cc16;
     --accent-glow: rgba(163, 230, 53, 0.4);
@@ -9,117 +13,255 @@
     --accent-muted: rgba(163, 230, 53, 0.12);
     --accent-border: rgba(163, 230, 53, 0.3);
 
-    --bg-main: #0f131d;
-    --bg-card: #171c2c;
-    --bg-input: #121624;
-    --border-card: #252d47;
-    --text-main: #ffffff;
-    --text-muted: #8a94a6;
+    /* Фоны */
+    --bg-main: #0f131d;        /* фон приложения */
+    --bg-card: #171c2c;        /* карточки */
+    --bg-elevated: #1e2438;    /* модалки, popover, поднятые элементы */
+    --bg-subtle: #131826;      /* вложенные блоки, secondary поверхности */
+    --bg-input: #121624;       /* поля ввода */
+    --bg-hover: #1c2237;       /* hover для интерактивных */
+
+    /* Бордеры */
+    --border-card: #252d47;    /* основной бордер */
+    --border-subtle: #1e2540;  /* тонкий бордер */
+    --border-strong: #313a5c;  /* сильный бордер / divider */
+
+    /* Текст */
+    --text-strong: #ffffff;    /* заголовки */
+    --text-main: #e5e7eb;      /* основной */
+    --text-muted: #8a94a6;     /* приглушённый */
+    --text-dim: #5b6577;       /* самый блёклый */
+
+    /* Семантические цвета (для статусов, не завязаны на акцент) */
+    --danger: #f43f5e;
+    --danger-muted: rgba(244, 63, 94, 0.12);
+    --danger-border: rgba(244, 63, 94, 0.3);
+
+    --success: #10b981;
+    --success-muted: rgba(16, 185, 129, 0.12);
+    --success-border: rgba(16, 185, 129, 0.3);
+
+    --warning: #fbbf24;
+    --warning-muted: rgba(251, 191, 36, 0.12);
+    --warning-border: rgba(251, 191, 36, 0.3);
+
+    --info: #38bdf8;
+    --info-muted: rgba(56, 189, 248, 0.12);
+    --info-border: rgba(56, 189, 248, 0.3);
+
+    /* Тени */
+    --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+    --shadow-elevated: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+
+    /* Focus ring offset (адаптивный) */
+    --ring-offset: #0f131d;
 }
 
-/* ===== Тёмная тема (Dark Theme - по макету дизайна) ===== */
+/* ============================================================
+   ТЁМНАЯ ТЕМА
+   ============================================================ */
 html.dark,
 html[data-theme="dark"] {
     color-scheme: dark;
+
     --bg-main: #0f131d;
     --bg-card: #171c2c;
+    --bg-elevated: #1e2438;
+    --bg-subtle: #131826;
     --bg-input: #121624;
+    --bg-hover: #1c2237;
+
     --border-card: #252d47;
-    --text-main: #ffffff;
+    --border-subtle: #1e2540;
+    --border-strong: #313a5c;
+
+    --text-strong: #ffffff;
+    --text-main: #e5e7eb;
     --text-muted: #8a94a6;
+    --text-dim: #5b6577;
+
+    --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.35);
+    --shadow-elevated: 0 12px 32px -8px rgba(0, 0, 0, 0.55);
+
+    --ring-offset: #0f131d;
+
     background-color: var(--bg-main);
     color: var(--text-main);
 }
 
-html.dark body {
-    background-color: var(--bg-main);
-    color: var(--text-main);
-}
-
-/* ===== Светлая тема (Light Theme - чистый современный UI) ===== */
+/* ============================================================
+   СВЕТЛАЯ ТЕМА
+   ============================================================ */
 html.light,
 html[data-theme="light"] {
     color-scheme: light;
+
     --bg-main: #f1f5f9;
     --bg-card: #ffffff;
+    --bg-elevated: #ffffff;
+    --bg-subtle: #f8fafc;
     --bg-input: #f8fafc;
+    --bg-hover: #f1f5f9;
+
     --border-card: #e2e8f0;
-    --text-main: #0f172a;
+    --border-subtle: #eef2f7;
+    --border-strong: #cbd5e1;
+
+    --text-strong: #0f172a;
+    --text-main: #1e293b;
     --text-muted: #64748b;
+    --text-dim: #94a3b8;
+
+    /* Семантические цвета — чуть темнее для светлого фона */
+    --danger: #e11d48;
+    --danger-muted: rgba(225, 29, 72, 0.10);
+    --danger-border: rgba(225, 29, 72, 0.25);
+
+    --success: #059669;
+    --success-muted: rgba(5, 150, 105, 0.10);
+    --success-border: rgba(5, 150, 105, 0.25);
+
+    --warning: #d97706;
+    --warning-muted: rgba(217, 119, 6, 0.10);
+    --warning-border: rgba(217, 119, 6, 0.25);
+
+    --info: #0284c7;
+    --info-muted: rgba(2, 132, 199, 0.10);
+    --info-border: rgba(2, 132, 199, 0.25);
+
+    --shadow-card: 0 2px 8px -2px rgba(15, 23, 42, 0.08);
+    --shadow-elevated: 0 8px 24px -8px rgba(15, 23, 42, 0.15);
+
+    --ring-offset: #ffffff;
+
     background-color: var(--bg-main);
     color: var(--text-main);
 }
 
-html.light body {
+/* body всегда через переменные */
+body {
     background-color: var(--bg-main);
     color: var(--text-main);
 }
 
-/* Адаптивные вспомогательные классы для Светлой и Тёмной темы */
+/* ============================================================
+   СЕМАНТИЧЕСКИЕ УТИЛИТЫ (используй в новом коде)
+   ============================================================ */
+
+/* Фоны */
+.bg-app       { background-color: var(--bg-main) !important; }
+.bg-card      { background-color: var(--bg-card) !important; }
+.bg-elevated  { background-color: var(--bg-elevated) !important; }
+.bg-subtle    { background-color: var(--bg-subtle) !important; }
+.bg-input     { background-color: var(--bg-input) !important; }
+.bg-hover     { background-color: var(--bg-hover) !important; }
+
+/* Бордеры */
+.border-card    { border-color: var(--border-card) !important; }
+.border-subtle  { border-color: var(--border-subtle) !important; }
+.border-strong  { border-color: var(--border-strong) !important; }
+
+/* Текст */
+.text-strong { color: var(--text-strong) !important; }
+.text-main   { color: var(--text-main) !important; }
+.text-muted  { color: var(--text-muted) !important; }
+.text-dim    { color: var(--text-dim) !important; }
+
+/* Акценты (уже были) */
+.bg-accent {
+    background-color: var(--accent-color) !important;
+    color: var(--accent-foreground) !important;
+}
+.bg-accent-hover:hover {
+    background-color: var(--accent-hover) !important;
+}
+.text-accent {
+    color: var(--accent-color) !important;
+}
+.border-accent {
+    border-color: var(--accent-border) !important;
+}
+.bg-accent-muted {
+    background-color: var(--accent-muted) !important;
+    color: var(--accent-color) !important;
+}
+.shadow-accent {
+    box-shadow: 0 8px 20px -6px var(--accent-glow) !important;
+}
+
+/* Семантические (danger/success/warning/info) */
+.text-danger  { color: var(--danger) !important; }
+.text-success { color: var(--success) !important; }
+.text-warning { color: var(--warning) !important; }
+.text-info    { color: var(--info) !important; }
+
+.bg-danger        { background-color: var(--danger) !important; color: #ffffff !important; }
+.bg-danger-muted  { background-color: var(--danger-muted) !important; color: var(--danger) !important; }
+.border-danger    { border-color: var(--danger-border) !important; }
+
+.bg-success        { background-color: var(--success) !important; color: #ffffff !important; }
+.bg-success-muted  { background-color: var(--success-muted) !important; color: var(--success) !important; }
+.border-success    { border-color: var(--success-border) !important; }
+
+.bg-warning        { background-color: var(--warning) !important; color: #09090b !important; }
+.bg-warning-muted  { background-color: var(--warning-muted) !important; color: var(--warning) !important; }
+.border-warning    { border-color: var(--warning-border) !important; }
+
+.bg-info        { background-color: var(--info) !important; color: #ffffff !important; }
+.bg-info-muted  { background-color: var(--info-muted) !important; color: var(--info) !important; }
+.border-info    { border-color: var(--info-border) !important; }
+
+/* Тени */
+.shadow-card     { box-shadow: var(--shadow-card) !important; }
+.shadow-elevated { box-shadow: var(--shadow-elevated) !important; }
+
+/* ============================================================
+   ЛЕГАСИ-КОВЁР для существующих tailwind neutral-классов
+   Оставлен временно, чтобы не переписывать весь проект сразу.
+   Новый код пиши на семантических классах выше.
+   ============================================================ */
 html.light .bg-neutral-950,
 html.light .bg-neutral-900 {
     background-color: var(--bg-card) !important;
 }
-
 html.light .bg-neutral-800,
 html.light .bg-neutral-950\/50,
-html.light .bg-neutral-900\/50 {
-    background-color: #f8fafc !important;
+html.light .bg-neutral-900\/50,
+html.light .bg-neutral-800\/60 {
+    background-color: var(--bg-subtle) !important;
 }
-
 html.light .border-neutral-800,
-html.light .border-neutral-700 {
+html.light .border-neutral-700,
+html.light .border-neutral-800\/50,
+html.light .border-neutral-800\/80 {
     border-color: var(--border-card) !important;
 }
-
 html.light .text-white,
 html.light .text-neutral-100,
 html.light .text-neutral-200 {
-    color: var(--text-main) !important;
+    color: var(--text-strong) !important;
 }
-
 html.light .text-neutral-300,
 html.light .text-neutral-400,
 html.light .text-neutral-500 {
     color: var(--text-muted) !important;
 }
-
-/* ===== Динамические Акцентные Классы (Акцент везде одинаковый!) ===== */
-.bg-accent {
-    background-color: var(--accent-color) !important;
-    color: var(--accent-foreground) !important;
+html.light .hover\:bg-neutral-800:hover,
+html.light .hover\:bg-neutral-700:hover {
+    background-color: var(--bg-hover) !important;
+}
+html.light .hover\:text-white:hover {
+    color: var(--text-strong) !important;
 }
 
-.bg-accent-hover:hover {
-    background-color: var(--accent-hover) !important;
-}
-
-.text-accent {
-    color: var(--accent-color) !important;
-}
-
-.border-accent {
-    border-color: var(--accent-border) !important;
-}
-
-.bg-accent-muted {
-    background-color: var(--accent-muted) !important;
-    color: var(--accent-color) !important;
-}
-
-.shadow-accent {
-    box-shadow: 0 8px 20px -6px var(--accent-glow) !important;
-}
-
-/* ===== Shuttle Loader & CSS Animations ===== */
+/* ============================================================
+   Shuttle Loader & CSS Animations (без изменений)
+   ============================================================ */
 .bl-badge {
     transform-origin: 210px 190px;
     animation: bl-badge-pulse 1.9s ease-in-out infinite;
     animation: bl-racket-right 1.55s ease-in-out infinite;
 }
-
-
-
 
 @keyframes bl-spin { to { transform: rotate(360deg); } }
 @keyframes bl-spin-reverse { to { transform: rotate(-360deg); } }
@@ -168,18 +310,10 @@ html.light .text-neutral-500 {
     }
 }
 
-
-
-
-
-
-
-
 .logo-text {
     font-size: 42px;
     font-weight: 800;
     letter-spacing: -1px;
-
     background: linear-gradient(
             90deg,
             #06345B 0%,
@@ -188,7 +322,6 @@ html.light .text-neutral-500 {
             #C5E900 72%,
             #FF8A00 100%
     );
-
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

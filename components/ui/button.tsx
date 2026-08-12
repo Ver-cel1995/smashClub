@@ -3,11 +3,11 @@ import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { cn } from '@/shared/lib/utils'
 
 export type ButtonVariant =
-    | 'primary'      // тёмная (dark neutral)
-    | 'secondary'    // акцентная лаймовая
+    | 'primary'      // нейтральная (адаптируется под тему)
+    | 'secondary'    // акцентная
     | 'ghost'        // прозрачная
     | 'outline'      // с бордером
-    | 'danger'       // красная (для деструктивных)
+    | 'danger'       // красная
 
 export type ButtonSize = 'sm' | 'md' | 'lg' | 'icon'
 
@@ -19,12 +19,15 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 
 const variantClasses: Record<ButtonVariant, string> = {
     secondary:
-        'bg-[var(--accent-color,#a3e635)] hover:bg-[var(--accent-hover,#84cc16)] text-[var(--accent-foreground,#09090b)] shadow-[0_8px_20px_-6px_var(--accent-glow,rgba(163,230,53,0.6))]',
-    primary: 'bg-neutral-800 hover:bg-neutral-700 text-white',
-    ghost: 'bg-transparent hover:bg-neutral-800/60 text-neutral-300',
+        'bg-[var(--accent-color)] hover:bg-[var(--accent-hover)] text-[var(--accent-foreground)] shadow-[0_8px_20px_-6px_var(--accent-glow)]',
+    primary:
+        'bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] text-[var(--text-strong)] border border-[var(--border-card)]',
+    ghost:
+        'bg-transparent hover:bg-[var(--bg-hover)] text-[var(--text-main)]',
     outline:
-        'bg-transparent border border-neutral-700 hover:bg-neutral-800/60 text-neutral-200',
-    danger: 'bg-rose-500/90 hover:bg-rose-500 text-white',
+        'bg-transparent border border-[var(--border-strong)] hover:bg-[var(--bg-hover)] text-[var(--text-main)]',
+    danger:
+        'bg-[var(--danger)] hover:opacity-90 text-white',
 }
 
 const sizeClasses: Record<ButtonSize, string> = {
@@ -53,7 +56,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
                 className={cn(
                     'inline-flex items-center justify-center font-semibold tracking-wide transition-all duration-150',
                     'disabled:cursor-not-allowed disabled:opacity-60',
-                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-lime-400/60 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-950',
+                    'focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-color)]/60',
+                    'focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--ring-offset)]',
                     'active:scale-[0.98]',
                     fullWidth && 'w-full',
                     sizeClasses[size],
