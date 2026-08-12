@@ -98,7 +98,7 @@ export function CreatePollForm() {
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Например: Голосование за формат турнира"
                     disabled={isPending}
-                    className="bg-neutral-900 border-neutral-800 text-white"
+                    className="bg-card border-card text-white"
                 />
             </div>
 
@@ -115,8 +115,8 @@ export function CreatePollForm() {
                     disabled={isPending}
                     rows={3}
                     className={cn(
-                        'block w-full rounded-2xl border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-white placeholder:text-neutral-500 resize-none',
-                        'focus:outline-none focus:ring-2 focus:border-lime-400/60 focus:ring-lime-400/20',
+                        'block w-full rounded-2xl border-card bg-card px-4 py-3 text-sm text-white placeholder:text-neutral-500 resize-none',
+                        'focus:outline-none focus:ring-2 focus:border-card focus:ring-lime-400/20',
                         'disabled:opacity-60'
                     )}
                 />
@@ -130,7 +130,7 @@ export function CreatePollForm() {
                     onChange={(e) => setQuestion(e.target.value)}
                     placeholder="Какой формат турнира выберем?"
                     disabled={isPending}
-                    className="bg-neutral-900 border-neutral-800 text-white"
+                    className="bg-card border-card text-white"
                 />
             </div>
 
@@ -151,7 +151,7 @@ export function CreatePollForm() {
                                 onChange={(e) => updateOption(option.id, e.target.value)}
                                 placeholder={`Вариант ${index + 1}`}
                                 disabled={isPending}
-                                className="bg-neutral-900 border-neutral-800 text-white flex-1"
+                                className="bg-card border text-white flex-1"
                             />
                             {options.length > 2 && (
                                 <button
@@ -189,7 +189,7 @@ export function CreatePollForm() {
                     'flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-colors',
                     multipleChoice
                         ? 'border-lime-400/40 bg-lime-400/10'
-                        : 'border-neutral-800 bg-neutral-900 hover:border-neutral-700'
+                        : 'border bg-card hover:border-neutral-700'
                 )}
             >
                 <div>
@@ -222,7 +222,7 @@ export function CreatePollForm() {
                     'flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-colors',
                     isPinned
                         ? 'border-lime-400/40 bg-lime-400/10'
-                        : 'border-neutral-800 bg-neutral-900 hover:border-neutral-700'
+                        : 'border bg-card hover:border-neutral-700'
                 )}
             >
                 <div className="flex items-center gap-3">

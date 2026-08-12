@@ -1,39 +1,64 @@
-import { createClient } from '@/shared/lib/supabase/server'
-import { notFound } from 'next/navigation'
+import { getCurrentUser } from '@/shared/lib/auth'
+import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, FileText, MapPin, Calendar } from 'lucide-react'
-import type { Database } from '@/types/database'
-
-type TournamentCategoryRow = Database['public']['Tables']['tournament_categories']['Row']
+import { getTournamentFullData } from './queries'
+import { TournamentActionsMenu } from '@/components/tournaments/tournament-actions-menu'
+import { TournamentParticipantsSection } from '@/components/tournaments/tournament-participants-section'
+import { PendingInvitesBanner } from '@/components/tournaments/pending-invites-banner'
+import { RegistrationFab } from '@/components/tournaments/registration-fab'
 
 export default async function TournamentPage({
                                                  params,
                                              }: {
     params: Promise<{ id: string }>
 }) {
+    const user = await getCurrentUser()
+    if (!user) redirect('/login')
+
     const { id } = await params
-    const supabase = await createClient()
+    const data = await getTournamentFullData(id, user.userId)
+    if (!data) notFound()
 
-    const { data: tournament } = await supabase
-        .from('tournaments')
-        .select('*, categories:tournament_categories(*)')
-        .eq('id', id)
-        .single()
+    const { tournament, categories, my_participation, my_pending_invites } = data
+    const isCoach = user.profile.role === 'coach'
 
-    if (!tournament) notFound()
+    // Проверка что регистрация ещё открыта
+    const now = new Date()
+    const deadline = tournament.registration_deadline
+        ? new Date(tournament.registration_deadline)
+        : new Date(tournament.start_date)
+    const isRegistrationOpen = deadline > now
 
-    const categories = (tournament.categories ?? []) as TournamentCategoryRow[]
+    // Всего категорий, в которые я записан
+    const myCategoryIds = Object.keys(my_participation)
+    const availableCategoriesCount = categories.length - myCategoryIds.length
 
     return (
-        <div className="space-y-4 p-4 pb-8">
-            <Link
-                href="/tournaments"
-                className="inline-flex items-center gap-2 text-sm text-muted hover:text-strong"
-            >
-                <ArrowLeft className="h-4 w-4" />
-                Все турниры
-            </Link>
+        <div className="space-y-4 p-4 pb-24">
+            <div className="flex items-center justify-between gap-2">
+                <Link
+                    href="/tournaments"
+                    className="inline-flex items-center gap-2 text-sm text-muted hover:text-strong"
+                >
+                    <ArrowLeft className="h-4 w-4" />
+                    Все турниры
+                </Link>
 
+                {isCoach && (
+                    <TournamentActionsMenu tournamentId={tournament.id} title={tournament.title} />
+                )}
+            </div>
+
+            {/* Приглашения ко мне — жёлтая плашка сверху */}
+            {my_pending_invites.length > 0 && (
+                <PendingInvitesBanner
+                    invites={my_pending_invites}
+                    categories={categories}
+                />
+            )}
+
+            {/* Основная инфа */}
             <div className="space-y-3 rounded-2xl border border-card bg-card p-4">
                 <h1 className="text-xl font-bold text-strong">{tournament.title}</h1>
 
@@ -46,13 +71,16 @@ export default async function TournamentPage({
                         <Calendar className="h-4 w-4 shrink-0" />
                         <span>
                             {new Date(tournament.start_date).toLocaleDateString('ru-RU')}
-                            {tournament.end_date && ' – ' + new Date(tournament.end_date).toLocaleDateString('ru-RU')}
+                            {tournament.end_date &&
+                                ' – ' + new Date(tournament.end_date).toLocaleDateString('ru-RU')}
                         </span>
                     </div>
                 </div>
 
                 {tournament.description && (
-                    <p className="whitespace-pre-line text-sm text-main">{tournament.description}</p>
+                    <p className="whitespace-pre-line text-sm text-main">
+                        {tournament.description}
+                    </p>
                 )}
 
                 {tournament.pdf_url && (
@@ -66,26 +94,31 @@ export default async function TournamentPage({
                         Открыть положение
                     </a>
                 )}
-
-                {categories.length > 0 && (
-                    <div>
-                        <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
-                            Категории
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                            {categories.map((c) => (
-                                <span
-                                    key={c.id}
-                                    className="rounded-lg bg-subtle border border-card px-2 py-1 text-xs text-main"
-                                >
-                                    {c.category}
-                                    {c.age_group ? ` · ${c.age_group}` : ''}
-                                </span>
-                            ))}
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {/* Категории с участниками */}
+            <TournamentParticipantsSection
+                tournamentId={tournament.id}
+                categories={categories}
+                myParticipation={my_participation}
+                currentUserId={user.userId}
+                isCoach={isCoach}
+                isRegistrationOpen={isRegistrationOpen}
+                entryFee={tournament.entry_fee_amount}
+                hasEntryFee={tournament.has_entry_fee ?? false}
+            />
+
+            {/* FAB: кнопка «Участвовать» */}
+            {isRegistrationOpen && availableCategoriesCount > 0 && (
+                <RegistrationFab
+                    tournamentId={tournament.id}
+                    categories={categories}
+                    myParticipation={my_participation}
+                    currentUserId={user.userId}
+                    entryFee={tournament.entry_fee_amount}
+                    hasEntryFee={tournament.has_entry_fee ?? false}
+                />
+            )}
         </div>
     )
 }

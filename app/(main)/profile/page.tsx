@@ -44,7 +44,7 @@
 //             <ProfileAchievements />
 //
 //             {/* Настройки / Помощь / Выйти */}
-//             <div className="mt-4 space-y-1 rounded-2xl border border-neutral-800 bg-neutral-900 p-1">
+//             <div className="mt-4 space-y-1 rounded-2xl border border bg-card p-1">
 //                 <Link
 //                     href="/profile/settings"
 //                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"
@@ -159,7 +159,7 @@ export default async function ProfilePage() {
 
             <ProfileAchievements />
 
-            <div className="mt-4 space-y-1 rounded-2xl border border-neutral-800 bg-neutral-900 p-1">
+            <div className="mt-4 space-y-1 rounded-2xl border-card bg-card p-1">
                 <Link
                     href="/profile/settings"
                     className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"

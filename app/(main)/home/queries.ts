@@ -254,3 +254,116 @@ export const getHomeFeedPost = cache(
         return (data as any) ?? null
     }
 )
+
+
+// Ближайший турнир (для блока на главной)
+
+export type NextTournamentPayload = {
+    id: string
+    title: string
+    tournament_type: 'home' | 'away'
+    city: string  // из location, берём до первой запятой
+    location: string  // полный
+    start_date: string
+    end_date: string | null
+    registration_deadline: string | null
+    has_entry_fee: boolean
+    entry_fee_amount: number | null
+    // Статус игрока в этом турнире
+    my_participation: {
+        // Я записан хоть в одну категорию (как player1 или подтверждённый player2)
+        is_participating: boolean
+        // Есть ли неподтверждённые приглашения ко мне (как player2, pair_status=pending)
+        has_pending_invite: boolean
+        // Есть ли записи где я "ищу пару" (player1 в парной без player2/guest2)
+        is_looking_for_partner: boolean
+    }
+    // Идёт ли турнир прямо сейчас (сегодня попадает в [start_date, end_date])
+    is_ongoing: boolean
+}
+
+export const getNextTournament = cache(
+    async (userId: string): Promise<NextTournamentPayload | null> => {
+        const supabase = await createClient()
+        const today = new Date().toISOString().slice(0, 10)
+
+        // Берём ближайший турнир, у которого end_date (или start_date) >= сегодня
+        const { data: tournaments, error } = await supabase
+            .from('tournaments')
+            .select(
+                'id, title, tournament_type, location, start_date, end_date, registration_deadline, has_entry_fee, entry_fee_amount'
+            )
+            .or(`end_date.gte.${today},and(end_date.is.null,start_date.gte.${today})`)
+            .order('start_date', { ascending: true })
+            .limit(1)
+
+        if (error) {
+            console.error('Failed to load next tournament:', error)
+            return null
+        }
+
+        const t = tournaments?.[0]
+        if (!t) return null
+
+        // Проверяем участие текущего пользователя
+        const { data: myRecords } = await supabase
+            .from('tournament_participants')
+            .select('player1_id, player2_id, guest2_id, pair_status')
+            .eq('tournament_id', t.id)
+            .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+
+        let isParticipating = false
+        let hasPendingInvite = false
+        let isLookingForPartner = false
+
+        for (const record of myRecords ?? []) {
+            const iAmPlayer1 = record.player1_id === userId
+            const iAmPlayer2 = record.player2_id === userId
+
+            if (iAmPlayer1) {
+                // Я сам записался — всегда «участвую»
+                isParticipating = true
+                // Если пара, но партнёра нет — «ищу партнёра»
+                if (!record.player2_id && !record.guest2_id) {
+                    isLookingForPartner = true
+                }
+            }
+
+            if (iAmPlayer2) {
+                if (record.pair_status === 'confirmed') {
+                    isParticipating = true
+                } else if (record.pair_status === 'pending') {
+                    hasPendingInvite = true
+                }
+                // declined — просто игнорируем, будто не приглашали
+            }
+        }
+
+        // Определяем "идёт сейчас"
+        const startDate = t.start_date
+        const endDate = t.end_date ?? t.start_date
+        const isOngoing = today >= startDate && today <= endDate
+
+        // Город — первая часть location до запятой
+        const city = (t.location ?? '').split(',')[0].trim()
+
+        return {
+            id: t.id,
+            title: t.title,
+            tournament_type: t.tournament_type as 'home' | 'away',
+            city,
+            location: t.location ?? '',
+            start_date: t.start_date,
+            end_date: t.end_date,
+            registration_deadline: t.registration_deadline,
+            has_entry_fee: t.has_entry_fee ?? false,
+            entry_fee_amount: t.entry_fee_amount,
+            my_participation: {
+                is_participating: isParticipating,
+                has_pending_invite: hasPendingInvite,
+                is_looking_for_partner: isLookingForPartner,
+            },
+            is_ongoing: isOngoing,
+        }
+    }
+)

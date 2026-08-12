@@ -66,7 +66,7 @@ function FabOption({ href,icon,label,onClick }: { // todo
             onClick={onClick}
             className="flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200"
         >
-      <span className="rounded-full bg-neutral-900 border border-neutral-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg">
+      <span className="rounded-full bg-card border-card px-3 py-1.5 text-xs font-medium text-white shadow-lg">
         {label}
       </span>
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent shadow-accent">

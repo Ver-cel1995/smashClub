@@ -76,10 +76,10 @@ export function PostReactions({ postId, reactions }: PostReactionsProps) {
                         toggle(r.id)
                     }}
                     className={cn(
-                        'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all active:scale-95',
+                        'flex items-center gap-1 rounded-full border-card px-2 py-0.5 text-xs transition-all active:scale-95',
                         r.reacted
                             ? 'border-accent bg-accent-muted text-accent font-medium'
-                            : 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:border-neutral-700'
+                            : 'border-card bg-neutral-950 text-neutral-300 hover:border-neutral-700'
                     )}
                 >
                     <LottieEmoji emojiId={r.id} size={20} loop />
@@ -114,7 +114,7 @@ function EmojiPicker({
                     e.stopPropagation()
                     setIsOpen(!isOpen)
                 }}
-                className="flex items-center gap-1 rounded-full border border-dashed border-neutral-700 px-2.5 py-1 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-neutral-300"
+                className="flex items-center gap-1 rounded-full border-card border-dashed border-neutral-700 px-2.5 py-1 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-neutral-300"
             >
                 <span className="text-sm">+</span>
             </button>
@@ -125,7 +125,7 @@ function EmojiPicker({
                         className="fixed inset-0 z-40"
                         onClick={() => setIsOpen(false)}
                     />
-                    <div className="absolute bottom-full left-0 z-50 mb-2 flex gap-1 rounded-xl border border-neutral-800 bg-neutral-900 p-2 shadow-xl">
+                    <div className="absolute bottom-full left-0 z-50 mb-2 flex gap-1 rounded-xl border border bg-card p-2 shadow-xl">
                         {emojiIds.map((id) => (
                             <button
                                 key={id}

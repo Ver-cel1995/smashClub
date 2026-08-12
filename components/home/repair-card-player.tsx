@@ -19,9 +19,9 @@ export function RepairCardPlayer({ data }: Props) {
     return (
         <Link
             href="/profile"
-            className="flex items-center gap-3 rounded-2xl border border-border bg-card p-4 transition active:scale-[0.99]"
+            className="flex items-center gap-3 rounded-2xl border border-card bg-card hover:border-strong bg-card p-4 transition active:scale-[0.99]"
         >
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
+            <div className=" border border-card bg-card hover:border-strong flex h-10 w-10 items-center justify-center rounded-xl bg-primary/15">
                 <Wrench className="h-5 w-5 text-primary" />
             </div>
 

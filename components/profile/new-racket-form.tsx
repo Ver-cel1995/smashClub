@@ -172,7 +172,7 @@ function RacketItemCard({
     onRemove: () => void
 }) {
     return (
-        <div className="space-y-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+        <div className="space-y-3 rounded-2xl border border bg-card p-4">
             <div className="flex items-center justify-between">
                 <div className="text-xs font-medium uppercase text-neutral-500">
                     Ракетка {index + 1}
@@ -198,7 +198,7 @@ function RacketItemCard({
                     value={item.racket_model}
                     onChange={(e) => onUpdate({ racket_model: e.target.value })}
                     placeholder="Например: Yonex Astrox 88D"
-                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
                 />
             </div>
 
@@ -235,7 +235,7 @@ function RacketItemCard({
                             <select
                                 value={item.string_type}
                                 onChange={(e) => onUpdate({ string_type: e.target.value })}
-                                className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-2 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                                className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white focus:border-lime-400/40 focus:outline-none"
                             >
                                 <option value="">— выбери —</option>
                                 {STRING_OPTIONS.map((s) => (
@@ -252,7 +252,7 @@ function RacketItemCard({
                             <select
                                 value={item.tension}
                                 onChange={(e) => onUpdate({ tension: e.target.value })}
-                                className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-2 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                                className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white focus:border-lime-400/40 focus:outline-none"
                             >
                                 <option value="">— выбери —</option>
                                 {TENSION_OPTIONS.map((t) => (
@@ -271,7 +271,7 @@ function RacketItemCard({
                             value={item.string_custom ?? ''}
                             onChange={(e) => onUpdate({ string_custom: e.target.value })}
                             placeholder="Название струны"
-                            className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                            className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
                         />
                     )}
                     {item.tension === 'other' && (
@@ -280,7 +280,7 @@ function RacketItemCard({
                             value={item.tension_custom ?? ''}
                             onChange={(e) => onUpdate({ tension_custom: e.target.value })}
                             placeholder="Натяжение (например: 13.5 кг)"
-                            className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-2.5 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                            className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
                         />
                     )}
                 </div>
@@ -296,7 +296,7 @@ function RacketItemCard({
                     value={item.notes}
                     onChange={(e) => onUpdate({ notes: e.target.value })}
                     placeholder="Что-то ещё..."
-                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
                 />
             </div>
         </div>
@@ -324,13 +324,13 @@ function ActionToggle({
                 'flex items-center gap-2 rounded-xl border p-3 text-left transition',
                 active
                     ? 'border-accent bg-accent-muted'
-                    : 'border-neutral-800 bg-neutral-950 hover:border-neutral-700'
+                    : 'border bg-neutral-950 hover:border-neutral-700'
             )}
         >
             <div
                 className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-lg',
-                    active ? 'bg-accent-muted text-accent' : 'bg-neutral-900 text-neutral-500'
+                    active ? 'bg-accent-muted text-accent' : 'bg-card text-neutral-500'
                 )}
             >
                 {icon}

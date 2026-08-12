@@ -18,7 +18,7 @@ export function ProfileRacketsCard({ rackets }: Props) {
     const hasRackets = rows.length > 0
 
     return (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+        <div className="rounded-2xl border border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-medium uppercase text-neutral-500">
                     <Wrench className="h-3.5 w-3.5" />
@@ -44,7 +44,7 @@ export function ProfileRacketsCard({ rackets }: Props) {
                                 <li key={model}>
                                     <Link
                                         href="/profile/rackets"
-                                        className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-950 p-3 transition hover:border-neutral-700"
+                                        className="flex items-center gap-3 rounded-xl border border bg-neutral-950 p-3 transition hover:border-neutral-700"
                                     >
                                         <div className="min-w-0 flex-1">
                                             <div className="truncate text-sm font-medium text-white">

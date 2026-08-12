@@ -48,7 +48,7 @@ export function NextTripCard({ trip, currentUserId }: Props) {
 
     return (
         <>
-            <div className="rounded-2xl border border-border bg-card p-4">
+            <div className="rounded-2xl border-card bg-card hover:border-strong bg-card p-4">
                 <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-medium uppercase text-muted-foreground">
             Ближайший выезд

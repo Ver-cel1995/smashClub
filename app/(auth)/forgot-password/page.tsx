@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 {sent ? (
-                    <div className="rounded-2xl border border-accent bg-accent-muted p-4 text-center text-sm text-accent">
+                    <div className="rounded-2xl border-accent bg-accent-muted p-4 text-center text-sm text-accent">
                         Если аккаунт с таким email существует, письмо с инструкцией уже отправлено.
                     </div>
                 ) : (
@@ -58,7 +58,7 @@ export default function ForgotPasswordPage() {
                                 placeholder="example@mail.com"
                                 required
                                 disabled={isPending}
-                                className="bg-neutral-900 border-neutral-800 text-white"
+                                className="bg-card border-card text-white"
                             />
                         </div>
 

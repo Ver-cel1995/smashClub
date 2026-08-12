@@ -12,7 +12,7 @@ const TABS: { key: AuthTab; label: string; href: string }[] = [
 
 export function AuthTabs({ active }: { active: AuthTab }) {
     return (
-        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-neutral-900 p-1">
+        <div className="grid grid-cols-2 gap-1 rounded-2xl bg-card p-1">
             {TABS.map((tab) => (
                 <Link
                     key={tab.key}

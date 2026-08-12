@@ -76,7 +76,7 @@ export function EditDayDialog({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="bg-neutral-900 border-neutral-800 text-white max-w-sm"
+                className="bg-card border text-white max-w-sm"
                 hideCloseButton
             >
                 <DialogHeader>
@@ -103,7 +103,7 @@ export function EditDayDialog({
                                             'flex items-center gap-2 rounded-xl border p-2.5 text-left transition-colors',
                                             active
                                                 ? `${meta.borderColor} ${meta.bgColor}`
-                                                : 'border-neutral-800 bg-neutral-950 hover:border-neutral-700'
+                                                : 'border bg-neutral-950 hover:border-neutral-700'
                                         )}
                                     >
                                         <span>{meta.icon}</span>
@@ -124,7 +124,7 @@ export function EditDayDialog({
                                 onChange={(e) => setSubstitute(e.target.value)}
                                 placeholder="Имя тренера"
                                 disabled={isPending}
-                                className="bg-neutral-950 border-neutral-800 text-white"
+                                className="bg-neutral-950 border text-white"
                             />
                         </div>
                     )}
@@ -140,7 +140,7 @@ export function EditDayDialog({
                             disabled={isPending}
                             rows={2}
                             className={cn(
-                                'block w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 resize-none',
+                                'block w-full rounded-xl border border bg-neutral-950 px-3 py-2 text-sm text-white placeholder:text-neutral-500 resize-none',
                                 'focus:outline-none focus:border-lime-400/60 focus:ring-1 focus:ring-lime-400/20',
                                 'disabled:opacity-60'
                             )}
@@ -153,7 +153,7 @@ export function EditDayDialog({
                             variant="primary"
                             onClick={() => onOpenChange(false)}
                             disabled={isPending}
-                            className="flex-1 border-neutral-800 text-neutral-300"
+                            className="flex-1 border text-neutral-300"
                         >
                             Отмена
                         </Button>

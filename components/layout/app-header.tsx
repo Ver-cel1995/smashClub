@@ -21,7 +21,7 @@ export function AppHeader({
                           }: AppHeaderProps) {
     return (
         <header
-            className="sticky top-0 z-30 border-b border-neutral-800/80 bg-neutral-950/98"
+            className="sticky top-0 z-30 border-subtle border/80 bg-neutral-950/98"
             style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
             <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
@@ -47,7 +47,7 @@ export function AppHeader({
                 <div className="flex items-center gap-1">
                     <Link
                         href="/people"
-                        className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-900 hover:text-white transition-colors"
+                        className="rounded-lg p-2 text-neutral-400 hover:bg-card hover:text-white transition-colors"
                         aria-label="Люди"
                     >
                         <Users className="h-5 w-5" />

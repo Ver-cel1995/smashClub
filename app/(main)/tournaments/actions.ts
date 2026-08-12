@@ -346,3 +346,673 @@ export async function createTournament(
 
     return { success: true, data: { id: tournament.id } }
 }
+
+
+
+
+
+
+
+
+// ----------- турниры -----------------
+
+// редактирование
+
+export async function updateTournament(
+    id: string,
+    input: CreateTournamentInput
+): Promise<ActionResult<{ id: string }>> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (profile?.role !== 'coach') {
+        return { success: false, error: 'Только тренер может редактировать турниры' }
+    }
+
+    const parsed = createTournamentSchema.safeParse(input)
+    if (!parsed.success) {
+        return {
+            success: false,
+            error: 'Проверь введённые данные',
+            fieldErrors: extractFieldErrors(parsed.error),
+        }
+    }
+
+    const data = parsed.data
+
+    // Получаем текущий турнир (чтобы удалить старый PDF если заменён)
+    const { data: existing } = await supabase
+        .from('tournaments')
+        .select('pdf_storage_path')
+        .eq('id', id)
+        .single()
+
+    if (!existing) {
+        return { success: false, error: 'Турнир не найден' }
+    }
+
+    // Если PDF был заменён — удаляем старый из storage
+    if (
+        existing.pdf_storage_path &&
+        existing.pdf_storage_path !== data.pdf_storage_path
+    ) {
+        await supabase.storage
+            .from('tournament-pdfs')
+            .remove([existing.pdf_storage_path])
+    }
+
+    // Собираем location
+    const location = [data.city, data.venue_name, data.venue_address]
+        .filter(Boolean)
+        .join(', ')
+
+    // Собираем extendedDescription
+    const extendedDescription = [
+        data.description,
+        data.organizer && `Организатор: ${data.organizer}`,
+        data.registration_time && `Регистрация: ${data.registration_time}`,
+        data.start_time && `Начало: ${data.start_time}`,
+        data.awards_time && `Награждение: ${data.awards_time}`,
+        data.entry_fee_note && `Взнос: ${data.entry_fee_note}`,
+        data.contact_info && `Контакты: ${data.contact_info}`,
+    ].filter(Boolean).join('\n\n')
+
+    // Обновляем турнир
+    const { error: updateError } = await supabase
+        .from('tournaments')
+        .update({
+            title: data.title,
+            tournament_type: data.tournament_type,
+            location,
+            venue: data.venue_name,
+            start_date: data.start_date,
+            end_date: data.end_date,
+            description: extendedDescription || null,
+            registration_deadline: data.registration_deadline
+                ? new Date(data.registration_deadline).toISOString()
+                : null,
+            has_entry_fee: data.entry_fee !== null && data.entry_fee > 0,
+            entry_fee_amount: data.entry_fee,
+            pdf_url: data.pdf_url,
+            pdf_storage_path: data.pdf_storage_path,
+        })
+        .eq('id', id)
+
+    if (updateError) {
+        console.error('Failed to update tournament:', updateError)
+        return { success: false, error: 'Не удалось обновить турнир' }
+    }
+
+    // Обновляем категории: сначала удаляем старые, потом создаём новые
+    // (проще чем diff — категорий немного, участники ссылаются на них через category_id,
+    // но при редактировании категорий в анонсе это редкая операция)
+    const { data: existingCategories } = await supabase
+        .from('tournament_categories')
+        .select('id')
+        .eq('tournament_id', id)
+
+    // Проверяем есть ли участники в текущих категориях
+    if (existingCategories && existingCategories.length > 0) {
+        const categoryIds = existingCategories.map(c => c.id)
+        const { count } = await supabase
+            .from('tournament_participants')
+            .select('id', { count: 'exact', head: true })
+            .in('category_id', categoryIds)
+
+        if (count && count > 0) {
+            // Есть участники — не даём удалить/пересоздать категории
+            // Просто оставляем как есть, чтобы не потерять регистрации
+            // (В UI надо предупреждать тренера)
+        } else {
+            // Участников нет — безопасно пересоздаём
+            await supabase
+                .from('tournament_categories')
+                .delete()
+                .eq('tournament_id', id)
+
+            const categoriesInsert = data.categories.map((c) => ({
+                tournament_id: id,
+                category: c.category,
+                age_group: c.age_group,
+                max_pairs: null,
+                bracket_format: null,
+                bracket_generated: false,
+                participants_count: 0,
+            }))
+
+            await supabase.from('tournament_categories').insert(categoriesInsert)
+        }
+    } else {
+        // Категорий вообще не было — создаём новые
+        const categoriesInsert = data.categories.map((c) => ({
+            tournament_id: id,
+            category: c.category,
+            age_group: c.age_group,
+            max_pairs: null,
+            bracket_format: null,
+            bracket_generated: false,
+            participants_count: 0,
+        }))
+
+        await supabase.from('tournament_categories').insert(categoriesInsert)
+    }
+
+    revalidatePath('/tournaments')
+    revalidatePath(`/tournaments/${id}`)
+    revalidatePath('/home')
+
+    return { success: true, data: { id } }
+}
+
+
+// удаление турнира
+
+
+export async function deleteTournament(id: string): Promise<ActionResult> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+
+    if (profile?.role !== 'coach') {
+        return { success: false, error: 'Только тренер может удалять турниры' }
+    }
+
+    // Получаем PDF, чтобы удалить из storage
+    const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('pdf_storage_path')
+        .eq('id', id)
+        .single()
+
+    // Удаляем PDF из storage если есть
+    if (tournament?.pdf_storage_path) {
+        await supabase.storage
+            .from('tournament-pdfs')
+            .remove([tournament.pdf_storage_path])
+    }
+
+    // Удаляем турнир (каскад по FK удалит категории, участников, матчи)
+    const { error } = await supabase.from('tournaments').delete().eq('id', id)
+
+    if (error) {
+        console.error('Failed to delete tournament:', error)
+        return { success: false, error: 'Не удалось удалить турнир' }
+    }
+
+    revalidatePath('/tournaments')
+    revalidatePath('/home')
+
+    return { success: true }
+}
+
+
+
+
+
+
+
+
+
+
+// ---------------- для выбора партнёра ------------------
+
+
+export type PlayerSearchResult = {
+    id: string
+    full_name: string
+    avatar_url: string | null
+    role: 'coach' | 'player'
+}
+
+export async function searchPlayers(
+    query: string
+): Promise<ActionResult<PlayerSearchResult[]>> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    const cleanQuery = query.trim().slice(0, 50)
+
+    const { data, error } = await supabase.rpc('search_players_for_partner', {
+        search_query: cleanQuery,
+        exclude_user_id: user.id,
+        result_limit: 10,
+    })
+
+    if (error) {
+        console.error('Failed to search players:', error)
+        return { success: false, error: 'Не удалось загрузить игроков' }
+    }
+
+    return { success: true, data: (data ?? []) as PlayerSearchResult[] }
+}
+
+// ============================================================
+// REGISTER FOR TOURNAMENT
+// ============================================================
+
+/**
+ * Один слот регистрации от игрока:
+ *   category_id: в какую категорию записываемся
+ *   partner: null (одиночная категория ИЛИ парная без партнёра «ищу»)
+ *          | { kind: 'player', player_id: uuid } — партнёр из клуба
+ *          | { kind: 'guest', full_name: string } — партнёр гость (ручной ввод)
+ *          | { kind: 'join', record_id: uuid } — присоединяюсь к тому кто «ищет партнёра»
+ */
+type PartnerInput =
+    | null
+    | { kind: 'player'; player_id: string }
+    | { kind: 'guest'; full_name: string }
+    | { kind: 'join'; record_id: string }
+
+export type RegistrationSlot = {
+    category_id: string
+    partner: PartnerInput
+}
+
+const partnerSchema = z.union([
+    z.null(),
+    z.object({ kind: z.literal('player'), player_id: z.string().uuid() }),
+    z.object({ kind: z.literal('guest'), full_name: z.string().min(2).max(100) }),
+    z.object({ kind: z.literal('join'), record_id: z.string().uuid() }),
+])
+
+const registerForTournamentSchema = z.object({
+    tournament_id: z.string().uuid(),
+    slots: z.array(z.object({
+        category_id: z.string().uuid(),
+        partner: partnerSchema,
+    })).min(1, 'Выбери хотя бы одну категорию'),
+})
+
+const PAIR_CATEGORIES = new Set(['MD', 'WD', 'XD'])
+
+export async function registerForTournament(input: {
+    tournament_id: string
+    slots: RegistrationSlot[]
+}): Promise<ActionResult<{ created_count: number }>> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    const parsed = registerForTournamentSchema.safeParse(input)
+    if (!parsed.success) {
+        return {
+            success: false,
+            error: 'Проверь введённые данные',
+            fieldErrors: extractFieldErrors(parsed.error),
+        }
+    }
+
+    const { tournament_id, slots } = parsed.data
+
+    // Проверяем что турнир существует и дедлайн ещё не прошёл
+    const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('id, registration_deadline, start_date')
+        .eq('id', tournament_id)
+        .single()
+
+    if (!tournament) {
+        return { success: false, error: 'Турнир не найден' }
+    }
+
+    // Проверка дедлайна регистрации
+    const now = new Date()
+    if (tournament.registration_deadline) {
+        const deadline = new Date(tournament.registration_deadline)
+        if (deadline < now) {
+            return { success: false, error: 'Регистрация уже закрыта' }
+        }
+    } else {
+        // Если дедлайна нет — используем start_date как предельную дату
+        const startDate = new Date(tournament.start_date)
+        if (startDate < now) {
+            return { success: false, error: 'Турнир уже начался' }
+        }
+    }
+
+    // Загружаем все категории турнира одним запросом
+    const categoryIds = slots.map(s => s.category_id)
+    const { data: categoriesData } = await supabase
+        .from('tournament_categories')
+        .select('id, category, tournament_id')
+        .in('id', categoryIds)
+
+    const categoriesMap = new Map(
+        (categoriesData ?? []).map(c => [c.id, c])
+    )
+
+    // Проверяем что все категории принадлежат этому турниру
+    for (const slot of slots) {
+        const cat = categoriesMap.get(slot.category_id)
+        if (!cat || cat.tournament_id !== tournament_id) {
+            return { success: false, error: 'Некорректная категория' }
+        }
+    }
+
+    // Проверяем что игрок ещё не записан ни в одну из выбранных категорий
+    const { data: existingRecords } = await supabase
+        .from('tournament_participants')
+        .select('category_id, player1_id, player2_id')
+        .eq('tournament_id', tournament_id)
+        .in('category_id', categoryIds)
+        .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+
+    if (existingRecords && existingRecords.length > 0) {
+        return {
+            success: false,
+            error: 'Ты уже записан в одну из выбранных категорий',
+        }
+    }
+
+    // Обрабатываем каждый слот
+    let createdCount = 0
+    const createdGuestIds: string[] = []  // для отката если что
+
+    try {
+        for (const slot of slots) {
+            const cat = categoriesMap.get(slot.category_id)!
+            const isPairCategory = PAIR_CATEGORIES.has(cat.category)
+
+            // Валидация: одиночка не может иметь партнёра
+            if (!isPairCategory && slot.partner !== null) {
+                throw new Error(`Для одиночной категории партнёр не нужен`)
+            }
+
+            // ============ Case: joining existing "seeker" ============
+            if (slot.partner?.kind === 'join') {
+                // Присоединяюсь к записи «Игрок X ищет партнёра»
+                const { data: targetRecord } = await supabase
+                    .from('tournament_participants')
+                    .select('id, player1_id, player2_id, guest2_id, category_id')
+                    .eq('id', slot.partner.record_id)
+                    .single()
+
+                if (!targetRecord) {
+                    throw new Error('Запись «ищет партнёра» не найдена')
+                }
+                if (targetRecord.category_id !== slot.category_id) {
+                    throw new Error('Категория не совпадает')
+                }
+                if (targetRecord.player2_id || targetRecord.guest2_id) {
+                    throw new Error('У этой записи уже есть партнёр')
+                }
+                if (targetRecord.player1_id === user.id) {
+                    throw new Error('Нельзя стать партнёром самому себе')
+                }
+
+                // Обновляем запись: становлюсь player2, статус confirmed (я сам согласился)
+                const { error: updateError } = await supabase
+                    .from('tournament_participants')
+                    .update({
+                        player2_id: user.id,
+                        pair_status: 'confirmed',
+                    })
+                    .eq('id', slot.partner.record_id)
+
+                if (updateError) throw updateError
+                createdCount++
+                continue
+            }
+
+            // ============ Case: new record ============
+            let guest2Id: string | null = null
+
+            if (slot.partner?.kind === 'guest') {
+                // Создаём гостя
+                const { data: newGuest, error: guestError } = await supabase
+                    .from('guests')
+                    .insert({
+                        full_name: slot.partner.full_name.trim(),
+                        created_by: user.id,
+                    })
+                    .select('id')
+                    .single()
+
+                if (guestError || !newGuest) {
+                    throw new Error('Не удалось создать гостя')
+                }
+                guest2Id = newGuest.id
+                createdGuestIds.push(newGuest.id)
+            }
+
+            const player2Id: string | null =
+                slot.partner?.kind === 'player' ? slot.partner.player_id : null
+
+            // Если пара и партнёр — гость → сразу confirmed
+            // Если пара и партнёр — игрок клуба → pending (ждём подтверждения)
+            // Если пара и партнёра нет → pending (ищу партнёра)
+            // Если одиночка → pair_status null
+            let pairStatus: 'pending' | 'confirmed' | null = null
+            if (isPairCategory) {
+                if (guest2Id) {
+                    pairStatus = 'confirmed'
+                } else {
+                    pairStatus = 'pending'
+                }
+            }
+
+            const { error: insertError } = await supabase
+                .from('tournament_participants')
+                .insert({
+                    tournament_id,
+                    category_id: slot.category_id,
+                    player1_id: user.id,
+                    player2_id: player2Id,
+                    guest1_id: null,
+                    guest2_id: guest2Id,
+                    status: 'registered',
+                    pair_status: pairStatus,
+                    registered_by: user.id,
+                })
+
+            if (insertError) throw insertError
+            createdCount++
+        }
+    } catch (err) {
+        // Откатываем созданных гостей
+        if (createdGuestIds.length > 0) {
+            await supabase.from('guests').delete().in('id', createdGuestIds)
+        }
+        console.error('Registration failed:', err)
+        const message = err instanceof Error ? err.message : 'Ошибка регистрации'
+        return { success: false, error: message }
+    }
+
+    revalidatePath(`/tournaments/${tournament_id}`)
+    revalidatePath('/home')
+
+    return { success: true, data: { created_count: createdCount } }
+}
+
+// ============================================================
+// CONFIRM / DECLINE PAIR (партнёр отвечает на приглашение)
+// ============================================================
+
+export async function respondToPairInvite(
+    participantId: string,
+    response: 'confirm' | 'decline'
+): Promise<ActionResult> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    // Загружаем запись
+    const { data: record } = await supabase
+        .from('tournament_participants')
+        .select('id, player1_id, player2_id, pair_status, tournament_id')
+        .eq('id', participantId)
+        .single()
+
+    if (!record) {
+        return { success: false, error: 'Запись не найдена' }
+    }
+
+    // Проверяем что я - player2 (приглашённый) или тренер
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+    const isCoach = profile?.role === 'coach'
+
+    if (!isCoach && record.player2_id !== user.id) {
+        return { success: false, error: 'Только приглашённый игрок или тренер может ответить' }
+    }
+
+    if (record.pair_status !== 'pending') {
+        return { success: false, error: 'Приглашение уже обработано' }
+    }
+
+    if (response === 'confirm') {
+        const { error } = await supabase
+            .from('tournament_participants')
+            .update({ pair_status: 'confirmed' })
+            .eq('id', participantId)
+
+        if (error) {
+            return { success: false, error: 'Не удалось подтвердить' }
+        }
+    } else {
+        // decline — обнуляем player2, статус declined
+        // (тем самым player1 становится «seeker», а вся запись видна другим для join)
+        const { error } = await supabase
+            .from('tournament_participants')
+            .update({
+                pair_status: 'declined',
+                player2_id: null,
+            })
+            .eq('id', participantId)
+
+        if (error) {
+            return { success: false, error: 'Не удалось отклонить' }
+        }
+
+        // Через 1 запрос обновим статус обратно на pending чтобы запись выглядела
+        // как «ищет партнёра», а не «отклонено»
+        // (declined мы использовали только чтобы обнулить player2_id безопасно;
+        // теперь запись = seeker без партнёра)
+        await supabase
+            .from('tournament_participants')
+            .update({ pair_status: 'pending' })
+            .eq('id', participantId)
+    }
+
+    revalidatePath(`/tournaments/${record.tournament_id}`)
+    revalidatePath('/home')
+
+    return { success: true }
+}
+
+// ============================================================
+// CANCEL REGISTRATION (сам игрок или тренер удаляет запись)
+// ============================================================
+
+export async function cancelRegistration(
+    participantId: string
+): Promise<ActionResult> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    // Загружаем запись + турнир
+    const { data: record } = await supabase
+        .from('tournament_participants')
+        .select('id, tournament_id, registered_by, player1_id, player2_id, guest2_id, guest1_id, tournaments(registration_deadline, start_date)')
+        .eq('id', participantId)
+        .single()
+
+    if (!record) {
+        return { success: false, error: 'Запись не найдена' }
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+    const isCoach = profile?.role === 'coach'
+
+    // Права: тренер — всегда; иначе — только регистратор
+    if (!isCoach) {
+        if (record.registered_by !== user.id) {
+            return { success: false, error: 'Нет прав на отмену этой записи' }
+        }
+        // Проверка дедлайна для игрока
+        const tournament = record.tournaments as unknown as {
+            registration_deadline: string | null
+            start_date: string
+        } | null
+        if (tournament) {
+            const now = new Date()
+            const deadline = tournament.registration_deadline
+                ? new Date(tournament.registration_deadline)
+                : new Date(tournament.start_date)
+            if (deadline < now) {
+                return {
+                    success: false,
+                    error: 'Отменить регистрацию после закрытия может только тренер',
+                }
+            }
+        }
+    }
+
+    // Собираем ID гостей, которых надо удалить (создавались только для этой пары)
+    const guestIdsToDelete: string[] = []
+    if (record.guest1_id) guestIdsToDelete.push(record.guest1_id)
+    if (record.guest2_id) guestIdsToDelete.push(record.guest2_id)
+
+    // Удаляем запись
+    const { error } = await supabase
+        .from('tournament_participants')
+        .delete()
+        .eq('id', participantId)
+
+    if (error) {
+        console.error('Failed to cancel registration:', error)
+        return { success: false, error: 'Не удалось отменить регистрацию' }
+    }
+
+    // Удаляем гостей (могут не удалиться если на них ссылки в других записях —
+    // Postgres не даст, тихо проигнорируем)
+    if (guestIdsToDelete.length > 0) {
+        await supabase.from('guests').delete().in('id', guestIdsToDelete)
+    }
+
+    revalidatePath(`/tournaments/${record.tournament_id}`)
+    revalidatePath('/home')
+
+    return { success: true }
+}

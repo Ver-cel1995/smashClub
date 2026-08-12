@@ -97,7 +97,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="bg-neutral-900 border-neutral-800 text-white max-w-sm" hideCloseButton>
+            <DialogContent className="bg-card border-card text-white max-w-sm" hideCloseButton>
                 <DialogHeader>
                     <DialogTitle>Изменить период</DialogTitle>
                 </DialogHeader>
@@ -131,7 +131,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
                                             'flex items-center gap-1.5 rounded-lg border p-2 text-left transition-colors',
                                             active
                                                 ? `${m.borderColor} ${m.bgColor}`
-                                                : 'border-neutral-800 bg-neutral-950 hover:border-neutral-700'
+                                                : 'border bg-neutral-950 hover:border-neutral-700'
                                         )}
                                     >
                                         <span className="text-sm">{m.icon}</span>
@@ -145,7 +145,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
                     </div>
 
                     {/* Автосообщение */}
-                    <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-2.5">
+                    <div className="rounded-lg border border bg-neutral-950 p-2.5">
                         <p className="text-[9px] uppercase tracking-wider text-neutral-500 mb-0.5">
                             Объявление в ленте
                         </p>
@@ -162,7 +162,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
                         disabled={isPending}
                         rows={2}
                         className={cn(
-                            'block w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-500 resize-none',
+                            'block w-full rounded-lg border border bg-neutral-950 px-3 py-2 text-xs text-white placeholder:text-neutral-500 resize-none',
                             'focus:outline-none focus:border-lime-400/60 focus:ring-1 focus:ring-lime-400/20'
                         )}
                     />
@@ -173,7 +173,7 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
                             variant="secondary"
                             onClick={() => onOpenChange(false)}
                             disabled={isPending}
-                            className="flex-1 border-neutral-800 text-neutral-300"
+                            className="flex-1 border text-neutral-300"
                         >
                             Отмена
                         </Button>
@@ -222,7 +222,7 @@ function MiniCalendar({
     const isRangeEnd = (day: Date) => endDate && isSameDay(day, endDate)
 
     return (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-950 p-2">
+        <div className="rounded-xl border border bg-neutral-950 p-2">
             <div className="flex items-center justify-between mb-1.5">
                 <button
                     type="button"

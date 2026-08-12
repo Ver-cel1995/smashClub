@@ -6,10 +6,16 @@ import { Trash2, Plus, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/shared/lib/utils'
 import { useProgressRouter } from '@/shared/hooks/use-progress-router'
-import { createTournament, deleteTournamentPdf } from '@/app/(main)/tournaments/actions'
+import {
+    createTournament,
+    updateTournament,
+    deleteTournamentPdf,
+} from '@/app/(main)/tournaments/actions'
 import type { ParsedTournament } from '@/shared/lib/ai/parse-tournament-pdf'
 
 type Props = {
+    mode?: 'create' | 'edit'
+    tournamentId?: string
     initialData: ParsedTournament | null
     pdfInfo: { url: string; path: string } | null
     onCancel: () => void
@@ -25,11 +31,16 @@ const CATEGORY_LABELS: Record<FormCategory['category'], string> = {
     XD: 'Смешанная пара',
 }
 
-export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
+export function TournamentForm({
+                                   mode = 'create',
+                                   tournamentId,
+                                   initialData,
+                                   pdfInfo,
+                                   onCancel,
+                               }: Props) {
     const router = useProgressRouter()
     const [isPending, startTransition] = useTransition()
 
-    // Форма
     const [title, setTitle] = useState(initialData?.title ?? '')
     const [tournamentType, setTournamentType] = useState<'home' | 'away'>('away')
     const [organizer, setOrganizer] = useState(initialData?.organizer ?? '')
@@ -41,7 +52,9 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
     const [registrationTime, setRegistrationTime] = useState(initialData?.registration_time ?? '')
     const [startTime, setStartTime] = useState(initialData?.start_time ?? '')
     const [awardsTime, setAwardsTime] = useState(initialData?.awards_time ?? '')
-    const [registrationDeadline, setRegistrationDeadline] = useState(initialData?.registration_deadline ?? '')
+    const [registrationDeadline, setRegistrationDeadline] = useState(
+        initialData?.registration_deadline ?? ''
+    )
     const [entryFee, setEntryFee] = useState<string>(
         initialData?.entry_fee != null ? String(initialData.entry_fee) : ''
     )
@@ -72,7 +85,7 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
         setErrors({})
 
         startTransition(async () => {
-            const result = await createTournament({
+            const payload = {
                 title: title.trim(),
                 tournament_type: tournamentType,
                 organizer: organizer.trim() || null,
@@ -95,10 +108,15 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                     category: c.category,
                     age_group: c.age_group.trim() || null,
                 })),
-            })
+            }
+
+            const result =
+                mode === 'edit' && tournamentId
+                    ? await updateTournament(tournamentId, payload)
+                    : await createTournament(payload)
 
             if (result.success) {
-                toast.success('Турнир создан')
+                toast.success(mode === 'edit' ? 'Изменения сохранены' : 'Турнир создан')
                 router.push(`/tournaments/${result.data!.id}`)
             } else {
                 if (result.fieldErrors) setErrors(result.fieldErrors)
@@ -108,8 +126,9 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
     }
 
     const handleCancel = async () => {
-        // Если был загружен PDF — удаляем его из storage
-        if (pdfInfo?.path) {
+        // При create — если был загружен PDF, удаляем его из storage
+        // При edit — не удаляем, оставляем как было
+        if (mode === 'create' && pdfInfo?.path) {
             await deleteTournamentPdf(pdfInfo.path)
         }
         onCancel()
@@ -132,7 +151,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 </div>
             )}
 
-            {/* Название */}
             <Field label="Название *" error={errors.title}>
                 <input
                     type="text"
@@ -143,7 +161,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 />
             </Field>
 
-            {/* Тип: домашний / выездной */}
             <Field label="Тип соревнования">
                 <div className="grid grid-cols-2 gap-2">
                     {(['home', 'away'] as const).map((t) => (
@@ -164,7 +181,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 </div>
             </Field>
 
-            {/* Организатор */}
             <Field label="Организатор">
                 <input
                     type="text"
@@ -175,10 +191,8 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 />
             </Field>
 
-            {/* Место */}
             <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">Место</h3>
-
                 <Field label="Город *" error={errors.city}>
                     <input
                         type="text"
@@ -188,7 +202,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                         placeholder="ст. Кущёвская"
                     />
                 </Field>
-
                 <Field label="Название зала">
                     <input
                         type="text"
@@ -198,7 +211,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                         placeholder="СК Юность"
                     />
                 </Field>
-
                 <Field label="Адрес">
                     <input
                         type="text"
@@ -210,10 +222,8 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 </Field>
             </div>
 
-            {/* Даты */}
             <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">Даты</h3>
-
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Начало *" error={errors.start_date}>
                         <input
@@ -232,7 +242,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                         />
                     </Field>
                 </div>
-
                 <Field label="Дедлайн регистрации">
                     <input
                         type="date"
@@ -243,10 +252,8 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 </Field>
             </div>
 
-            {/* Расписание дня */}
             <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">Расписание дня</h3>
-
                 <Field label="Регистрация / мандатная комиссия">
                     <input
                         type="text"
@@ -256,7 +263,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                         placeholder="09:00-10:00"
                     />
                 </Field>
-
                 <div className="grid grid-cols-2 gap-2">
                     <Field label="Начало игр">
                         <input
@@ -279,10 +285,8 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 </div>
             </div>
 
-            {/* Финансы */}
             <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">Взнос</h3>
-
                 <Field label="Сумма (₽)">
                     <input
                         type="number"
@@ -293,7 +297,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                         min="0"
                     />
                 </Field>
-
                 <Field label="Пояснение (если разные суммы)">
                     <input
                         type="text"
@@ -305,7 +308,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 </Field>
             </div>
 
-            {/* Категории */}
             <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-muted">
@@ -322,9 +324,7 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 </div>
 
                 {categories.length === 0 && (
-                    <p className="text-xs text-muted italic py-2">
-                        Добавь хотя бы одну категорию
-                    </p>
+                    <p className="text-xs text-muted italic py-2">Добавь хотя бы одну категорию</p>
                 )}
 
                 <div className="space-y-2">
@@ -332,11 +332,17 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                         <div key={idx} className="flex items-center gap-2 rounded-xl bg-subtle p-2">
                             <select
                                 value={cat.category}
-                                onChange={(e) => updateCategory(idx, { category: e.target.value as FormCategory['category'] })}
+                                onChange={(e) =>
+                                    updateCategory(idx, {
+                                        category: e.target.value as FormCategory['category'],
+                                    })
+                                }
                                 className={cn(inputCls(), 'w-auto min-w-[140px]')}
                             >
                                 {Object.entries(CATEGORY_LABELS).map(([val, label]) => (
-                                    <option key={val} value={val}>{label}</option>
+                                    <option key={val} value={val}>
+                                        {label}
+                                    </option>
                                 ))}
                             </select>
                             <input
@@ -360,7 +366,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 {errors.categories && <p className="text-xs text-danger mt-1">{errors.categories}</p>}
             </div>
 
-            {/* Описание */}
             <Field label="Описание / условия допуска">
                 <textarea
                     value={description}
@@ -371,7 +376,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 />
             </Field>
 
-            {/* Контакты */}
             <Field label="Контакты">
                 <input
                     type="text"
@@ -382,10 +386,11 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
                 />
             </Field>
 
-            {/* Actions */}
             <div className="flex flex-col gap-2 pt-2">
                 <Button type="submit" variant="secondary" fullWidth disabled={isPending}>
-                    {isPending ? 'Создаём…' : 'Создать турнир'}
+                    {isPending
+                        ? mode === 'edit' ? 'Сохраняем…' : 'Создаём…'
+                        : mode === 'edit' ? 'Сохранить изменения' : 'Создать турнир'}
                 </Button>
                 <Button type="button" variant="ghost" fullWidth onClick={handleCancel} disabled={isPending}>
                     Отмена
@@ -394,8 +399,6 @@ export function TournamentForm({ initialData, pdfInfo, onCancel }: Props) {
         </form>
     )
 }
-
-// ——— Вспомогательные ———
 
 function Field({
                    label,

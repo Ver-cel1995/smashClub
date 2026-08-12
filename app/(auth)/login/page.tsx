@@ -35,7 +35,7 @@ export default function LoginPage() {
                             error={getFieldError('name')}
                             disabled={isPending}
 
-                            className="bg-neutral-900 border-neutral-800 text-white"
+                            className="bg-card border text-white"
                         />
                     </div>
 
@@ -50,7 +50,7 @@ export default function LoginPage() {
                             placeholder="••••••••"
                             error={getFieldError('password')}
                             disabled={isPending}
-                            className="bg-neutral-900 border-neutral-800 text-white"
+                            className="bg-card border text-white"
                         />
                         <div className="flex justify-end">
                             <Link

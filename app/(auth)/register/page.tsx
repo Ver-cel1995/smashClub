@@ -33,7 +33,7 @@ export default function RegisterPage() {
                             placeholder="Как к вам обращаться"
                             disabled={isPending}
                             error={getFieldError('name')}
-                            className="bg-neutral-900 border-neutral-800 text-white"
+                            className="bg-card border text-white"
                         />
                     </div>
 
@@ -48,7 +48,7 @@ export default function RegisterPage() {
                             placeholder="example@mail.com"
                             error={getFieldError('email')}
                             disabled={isPending}
-                            className="bg-neutral-900 border-neutral-800 text-white"
+                            className="bg-card border text-white"
                         />
                     </div>
 
@@ -63,7 +63,7 @@ export default function RegisterPage() {
                             placeholder="••••••••"
                             error={getFieldError('password')}
                             disabled={isPending}
-                            className="bg-neutral-900 border-neutral-800 text-white"
+                            className="bg-card border text-white"
                         />
                     </div>
 
@@ -78,7 +78,7 @@ export default function RegisterPage() {
                             placeholder="••••••••"
                             error={getFieldError('confirmPassword')}
                             disabled={isPending}
-                            className="bg-neutral-900 border-neutral-800 text-white"
+                            className="bg-card border text-white"
                         />
                     </div>
 

@@ -76,7 +76,7 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
                 <button
                     type="button"
                     onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}
-                    className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-900 hover:text-white"
+                    className="rounded-lg p-2 text-neutral-400 hover:bg-card hover:text-white"
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </button>
@@ -86,7 +86,7 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
                 <button
                     type="button"
                     onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}
-                    className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-900 hover:text-white"
+                    className="rounded-lg p-2 text-neutral-400 hover:bg-card hover:text-white"
                 >
                     <ChevronRight className="h-5 w-5" />
                 </button>
@@ -114,9 +114,9 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
                             className={cn(
                                 'relative flex flex-col items-center gap-0.5 rounded-xl py-2 transition-all',
                                 !inMonth && 'opacity-30',
-                                today && !selected && 'bg-accent-muted border border-accent',
+                                today && !selected && 'bg-accent-muted border-card border-accent',
                                 selected && 'bg-accent font-bold',
-                                !today && !selected && 'hover:bg-neutral-900'
+                                !today && !selected && 'hover:bg-card'
                             )}
                         >
               <span
@@ -160,7 +160,7 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
                 <button
                     type="button"
                     onClick={() => setEditOpen(true)}
-                    className="w-full rounded-2xl border border-neutral-800 bg-neutral-900 p-3 text-sm font-medium text-accent hover:bg-neutral-800 transition-colors"
+                    className="w-full rounded-2xl border border bg-card p-3 text-sm font-medium text-accent hover:bg-neutral-800 transition-colors"
                 >
                     Редактировать {format(selectedDate, 'd MMMM', { locale: ru })}
                 </button>

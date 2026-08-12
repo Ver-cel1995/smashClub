@@ -87,7 +87,7 @@ export function SettingsForm({ profile }: Props) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {/* Аватар */}
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-6">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border bg-card p-6">
                 <button
                     type="button"
                     onClick={handleAvatarClick}
@@ -132,7 +132,7 @@ export function SettingsForm({ profile }: Props) {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     disabled={isPending}
-                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
                 />
             </div>
 
@@ -146,7 +146,7 @@ export function SettingsForm({ profile }: Props) {
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     disabled={isPending}
-                    className="w-full rounded-xl border border-neutral-800 bg-neutral-950 px-3 py-2.5 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2.5 text-sm text-white focus:border-lime-400/40 focus:outline-none"
                 >
                     {CITY_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>

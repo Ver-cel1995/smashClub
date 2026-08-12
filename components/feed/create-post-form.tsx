@@ -72,7 +72,7 @@ export function CreatePostForm() {
                     name="title"
                     placeholder="Например: Едем на турнир в Краснодар"
                     disabled={isPending}
-                    className="bg-neutral-900 border-neutral-800 text-white"
+                    className="bg-card border-card text-white"
                 />
                 {getFieldError('title') && (
                     <p className="text-xs text-red-400">{getFieldError('title')}</p>
@@ -120,10 +120,10 @@ export function CreatePostForm() {
                 onClick={() => setIsPinned(!isPinned)}
                 disabled={isPending}
                 className={cn(
-                    'flex w-full items-center justify-between rounded-2xl border p-4 text-left transition-colors',
+                    'flex w-full items-center justify-between rounded-2xl border-card p-4 text-left transition-colors',
                     isPinned
-                        ? 'border-lime-400/40 bg-lime-400/10'
-                        : 'border-neutral-800 bg-neutral-900 hover:border-neutral-700'
+                        ? 'border-card bg-card'
+                        : 'border bg-card hover:border-neutral-700'
                 )}
             >
                 <div className="flex items-center gap-3">

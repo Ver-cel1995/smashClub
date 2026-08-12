@@ -217,8 +217,8 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
                                         className={cn(
                                             'group relative aspect-square overflow-hidden rounded-xl border-2 transition-all',
                                             dragOverIndex === p.originalIndex
-                                                ? 'scale-105 border-lime-400'
-                                                : 'border-neutral-800',
+                                                ? 'scale-105 border-card'
+                                                : 'border',
                                             dragIndex === p.originalIndex && 'opacity-50'
                                         )}
                                     >
@@ -267,7 +267,7 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
                             .map((p) => (
                                 <div
                                     key={p.originalIndex}
-                                    className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-900 p-3"
+                                    className="flex items-center gap-3 rounded-xl border-card bg-card p-3"
                                 >
                                     <span className="text-2xl">{getFileIcon(p.file.type)}</span>
                                     <div className="min-w-0 flex-1">
@@ -292,7 +292,7 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
 
                 {/* Индикатор сжатия */}
                 {isBusy && (
-                    <div className="flex items-center justify-center gap-2 rounded-xl border border-neutral-800 bg-neutral-900/50 p-3 text-xs text-neutral-400">
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border bg-card/50 p-3 text-xs text-neutral-400">
                         <Loader2 className="h-3.5 w-3.5 animate-spin text-lime-400" />
                         Обрабатываем {compressing}{' '}
                         {compressing === 1 ? 'файл' : compressing < 5 ? 'файла' : 'файлов'}...

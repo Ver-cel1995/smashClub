@@ -86,7 +86,7 @@ export function PostPoll({
 
     return (
         <div
-            className="space-y-3 rounded-2xl border border-neutral-800 bg-neutral-950/50 p-4"
+            className="space-y-3 rounded-2xl border-card bg-neutral-950/50 p-4"
             onClick={(e) => e.stopPropagation()}
         >
             <h4 className="text-sm font-semibold text-white">{question}</h4>
@@ -107,11 +107,11 @@ export function PostPoll({
                                 handleVote(option.id)
                             }}
                             className={cn(
-                                'relative w-full overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-all',
+                                'relative w-full overflow-hidden rounded-xl border-card px-3 py-2.5 text-left transition-all',
                                 'disabled:opacity-70',
                                 isVoted
                                     ? 'border-accent bg-accent-muted'
-                                    : 'border-neutral-800 bg-neutral-900 hover:border-neutral-700'
+                                    : 'border-card bg-card hover:border-neutral-700'
                             )}
                         >
                             {/* Прогресс-бар */}

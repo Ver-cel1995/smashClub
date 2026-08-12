@@ -24,7 +24,7 @@ export default async function NewPostPage({ searchParams }: Props) {
             <div className="flex items-center gap-3">
                 <Link
                     href="/feed"
-                    className="rounded-lg p-2 text-neutral-400 hover:bg-neutral-900 hover:text-white transition-colors -ml-2"
+                    className="rounded-lg p-2 text-neutral-400 hover:bg-card hover:text-white transition-colors -ml-2"
                     aria-label="Назад"
                 >
                     <ArrowLeft className="h-5 w-5" />

@@ -15,9 +15,9 @@ export function PinnedFeedCard({ post }: Props) {
     return (
         <div>
             <div className="mb-2 flex items-center justify-between px-1">
-        <span className="text-xs font-medium uppercase text-muted-foreground">
-          Лента
-        </span>
+            <span className="text-xs font-medium uppercase text-muted-foreground">
+              Лента
+            </span>
                 <Link
                     href="/feed"
                     className="text-xs text-primary hover:underline"
@@ -28,7 +28,7 @@ export function PinnedFeedCard({ post }: Props) {
 
             <Link
                 href={`/feed/${post.id}`}
-                className="block overflow-hidden rounded-2xl border border-border bg-card transition active:scale-[0.99]"
+                className="block overflow-hidden rounded-2xl 'border-card bg-card hover:border-strong' bg-card transition active:scale-[0.99]"
             >
                 {firstImage && (
                     <div className="relative aspect-video w-full">

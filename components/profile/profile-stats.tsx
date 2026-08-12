@@ -16,7 +16,7 @@ export function ProfileStats({ profile }: Props) {
             {items.map((it) => (
                 <div
                     key={it.label}
-                    className="rounded-2xl border border-neutral-800 bg-neutral-900 p-3 text-center"
+                    className="rounded-2xl border border bg-card p-3 text-center"
                 >
                     <div className="text-xl font-bold text-accent">{it.value}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-wider text-neutral-500">

@@ -69,7 +69,7 @@ function BatchCard({ items }: { items: RepairRacket[] }) {
     const createdAt = items[0].created_at
 
     return (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+        <div className="rounded-2xl border border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
                 <div>
                     <div className="text-xs text-neutral-500">

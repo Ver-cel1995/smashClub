@@ -10,6 +10,7 @@ import {
     TrainingCardSkeleton,
     PostCardSkeleton,
 } from '@/components/home/skeletons'
+import {NextTournamentBlock} from "@/components/home/blocks/next-tournament-block";
 
 export const dynamic = 'force-dynamic'
 
@@ -27,6 +28,10 @@ export default async function HomePage() {
 
             <Suspense fallback={<TrainingCardSkeleton />}>
                 <NextTrainingBlock userId={user.userId} />
+            </Suspense>
+
+            <Suspense fallback={<TrainingCardSkeleton />}>
+                <NextTournamentBlock />
             </Suspense>
 
             <Suspense fallback={null}>

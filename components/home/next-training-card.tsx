@@ -77,7 +77,7 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
                 onClick={handleCardClick}
                 onKeyDown={(e) => e.key === 'Enter' && handleCardClick()}
                 className={cn(
-                    'rounded-2xl border border-border bg-card p-4 text-left transition',
+                    'rounded-2xl border-card bg-card hover:border-strong bg-card p-4 text-left transition',
                     !isClosedCompletely && 'active:scale-[0.99]'
                 )}
             >

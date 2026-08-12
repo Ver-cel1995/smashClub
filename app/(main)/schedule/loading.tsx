@@ -4,7 +4,7 @@ export default function ScheduleLoading() {
             <div className="flex items-center justify-between">
                 <div className="h-6 w-32 animate-pulse rounded-lg bg-neutral-800" />
             </div>
-            <div className="h-64 rounded-2xl border border-neutral-800 bg-neutral-900/50 p-4 animate-pulse" />
+            <div className="h-64 rounded-2xl border border-subtle bg-card/50 p-4 animate-pulse" />
         </div>
     )
 }

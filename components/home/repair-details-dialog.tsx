@@ -57,7 +57,7 @@ function PlayerRow({
     }
 
     return (
-        <li className="flex items-center gap-3 rounded-xl border border-border bg-background p-3">
+        <li className="flex items-center gap-3 rounded-xl border-card bg-card hover:border-strong bg-background p-3">
             <UserAvatar
                 name={player.profile.full_name}
                 avatarUrl={player.profile.avatar_url}

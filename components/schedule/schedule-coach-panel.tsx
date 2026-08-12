@@ -75,7 +75,7 @@ export function ScheduleCoachPanel({ trainings }: ScheduleCoachPanelProps) {
                     type="button"
                     onClick={() => setBulkOpen(true)}
                     variant="outline"
-                    className="flex-1 border-neutral-800 text-neutral-300 hover:bg-neutral-900"
+                    className="flex-1 border text-neutral-300 hover:bg-card"
                 >
                     <CalendarRange className="mr-1.5 h-4 w-4" />
                     Изменить период
@@ -102,7 +102,7 @@ export function ScheduleCoachPanel({ trainings }: ScheduleCoachPanelProps) {
                     type="button"
                     onClick={handleGenerate}
                     disabled={isGenerating}
-                    className="shrink-0 rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-900 hover:text-white disabled:opacity-40"
+                    className="shrink-0 rounded-lg p-2 text-neutral-400 transition-colors hover:bg-card hover:text-white disabled:opacity-40"
                     aria-label="Обновить расписание"
                     title="Сгенерировать расписание на месяц"
                 >

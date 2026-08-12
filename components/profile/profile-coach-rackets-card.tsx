@@ -16,7 +16,7 @@ type Props = {
 export function ProfileCoachRacketsCard({ data }: Props) {
     if (!data || data.players.length === 0) {
         return (
-            <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+            <div className="rounded-2xl border border bg-card p-4">
                 <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase text-neutral-500">
                     <Wrench className="h-3.5 w-3.5" />
                     Ремонт ракеток
@@ -29,7 +29,7 @@ export function ProfileCoachRacketsCard({ data }: Props) {
     }
 
     return (
-        <div className="rounded-2xl border border-neutral-800 bg-neutral-900 p-4">
+        <div className="rounded-2xl border border bg-card p-4">
             <div className="mb-1 flex items-center gap-2 text-xs font-medium uppercase text-neutral-500">
                 <Wrench className="h-3.5 w-3.5" />
                 Ремонт ракеток
@@ -82,7 +82,7 @@ function PlayerRow({
     }
 
     return (
-        <li className="overflow-hidden rounded-xl border border-neutral-800 bg-neutral-950">
+        <li className="overflow-hidden rounded-xl border border bg-neutral-950">
             {/* Шапка игрока */}
             <div className="flex items-center gap-3 p-3">
                 <UserAvatar
@@ -142,7 +142,7 @@ function PlayerRow({
 
             {/* Разворот с моделями */}
             {expanded && (
-                <ul className="space-y-1 border-t border-neutral-800 bg-neutral-900/40 p-2">
+                <ul className="space-y-1 border-t border bg-card/40 p-2">
                     {modelRows.map(([model, items]) => {
                         const modelCost = items.reduce(
                             (s, r) => s + (r.cost ?? 0),

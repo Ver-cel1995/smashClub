@@ -46,7 +46,7 @@ export function ProfilePaymentsCard({ payments }: Props) {
                         <PaymentRow label="Турниры" amount={payments.tournaments} />
                         <PaymentRow label="Поездки" amount={payments.trips} />
                         <PaymentRow label="Ремонт ракеток" amount={payments.repair} />
-                        <div className="mt-3 flex items-center justify-between border-t border-neutral-800 pt-3">
+                        <div className="mt-3 flex items-center justify-between border-t border pt-3">
                             <span className="text-sm font-semibold text-white">Итого</span>
                             <span className="text-lg font-bold text-accent">
                                 {payments.total}₽

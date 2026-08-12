@@ -12,7 +12,7 @@ export function ProfileHeader({ profile }: Props) {
     const cityLabel = profile.city ? CITY_LABEL[profile.city] ?? profile.city : null
 
     return (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border-neutral-800 bg-neutral-900 p-6 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl border border bg-card p-6 text-center">
             <div className="relative">
                 <UserAvatar
                     name={profile.full_name}

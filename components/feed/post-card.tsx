@@ -136,20 +136,20 @@ export const PostCard = memo(function PostCard({
     return (
         <article
             className={cn(
-                'relative overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900',
+                'relative overflow-hidden rounded-2xl border-card bg-card',
                 !full && !busy && 'cursor-pointer transition-colors hover:border-neutral-700',
                 busy && 'pointer-events-none opacity-70'
             )}
             onClick={handleCardClick}
         >
             {busy && (
-                <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/50">
+                <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50">
                     <Loader2 className="h-5 w-5 animate-spin text-accent" />
                 </div>
             )}
 
             {post.is_pinned && (
-                <div className="flex items-center gap-1.5 border-b border-accent bg-accent-muted px-4 py-2">
+                <div className="flex items-center gap-1.5 border-card border-accent bg-accent-muted px-4 py-2">
                     <Pin className="h-3 w-3 text-accent" />
                     <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">
                         Закреплено
@@ -172,7 +172,7 @@ export const PostCard = memo(function PostCard({
                                     {post.author.full_name}
                                 </p>
                                 {post.author.role === 'coach' && (
-                                    <span className="shrink-0 rounded-full border border-accent bg-accent-muted px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">
+                                    <span className="shrink-0 rounded-full border-card border-accent bg-accent-muted px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">
                                         Тренер
                                     </span>
                                 )}
@@ -199,16 +199,16 @@ export const PostCard = memo(function PostCard({
                                     disabled={busy}
                                     onClick={(e) => e.stopPropagation()}
                                 >
-                                    <MoreHorizontal className="h-5 w-5" />
+                                    <MoreHorizontal className="h-5 w-5 border-subtle" />
                                 </button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent
                                 align="end"
-                                className="border-neutral-800 bg-neutral-900"
+                                className="border-subtle bg-card"
                             >
                                 <DropdownMenuItem
                                     onClick={handleTogglePin}
-                                    className="cursor-pointer text-white focus:bg-neutral-800 focus:text-white"
+                                    className="cursor-pointer text-white focus:border-subtle"
                                 >
                                     <Pin className="mr-2 h-4 w-4" />
                                     {post.is_pinned ? 'Открепить' : 'Закрепить'}
@@ -249,7 +249,7 @@ export const PostCard = memo(function PostCard({
                 <PostReactions postId={post.id} reactions={reactions} />
 
                 {!full && (
-                    <div className="flex items-center gap-4 border-t border-neutral-800/50 pt-2">
+                    <div className="flex items-center gap-4 border-card border/50 pt-2">
                         <button
                             type="button"
                             onClick={handleCommentClick}

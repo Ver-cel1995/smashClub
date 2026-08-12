@@ -107,7 +107,7 @@ export function PostMedia({ urls }: PostMediaProps) {
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center gap-3 rounded-xl border border-neutral-800 bg-neutral-900 p-3 hover:border-neutral-700 transition-colors"
+                        className="flex items-center gap-3 rounded-xl border-card bg-card p-3 hover:border-neutral-700 transition-colors"
                     >
                         <span className="text-2xl">{icon}</span>
                         <div className="flex-1 min-w-0">
