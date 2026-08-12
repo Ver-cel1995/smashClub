@@ -4,18 +4,25 @@
  * id — уникальный ключ, который хранится в БД (post_reactions.emoji).
  * animationData — Lottie JSON, который проигрывается в UI.
  * label — для accessibility (aria-label).
- *
- * ⚠️ Меняя id уже существующего эмодзи — сломаешь старые реакции в БД.
- * Добавляй новые id, но не переименовывай существующие.
  */
-export const EMOJI_REGISTRY = {
+type EmojiEntry = {
+    id: string
+    animationData: object
+    label: string
+}
 
-} as const
+export const EMOJI_REGISTRY: Record<string, EmojiEntry> = {
+    // fire: {
+    //     id: 'fire',
+    //     animationData: fireAnimation,
+    //     label: 'Огонь',
+    // },
+}
 
-export type EmojiId = keyof typeof EMOJI_REGISTRY
+export type EmojiId = string
 
-export const AVAILABLE_EMOJI_IDS = Object.keys(EMOJI_REGISTRY) as EmojiId[]
+export const AVAILABLE_EMOJI_IDS: EmojiId[] = Object.keys(EMOJI_REGISTRY)
 
-export function getEmoji(id: string) {
-    return EMOJI_REGISTRY[id as EmojiId] ?? null
+export function getEmoji(id: string): EmojiEntry | null {
+    return EMOJI_REGISTRY[id] ?? null
 }
