@@ -6,13 +6,18 @@ import { ReactNode } from 'react'
 import { TabsPrefetcher } from '@/components/layout/tabs-prefetcher'
 import { ConfirmProvider } from '@/shared/lib/confirm/confirm-context'
 import { RouteProgress } from '@/store/route-progress'
+import { GenderRequiredModal } from '@/components/onboarding/gender-required-modal'
 
 export default async function MainLayout({ children }: { children: ReactNode }) {
     const user = await getCurrentUser()
 
+    console.log(user?.profile.gender)
+
     if (!user) {
         redirect('/login')
     }
+
+    const needsGender = !user.profile.gender
 
     return (
         <ConfirmProvider>
@@ -29,6 +34,8 @@ export default async function MainLayout({ children }: { children: ReactNode }) 
                 <TabsPrefetcher />
                 <BottomNav />
             </div>
+
+            {needsGender && <GenderRequiredModal />}
         </ConfirmProvider>
     )
 }

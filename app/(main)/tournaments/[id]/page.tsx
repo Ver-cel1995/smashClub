@@ -117,6 +117,7 @@ export default async function TournamentPage({
                     currentUserId={user.userId}
                     entryFee={tournament.entry_fee_amount}
                     hasEntryFee={tournament.has_entry_fee ?? false}
+                    currentUserGender={user.profile.gender ?? null}
                 />
             )}
         </div>

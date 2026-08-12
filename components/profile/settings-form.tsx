@@ -1,17 +1,19 @@
 'use client'
 
-import {FormEvent, useRef, useState} from 'react'
-import {Camera, Loader2} from 'lucide-react'
-import {toast} from 'sonner'
-import {Button} from '@/components/ui/button'
-import {UserAvatar} from '@/components/user-avatar'
-import {useProgressAction} from '@/shared/hooks/use-progress-action'
-import {compressImage} from '@/shared/lib/image-compress'
-import {CITY_OPTIONS} from '@/shared/lib/cities'
-import {updateProfile} from '@/app/(main)/profile/actions'
-import {createClient} from '@/shared/lib/supabase/client'
-import type {Profile} from '@/types'
-import {ThemeSelector} from '@/components/theme/theme-selector'
+import { FormEvent, useRef, useState } from 'react'
+import { Camera, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/user-avatar'
+import { useProgressAction } from '@/shared/hooks/use-progress-action'
+import { compressImage } from '@/shared/lib/image-compress'
+import { CITY_OPTIONS } from '@/shared/lib/cities'
+import { updateProfile } from '@/app/(main)/profile/actions'
+import { createClient } from '@/shared/lib/supabase/client'
+import type { Profile } from '@/types'
+import { ThemeSelector } from '@/components/theme/theme-selector'
+import { cn } from '@/shared/lib/utils'
+import type { Gender } from '@/shared/lib/gender'
 
 type Props = {
     profile: Profile
@@ -22,6 +24,7 @@ export function SettingsForm({ profile }: Props) {
     const [city, setCity] = useState(profile.city ?? 'kushchevskaya')
     const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url ?? '')
     const [avatarUploading, setAvatarUploading] = useState(false)
+    const [gender, setGender] = useState<Gender | null>(profile?.gender ?? null)
     const [runAction, isPending] = useProgressAction()
 
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -74,6 +77,9 @@ export function SettingsForm({ profile }: Props) {
             formData.append('full_name', fullName.trim())
             formData.append('city', city)
             formData.append('avatar_url', avatarUrl)
+            if (gender) {
+                formData.append('gender', gender)
+            }
 
             const result = await updateProfile(formData)
             if (result.success) {
@@ -87,7 +93,7 @@ export function SettingsForm({ profile }: Props) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             {/* Аватар */}
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border bg-card p-6">
+            <div className="flex flex-col items-center gap-3 rounded-2xl border border-card bg-card p-6">
                 <button
                     type="button"
                     onClick={handleAvatarClick}
@@ -107,7 +113,7 @@ export function SettingsForm({ profile }: Props) {
                         )}
                     </div>
                 </button>
-                <span className="text-xs text-neutral-500">Нажми чтобы сменить</span>
+                <span className="text-xs text-muted">Нажми чтобы сменить</span>
 
                 <input
                     ref={fileInputRef}
@@ -120,10 +126,7 @@ export function SettingsForm({ profile }: Props) {
 
             {/* Имя */}
             <div>
-                <label
-                    htmlFor="full_name"
-                    className="mb-1 block text-xs text-neutral-400"
-                >
+                <label htmlFor="full_name" className="mb-1 block text-xs text-muted">
                     Имя
                 </label>
                 <input
@@ -132,13 +135,37 @@ export function SettingsForm({ profile }: Props) {
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     disabled={isPending}
-                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl border border-card bg-input px-3 py-2.5 text-sm text-main placeholder:text-dim focus:border-accent focus:outline-none"
                 />
+            </div>
+
+            {/* Пол */}
+            <div className="space-y-2">
+                <label className="text-xs font-medium text-muted">Пол</label>
+                <div className="grid grid-cols-2 gap-2">
+                    {(['male', 'female'] as const).map((g) => (
+                        <button
+                            key={g}
+                            type="button"
+                            onClick={() => setGender(g)}
+                            disabled={isPending}
+                            className={cn(
+                                'rounded-xl border px-3 py-2.5 text-sm font-medium transition-all',
+                                gender === g
+                                    ? 'border-accent bg-accent-muted text-accent'
+                                    : 'border-card bg-subtle text-muted hover:border-strong',
+                                isPending && 'opacity-50 cursor-not-allowed'
+                            )}
+                        >
+                            {g === 'male' ? '👨 Мужской' : '👩 Женский'}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             {/* Город */}
             <div>
-                <label htmlFor="city" className="mb-1 block text-xs text-neutral-400">
+                <label htmlFor="city" className="mb-1 block text-xs text-muted">
                     Город
                 </label>
                 <select
@@ -146,7 +173,7 @@ export function SettingsForm({ profile }: Props) {
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     disabled={isPending}
-                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2.5 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl border border-card bg-input px-3 py-2.5 text-sm text-main focus:border-accent focus:outline-none"
                 >
                     {CITY_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>

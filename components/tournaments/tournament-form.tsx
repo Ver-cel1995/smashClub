@@ -51,7 +51,7 @@ export function TournamentForm({
     const [endDate, setEndDate] = useState(initialData?.end_date ?? '')
     const [registrationTime, setRegistrationTime] = useState(initialData?.registration_time ?? '')
     const [startTime, setStartTime] = useState(initialData?.start_time ?? '')
-    const [awardsTime, setAwardsTime] = useState(initialData?.awards_time ?? '')
+    const [awards, setAwards] = useState(initialData?.awards ?? '')
     const [registrationDeadline, setRegistrationDeadline] = useState(
         initialData?.registration_deadline ?? ''
     )
@@ -96,7 +96,7 @@ export function TournamentForm({
                 end_date: endDate || null,
                 registration_time: registrationTime.trim() || null,
                 start_time: startTime.trim() || null,
-                awards_time: awardsTime.trim() || null,
+                awards: awards.trim() || null,
                 registration_deadline: registrationDeadline || null,
                 entry_fee: entryFee ? parseInt(entryFee, 10) : null,
                 entry_fee_note: entryFeeNote.trim() || null,
@@ -263,26 +263,30 @@ export function TournamentForm({
                         placeholder="09:00-10:00"
                     />
                 </Field>
-                <div className="grid grid-cols-2 gap-2">
-                    <Field label="Начало игр">
-                        <input
-                            type="text"
-                            value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
-                            className={inputCls()}
-                            placeholder="10:30"
-                        />
-                    </Field>
-                    <Field label="Награждение">
-                        <input
-                            type="text"
-                            value={awardsTime}
-                            onChange={(e) => setAwardsTime(e.target.value)}
-                            className={inputCls()}
-                            placeholder="15:00"
-                        />
-                    </Field>
-                </div>
+                <Field label="Начало игр">
+                    <input
+                        type="text"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className={inputCls()}
+                        placeholder="10:30"
+                    />
+                </Field>
+            </div>
+
+            <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-2">
+                    🏆 Награды
+                </h3>
+                <Field label="Что получают победители и призёры">
+                <textarea
+                    value={awards}
+                    onChange={(e) => setAwards(e.target.value)}
+                    className={cn(inputCls(), 'min-h-20 resize-y')}
+                    placeholder="Медали, кубки, грамоты, ценные призы"
+                    rows={3}
+                />
+                </Field>
             </div>
 
             <div className="space-y-2 rounded-2xl border border-card bg-card p-4">

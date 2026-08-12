@@ -7,6 +7,7 @@ import type {
     TournamentCategoryFull,
     MyParticipationInCategory,
 } from '@/app/(main)/tournaments/[id]/queries'
+import {Gender} from "@/shared/lib/gender";
 
 const RegistrationDialog = dynamic(
     () => import('./registration-form').then((m) => m.RegistrationDialog),
@@ -18,6 +19,7 @@ type Props = {
     categories: TournamentCategoryFull[]
     myParticipation: Record<string, MyParticipationInCategory>
     currentUserId: string
+    currentUserGender: Gender | null  // ← НОВОЕ
     entryFee: number | null
     hasEntryFee: boolean
 }

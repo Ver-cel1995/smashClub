@@ -1,23 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { Trash2, UserPlus, Users, Clock, Loader2 } from 'lucide-react'
-import { UserAvatar } from '@/components/user-avatar'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/shared/lib/utils'
-import { useProgressAction } from '@/shared/hooks/use-progress-action'
-import { useConfirm } from '@/shared/lib/confirm/confirm-context'
-import {
-    cancelRegistration,
-    registerForTournament,
-} from '@/app/(main)/tournaments/actions'
+import {toast} from 'sonner'
+import {UserAvatar} from '@/components/user-avatar'
+import {cn} from '@/shared/lib/utils'
+import {useProgressAction} from '@/shared/hooks/use-progress-action'
+import {useConfirm} from '@/shared/lib/confirm/confirm-context'
+import {cancelRegistration, registerForTournament, removePartner,} from '@/app/(main)/tournaments/actions'
 import type {
-    TournamentCategoryFull,
     MyParticipationInCategory,
-    ParticipantRecord,
     ParticipantPlayerInfo,
+    ParticipantRecord,
+    TournamentCategoryFull,
 } from '@/app/(main)/tournaments/[id]/queries'
+import { Trash2, UserPlus, Users, Clock, Loader2, UserX } from 'lucide-react'
 
 const CATEGORY_LABELS: Record<string, string> = {
     MS: 'Мужская одиночка',
@@ -217,6 +212,34 @@ function ParticipantRow({
         })
     }
 
+    const handleRemovePartner = async () => {
+        const ok = await confirm({
+            title: 'Убрать партнёра?',
+            description: 'Заявка станет «ищет партнёра».',
+            confirmText: 'Убрать',
+            cancelText: 'Оставить',
+            variant: 'danger',
+        })
+        if (!ok) return
+
+        runAction(async () => {
+            const result = await removePartner(record.id)
+            if (result.success) {
+                toast.success('Партнёр убран')
+            } else {
+                toast.error(result.error || 'Ошибка')
+            }
+        })
+    }
+
+    const iAmInPair =
+        (record.player1?.kind === 'player' && record.player1.id === currentUserId) ||
+        (record.player2?.kind === 'player' && record.player2.id === currentUserId)
+
+    const canRemovePartner =
+        record.player2 !== null &&
+        (isCoach || iAmInPair)
+
     return (
         <div
             className={cn(
@@ -246,6 +269,23 @@ function ParticipantRow({
                 <span className="ml-auto text-[10px] font-semibold uppercase text-success shrink-0">
                     ✓ подтв.
                 </span>
+            )}
+
+            {canRemovePartner && (
+                <button
+                    type="button"
+                    onClick={handleRemovePartner}
+                    disabled={isPending}
+                    className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-warning-muted hover:text-warning transition-colors"
+                    aria-label="Убрать партнёра"
+                    title="Убрать партнёра"
+                >
+                    {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                        <UserX className="h-3.5 w-3.5" />
+                    )}
+                </button>
             )}
 
             {canCancel && (

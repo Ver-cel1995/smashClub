@@ -29,7 +29,7 @@ export const ParsedTournamentSchema = z.object({
     // — Расписание дня —
     registration_time: z.string().nullable(),
     start_time: z.string().nullable(),
-    awards_time: z.string().nullable(),
+    // awards_time — УБРАЛИ (было «во сколько награждение»)
 
     // — Регистрация —
     registration_deadline: z.string().nullable(),
@@ -44,6 +44,9 @@ export const ParsedTournamentSchema = z.object({
     // — Описание и контакты —
     description: z.string().nullable(),
     contact_info: z.string().nullable(),
+
+    // — Награды (НОВОЕ) —
+    awards: z.string().nullable(),
 })
 
 export type ParsedTournament = z.infer<typeof ParsedTournamentSchema>
@@ -94,11 +97,6 @@ const geminiResponseSchema = {
             nullable: true,
             description: 'Время начала соревнований / первых игр: "10:30", "11:00". null если нет.',
         },
-        awards_time: {
-            type: Type.STRING,
-            nullable: true,
-            description: 'Время награждения / закрытия: "15:00", "по окончании игр". null если нет.',
-        },
         registration_deadline: {
             type: Type.STRING,
             nullable: true,
@@ -138,33 +136,40 @@ const geminiResponseSchema = {
         description: {
             type: Type.STRING,
             nullable: true,
-            description: 'Краткое описание (1-3 предложения): условия допуска, требования к участникам, ключевые моменты. БЕЗ дублирования дат/места/взноса.',
+            description: 'Краткое описание (1-3 предложения): условия допуска, требования к участникам, ключевые моменты. БЕЗ дублирования дат/места/взноса/наград.',
         },
         contact_info: {
             type: Type.STRING,
             nullable: true,
             description: 'Контактное лицо и телефон: "Иванов И.И., +7 999 123-45-67". null если нет.',
         },
+        awards: {
+            type: Type.STRING,
+            nullable: true,
+            description: 'ЧТО за награды получают призёры: медали, кубки, грамоты, ценные призы, дипломы, денежные призы. Свободный текст как в положении. Обычно раздел называется "Награждение победителей и призёров", "Награждение", "Призы". НЕ время награждения! null если в положении не указано.',
+        },
     },
     required: [
         'title', 'organizer',
         'city', 'venue_name', 'venue_address',
         'start_date', 'end_date',
-        'registration_time', 'start_time', 'awards_time',
+        'registration_time', 'start_time',
         'registration_deadline',
         'entry_fee', 'entry_fee_note',
         'categories',
         'description', 'contact_info',
+        'awards',
     ],
     propertyOrdering: [
         'title', 'organizer',
         'city', 'venue_name', 'venue_address',
         'start_date', 'end_date',
-        'registration_time', 'start_time', 'awards_time',
+        'registration_time', 'start_time',
         'registration_deadline',
         'entry_fee', 'entry_fee_note',
         'categories',
         'description', 'contact_info',
+        'awards',
     ],
 }
 
@@ -195,10 +200,9 @@ export async function parseTournamentPdf(
 - Если полный адрес был "СК Юность, Каневской район, ст. Стародеревянковская, ул. Мира, 70" → city="ст. Стародеревянковская", venue_name="СК Юность", venue_address="ул. Мира, 70".
 
 Время:
-- Строковый формат, как в документе: "09:00", "09:00-10:00", "с 10:30", "по окончании игр".
+- Строковый формат, как в документе: "09:00", "09:00-10:00", "с 10:30".
 - registration_time — работа мандатной комиссии, приём заявок в день турнира.
 - start_time — начало игр.
-- awards_time — награждение/закрытие.
 
 Категории:
 - Строго из набора: MS (мужская одиночка), WS (женская одиночка), MD (мужская пара), WD (женская пара), XD (смешанная пара).
@@ -210,9 +214,16 @@ export async function parseTournamentPdf(
 - entry_fee: одно число рублей если взнос простой ("500 руб.") → 500.
 - entry_fee_note: используй только если сложная тарификация ("500₽ одиночка, 800₽ пара"). Если простой взнос — null.
 
+Награды (awards):
+- Ищи в положении раздел про "НАГРАЖДЕНИЕ", "Награждение победителей и призёров", "Призы", "Награды".
+- Извлекай ЧТО получают победители и призёры: медали, кубки, грамоты, ценные призы, дипломы, денежные призы.
+- Копируй ключевые фразы из положения. Пример: "Победители и призёры награждаются медалями, дипломами и ценными призами. За 1 место — кубок."
+- НЕ путать со временем награждения (когда состоится церемония)! Нужно ЧТО дают, а не КОГДА дают.
+- Если в положении про награды ничего не написано — null.
+
 Описание:
-- 1-3 предложения о ключевом: организатор, условия допуска, спецтребования.
-- НЕ дублируй информацию, которая уже есть в других полях (даты, место, взнос).
+- 1-3 предложения о ключевом: условия допуска, требования к участникам, спецмоменты.
+- НЕ дублируй информацию из других полей (даты, место, взнос, награды).
 
 Общее:
 - Если поля НЕТ в документе — ставь null. НЕ ВЫДУМЫВАЙ.

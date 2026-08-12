@@ -1,13 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Search, User, UserPlus, X, Loader2 } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
-import { UserAvatar } from '@/components/user-avatar'
-import {
-    searchPlayers,
-    type PlayerSearchResult,
-} from '@/app/(main)/tournaments/actions'
+import {useEffect, useRef, useState} from 'react'
+import {Loader2, Search, User, UserPlus, X} from 'lucide-react'
+import {UserAvatar} from '@/components/user-avatar'
+import {type PlayerSearchResult, searchPlayers,} from '@/app/(main)/tournaments/actions'
+import {Gender} from "@/shared/lib/gender";
 
 type PartnerChoice =
     | null
@@ -18,11 +15,12 @@ type Props = {
     value: PartnerChoice
     onChange: (value: PartnerChoice) => void
     disabled?: boolean
+    requiredGender?: Gender | null   // ← НОВОЕ
 }
 
 type Mode = 'search' | 'guest' | 'selected'
 
-export function PartnerPicker({ value, onChange, disabled }: Props) {
+export function PartnerPicker({ value, onChange, disabled, requiredGender }: Props) {
     const [mode, setMode] = useState<Mode>(value ? 'selected' : 'search')
 
     // Если снаружи изменили value — синхронизируем
@@ -88,6 +86,7 @@ export function PartnerPicker({ value, onChange, disabled }: Props) {
                             })
                         }}
                         disabled={disabled}
+                        requiredGender={requiredGender}  // ← НОВОЕ
                     />
                     <button
                         type="button"
@@ -105,13 +104,18 @@ export function PartnerPicker({ value, onChange, disabled }: Props) {
             )}
 
             {mode === 'guest' && (
-                <GuestInput
-                    onConfirm={(name) => {
-                        onChange({ kind: 'guest', full_name: name })
-                    }}
-                    onCancel={() => setMode('search')}
-                    disabled={disabled}
-                />
+                <>
+                    {requiredGender && (
+                        <div className="rounded-lg bg-warning-muted px-2 py-1.5 text-[10px] text-warning">
+                            💡 Гость должен быть {requiredGender === 'male' ? 'мужского' : 'женского'} пола
+                        </div>
+                    )}
+                    <GuestInput
+                        onConfirm={(name) => onChange({ kind: 'guest', full_name: name })}
+                        onCancel={() => setMode('search')}
+                        disabled={disabled}
+                    />
+                </>
             )}
         </div>
     )
@@ -124,9 +128,11 @@ export function PartnerPicker({ value, onChange, disabled }: Props) {
 function PlayerSearchInput({
                                onSelect,
                                disabled,
+                               requiredGender,
                            }: {
     onSelect: (player: PlayerSearchResult) => void
     disabled?: boolean
+    requiredGender?: Gender | null
 }) {
     const [query, setQuery] = useState('')
     const [results, setResults] = useState<PlayerSearchResult[]>([])
@@ -138,7 +144,7 @@ function PlayerSearchInput({
         if (debounceRef.current) clearTimeout(debounceRef.current)
         debounceRef.current = setTimeout(async () => {
             setIsSearching(true)
-            const result = await searchPlayers(query)
+            const result = await searchPlayers(query, requiredGender ?? null)  // ← НОВОЕ
             setIsSearching(false)
             if (result.success) {
                 setResults(result.data ?? [])
@@ -147,7 +153,7 @@ function PlayerSearchInput({
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current)
         }
-    }, [query])
+    }, [query, requiredGender])
 
     return (
         <div className="relative">

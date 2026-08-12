@@ -1,18 +1,19 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { X, Loader2 } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
-import { useProgressAction } from '@/shared/hooks/use-progress-action'
-import { registerForTournament } from '@/app/(main)/tournaments/actions'
-import { PartnerPicker } from './partner-picker'
+import {useState, useMemo} from 'react'
+import {toast} from 'sonner'
+import {Dialog, DialogContent, DialogHeader, DialogTitle} from '@/components/ui/dialog'
+import {Button} from '@/components/ui/button'
+import {X, Loader2} from 'lucide-react'
+import {cn} from '@/shared/lib/utils'
+import {useProgressAction} from '@/shared/hooks/use-progress-action'
+import {registerForTournament} from '@/app/(main)/tournaments/actions'
+import {PartnerPicker} from './partner-picker'
 import type {
     TournamentCategoryFull,
     MyParticipationInCategory,
 } from '@/app/(main)/tournaments/[id]/queries'
+import {canPlayerJoinCategory, Gender, getRequiredPartnerGender} from "@/shared/lib/gender";
 
 const CATEGORY_LABELS: Record<string, string> = {
     MS: 'Мужская одиночка',
@@ -41,6 +42,7 @@ type Props = {
     categories: TournamentCategoryFull[]
     myParticipation: Record<string, MyParticipationInCategory>
     currentUserId: string
+    currentUserGender: Gender | null   // ← НОВОЕ
     entryFee: number | null
     hasEntryFee: boolean
 }
@@ -54,20 +56,23 @@ export function RegistrationDialog({
                                        currentUserId,
                                        entryFee,
                                        hasEntryFee,
+                                       currentUserGender
                                    }: Props) {
     const [runAction, isPending] = useProgressAction()
 
     // Доступные категории (те где я ещё не записан)
     const availableCategories = useMemo(
-        () => categories.filter((c) => !myParticipation[c.id]),
-        [categories, myParticipation]
+        () => categories
+            .filter((c) => !myParticipation[c.id])
+            .filter((c) => canPlayerJoinCategory(currentUserGender, c.category)),
+        [categories, myParticipation, currentUserGender]
     )
 
     // Состояние формы: категория_id → { selected, partner }
     const [choices, setChoices] = useState<Record<string, CategoryChoice>>(() => {
         const initial: Record<string, CategoryChoice> = {}
         for (const cat of availableCategories) {
-            initial[cat.id] = { selected: false, partner: null }
+            initial[cat.id] = {selected: false, partner: null}
         }
         return initial
     })
@@ -78,7 +83,7 @@ export function RegistrationDialog({
     const updateChoice = (categoryId: string, patch: Partial<CategoryChoice>) => {
         setChoices((prev) => ({
             ...prev,
-            [categoryId]: { ...prev[categoryId], ...patch },
+            [categoryId]: {...prev[categoryId], ...patch},
         }))
     }
 
@@ -179,12 +184,12 @@ export function RegistrationDialog({
                         className="rounded-lg p-1.5 text-muted hover:bg-hover hover:text-strong"
                         aria-label="Закрыть"
                     >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4"/>
                     </button>
                 </div>
 
                 {/* Список категорий */}
-                <div className="overflow-y-auto px-4 py-3" style={{ maxHeight: 'calc(90vh - 180px)' }}>
+                <div className="overflow-y-auto px-4 py-3" style={{maxHeight: 'calc(90vh - 180px)'}}>
                     <div className="space-y-2">
                         {availableCategories.map((cat) => {
                             const isPair = PAIR_CATEGORIES.has(cat.category)
@@ -247,10 +252,9 @@ export function RegistrationDialog({
                                         <div className="border-t border-card px-3 pb-3 pt-2">
                                             <PartnerPicker
                                                 value={choice.partner}
-                                                onChange={(partner) =>
-                                                    updateChoice(cat.id, { partner })
-                                                }
+                                                onChange={(partner) => updateChoice(cat.id, { partner })}
                                                 disabled={isPending}
+                                                requiredGender={getRequiredPartnerGender(currentUserGender, cat.category)}
                                             />
                                         </div>
                                     )}
@@ -281,7 +285,7 @@ export function RegistrationDialog({
                     >
                         {isPending ? (
                             <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
                                 Регистрируем…
                             </>
                         ) : selectedCount > 0 ? (

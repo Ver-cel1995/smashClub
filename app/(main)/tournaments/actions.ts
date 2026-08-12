@@ -98,6 +98,11 @@ export async function parseTournamentPdfAction(
         return { success: false, error: 'Только тренер может парсить положения' }
     }
 
+    const rateLimit = await checkRateLimit(user.id, RATE_LIMITS.PARSE_PDF)
+    if (!rateLimit.allowed) {
+        return { success: false, error: rateLimit.error }
+    }
+
     try {
         let parsed: ParsedTournament
 
@@ -201,6 +206,8 @@ export async function deleteTournamentPdf(storagePath: string): Promise<ActionRe
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 import type { Database } from '@/types/database'
+import {checkRateLimit, RATE_LIMITS} from "@/shared/lib/rate-limit";
+import {mapPgError} from "@/shared/lib/actions/pg-errors";
 
 // Валидация формы турнира на сервере
 const createTournamentSchema = z.object({
@@ -214,7 +221,6 @@ const createTournamentSchema = z.object({
     end_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
     registration_time: z.string().max(50).nullable(),
     start_time: z.string().max(50).nullable(),
-    awards_time: z.string().max(50).nullable(),
     registration_deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
     entry_fee: z.number().int().min(0).max(1000000).nullable(),
     entry_fee_note: z.string().max(500).nullable(),
@@ -222,6 +228,7 @@ const createTournamentSchema = z.object({
     contact_info: z.string().max(300).nullable(),
     pdf_url: z.string().url().nullable(),
     pdf_storage_path: z.string().nullable(),
+    awards: z.string().max(1000).nullable(),   // ← НОВОЕ
     categories: z.array(z.object({
         category: z.enum(['MS', 'WS', 'MD', 'WD', 'XD']),
         age_group: z.string().nullable(),
@@ -244,7 +251,27 @@ function extractFieldErrors(error: unknown): Record<string, string> {
 }
 
 export async function createTournament(
-    input: CreateTournamentInput
+    input: {
+        title: string;
+        tournament_type: "home" | "away";
+        organizer: string | null;
+        city: string;
+        venue_name: string | null;
+        venue_address: string | null;
+        start_date: string;
+        end_date: string | null;
+        registration_time: string | null;
+        start_time: string | null;
+        awards: string | null;
+        registration_deadline: string | null;
+        entry_fee: number | null;
+        entry_fee_note: string | null;
+        description: string | null;
+        contact_info: string | null;
+        pdf_url: string | null;
+        pdf_storage_path: string | null;
+        categories: { category: "MS" | "WS" | "MD" | "WD" | "XD"; age_group: string | null }[]
+    }
 ): Promise<ActionResult<{ id: string }>> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -263,6 +290,11 @@ export async function createTournament(
         return { success: false, error: 'Только тренер может создавать турниры' }
     }
 
+    const rateLimit = await checkRateLimit(user.id, RATE_LIMITS.CREATE_TOURNAMENT)
+    if (!rateLimit.allowed) {
+        return { success: false, error: rateLimit.error }
+    }
+
     const parsed = createTournamentSchema.safeParse(input)
     if (!parsed.success) {
         return {
@@ -279,13 +311,13 @@ export async function createTournament(
         .filter(Boolean)
         .join(', ')
 
-    // Собираем расширенное description (пока БД не разбита на поля времени и т.п.)
+    // Собираем расширенное description
     const extendedDescription = [
         data.description,
         data.organizer && `Организатор: ${data.organizer}`,
         data.registration_time && `Регистрация: ${data.registration_time}`,
         data.start_time && `Начало: ${data.start_time}`,
-        data.awards_time && `Награждение: ${data.awards_time}`,
+        data.awards && `🏆 Награды: ${data.awards}`,                   // ← НОВОЕ
         data.entry_fee_note && `Взнос: ${data.entry_fee_note}`,
         data.contact_info && `Контакты: ${data.contact_info}`,
     ].filter(Boolean).join('\n\n')
@@ -316,7 +348,7 @@ export async function createTournament(
 
     if (tournamentError || !tournament) {
         console.error('Failed to create tournament:', tournamentError)
-        return { success: false, error: 'Не удалось создать турнир' }
+        return { success: false, error: mapPgError(tournamentError, 'создать турнир') }
     }
 
     // 2. Создаём категории
@@ -336,10 +368,11 @@ export async function createTournament(
 
     if (categoriesError) {
         console.error('Failed to create categories:', categoriesError)
-        // Откатываем турнир
         await supabase.from('tournaments').delete().eq('id', tournament.id)
-        return { success: false, error: 'Не удалось создать категории' }
+        return { success: false, error: mapPgError(categoriesError, 'создать категории') }
     }
+
+
 
     revalidatePath('/tournaments')
     revalidatePath('/home')
@@ -360,7 +393,27 @@ export async function createTournament(
 
 export async function updateTournament(
     id: string,
-    input: CreateTournamentInput
+    input: {
+        title: string;
+        tournament_type: "home" | "away";
+        organizer: string | null;
+        city: string;
+        venue_name: string | null;
+        venue_address: string | null;
+        start_date: string;
+        end_date: string | null;
+        registration_time: string | null;
+        start_time: string | null;
+        awards: string | null;
+        registration_deadline: string | null;
+        entry_fee: number | null;
+        entry_fee_note: string | null;
+        description: string | null;
+        contact_info: string | null;
+        pdf_url: string | null;
+        pdf_storage_path: string | null;
+        categories: { category: "MS" | "WS" | "MD" | "WD" | "XD"; age_group: string | null }[]
+    }
 ): Promise<ActionResult<{ id: string }>> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -416,13 +469,13 @@ export async function updateTournament(
         .filter(Boolean)
         .join(', ')
 
-    // Собираем extendedDescription
+    // extendedDescription
     const extendedDescription = [
         data.description,
         data.organizer && `Организатор: ${data.organizer}`,
         data.registration_time && `Регистрация: ${data.registration_time}`,
         data.start_time && `Начало: ${data.start_time}`,
-        data.awards_time && `Награждение: ${data.awards_time}`,
+        data.awards && `🏆 Награды: ${data.awards}`,                   // ← НОВОЕ
         data.entry_fee_note && `Взнос: ${data.entry_fee_note}`,
         data.contact_info && `Контакты: ${data.contact_info}`,
     ].filter(Boolean).join('\n\n')
@@ -450,7 +503,7 @@ export async function updateTournament(
 
     if (updateError) {
         console.error('Failed to update tournament:', updateError)
-        return { success: false, error: 'Не удалось обновить турнир' }
+        return { success: false, error: mapPgError(updateError, 'обновить турнир') }
     }
 
     // Обновляем категории: сначала удаляем старые, потом создаём новые
@@ -555,7 +608,7 @@ export async function deleteTournament(id: string): Promise<ActionResult> {
 
     if (error) {
         console.error('Failed to delete tournament:', error)
-        return { success: false, error: 'Не удалось удалить турнир' }
+        return { success: false, error: mapPgError(error, 'удалить турнир') }
     }
 
     revalidatePath('/tournaments')
@@ -581,10 +634,12 @@ export type PlayerSearchResult = {
     full_name: string
     avatar_url: string | null
     role: 'coach' | 'player'
+    gender: 'male' | 'female' | null
 }
 
 export async function searchPlayers(
-    query: string
+    query: string,
+    filterGender?: 'male' | 'female' | null
 ): Promise<ActionResult<PlayerSearchResult[]>> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -599,6 +654,7 @@ export async function searchPlayers(
         search_query: cleanQuery,
         exclude_user_id: user.id,
         result_limit: 10,
+        filter_gender: filterGender ?? undefined,
     })
 
     if (error) {
@@ -660,6 +716,11 @@ export async function registerForTournament(input: {
         return { success: false, error: 'Нужно войти в аккаунт' }
     }
 
+    const rateLimit = await checkRateLimit(user.id, RATE_LIMITS.REGISTER_TOURNAMENT)
+    if (!rateLimit.allowed) {
+        return { success: false, error: rateLimit.error }
+    }
+
     const parsed = registerForTournamentSchema.safeParse(input)
     if (!parsed.success) {
         return {
@@ -668,6 +729,7 @@ export async function registerForTournament(input: {
             fieldErrors: extractFieldErrors(parsed.error),
         }
     }
+
 
     const { tournament_id, slots } = parsed.data
 
@@ -768,15 +830,23 @@ export async function registerForTournament(input: {
                 }
 
                 // Обновляем запись: становлюсь player2, статус confirmed (я сам согласился)
-                const { error: updateError } = await supabase
+                const { data: updated, error: updateError } = await supabase
                     .from('tournament_participants')
                     .update({
                         player2_id: user.id,
                         pair_status: 'confirmed',
                     })
                     .eq('id', slot.partner.record_id)
+                    .is('player2_id', null)
+                    .is('guest2_id', null)
+                    .select('id')
 
-                if (updateError) throw updateError
+                if (updateError) {
+                    throw new Error(mapPgError(updateError, 'присоединиться к паре'))
+                }
+                if (!updated || updated.length === 0) {
+                    throw new Error('Кто-то уже стал партнёром в этой записи')
+                }
                 createdCount++
                 continue
             }
@@ -785,6 +855,12 @@ export async function registerForTournament(input: {
             let guest2Id: string | null = null
 
             if (slot.partner?.kind === 'guest') {
+                // Rate limit на создание гостей
+                const guestLimit = await checkRateLimit(user.id, RATE_LIMITS.CREATE_GUEST)
+                if (!guestLimit.allowed) {
+                    throw new Error(guestLimit.error)
+                }
+
                 // Создаём гостя
                 const { data: newGuest, error: guestError } = await supabase
                     .from('guests')
@@ -796,7 +872,7 @@ export async function registerForTournament(input: {
                     .single()
 
                 if (guestError || !newGuest) {
-                    throw new Error('Не удалось создать гостя')
+                    throw new Error(mapPgError(guestError, 'создать гостя'))
                 }
                 guest2Id = newGuest.id
                 createdGuestIds.push(newGuest.id)
@@ -804,6 +880,20 @@ export async function registerForTournament(input: {
 
             const player2Id: string | null =
                 slot.partner?.kind === 'player' ? slot.partner.player_id : null
+
+            if (player2Id) {
+                const { count: pendingCount } = await supabase
+                    .from('tournament_participants')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('player1_id', user.id)
+                    .eq('player2_id', player2Id)
+                    .eq('pair_status', 'pending')
+
+                if (pendingCount !== null && pendingCount >= 3) {
+                    throw new Error('Ты уже пригласил этого игрока в 3 турнира. Дождись ответа.')
+                }
+            }
+
 
             // Если пара и партнёр — гость → сразу confirmed
             // Если пара и партнёр — игрок клуба → pending (ждём подтверждения)
@@ -832,7 +922,7 @@ export async function registerForTournament(input: {
                     registered_by: user.id,
                 })
 
-            if (insertError) throw insertError
+            if (insertError) throw new Error(mapPgError(insertError, 'зарегистрироваться'))
             createdCount++
         }
     } catch (err) {
@@ -864,6 +954,12 @@ export async function respondToPairInvite(
 
     if (!user) {
         return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    // Rate limit
+    const rateLimit = await checkRateLimit(user.id, RATE_LIMITS.RESPOND_INVITE)
+    if (!rateLimit.allowed) {
+        return { success: false, error: rateLimit.error }
     }
 
     // Загружаем запись
@@ -900,7 +996,7 @@ export async function respondToPairInvite(
             .eq('id', participantId)
 
         if (error) {
-            return { success: false, error: 'Не удалось подтвердить' }
+            return { success: false, error: mapPgError(error, 'подтвердить приглашение') }
         }
     } else {
         // decline — обнуляем player2, статус declined
@@ -914,7 +1010,7 @@ export async function respondToPairInvite(
             .eq('id', participantId)
 
         if (error) {
-            return { success: false, error: 'Не удалось отклонить' }
+            return { success: false, error: mapPgError(error, 'отклонить приглашение') }
         }
 
         // Через 1 запрос обновим статус обратно на pending чтобы запись выглядела
@@ -1009,6 +1105,96 @@ export async function cancelRegistration(
     // Postgres не даст, тихо проигнорируем)
     if (guestIdsToDelete.length > 0) {
         await supabase.from('guests').delete().in('id', guestIdsToDelete)
+    }
+
+    revalidatePath(`/tournaments/${record.tournament_id}`)
+    revalidatePath('/home')
+
+    return { success: true }
+}
+
+
+/**
+ * Убрать партнёра из пары.
+ * Может делать: тренер, player1 или player2.
+ * Тот кто нажал — остаётся в записи, другой обнуляется.
+ * Если нажал player2 — он становится player1.
+ */
+export async function removePartner(
+    participantId: string
+): Promise<ActionResult> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+        return { success: false, error: 'Нужно войти в аккаунт' }
+    }
+
+    const { data: record } = await supabase
+        .from('tournament_participants')
+        .select('id, tournament_id, player1_id, player2_id, guest2_id')
+        .eq('id', participantId)
+        .single()
+
+    if (!record) {
+        return { success: false, error: 'Запись не найдена' }
+    }
+
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+    const isCoach = profile?.role === 'coach'
+
+    const iAmPlayer1 = record.player1_id === user.id
+    const iAmPlayer2 = record.player2_id === user.id
+
+    if (!isCoach && !iAmPlayer1 && !iAmPlayer2) {
+        return { success: false, error: 'Только участник пары или тренер может убрать партнёра' }
+    }
+
+    // Гость, если был — удалим (не имеет владельца в системе)
+    const guestIdToDelete = record.guest2_id
+
+    // Определяем что оставить в записи
+    let updatePayload: {
+        player1_id: string | null
+        player2_id: null
+        guest2_id: null
+        pair_status: 'pending'
+    }
+
+    if (iAmPlayer2) {
+        // Я player2, убираю player1 → сам становлюсь player1
+        updatePayload = {
+            player1_id: user.id,
+            player2_id: null,
+            guest2_id: null,
+            pair_status: 'pending',
+        }
+    } else {
+        // Я player1 или тренер → оставляем player1 как есть, убираем player2/guest2
+        updatePayload = {
+            player1_id: record.player1_id,
+            player2_id: null,
+            guest2_id: null,
+            pair_status: 'pending',
+        }
+    }
+
+    const { error } = await supabase
+        .from('tournament_participants')
+        .update(updatePayload)
+        .eq('id', participantId)
+
+    if (error) {
+        console.error('Failed to remove partner:', error)
+        return { success: false, error: 'Не удалось убрать партнёра' }
+    }
+
+    if (guestIdToDelete) {
+        await supabase.from('guests').delete().eq('id', guestIdToDelete)
     }
 
     revalidatePath(`/tournaments/${record.tournament_id}`)

@@ -28,10 +28,12 @@ export function EditTournamentClient({ tournament }: Props) {
     const venueName = tournament.venue ?? locationParts[1] ?? ''
     const venueAddress = locationParts.slice(2).join(', ') || null
 
+    const { awards: parsedAwards, cleanDescription } = extractAwardsFromDescription(tournament.description)
+
     // Формируем initial data из БД
     const initialData: ParsedTournament = replacedData ?? {
         title: tournament.title,
-        organizer: null, // хранится в description, парсить не будем — оставим пусто
+        organizer: null,
         city,
         venue_name: venueName || null,
         venue_address: venueAddress,
@@ -39,7 +41,6 @@ export function EditTournamentClient({ tournament }: Props) {
         end_date: tournament.end_date,
         registration_time: null,
         start_time: null,
-        awards_time: null,
         registration_deadline: tournament.registration_deadline
             ? tournament.registration_deadline.slice(0, 10)
             : null,
@@ -51,6 +52,17 @@ export function EditTournamentClient({ tournament }: Props) {
         })),
         description: tournament.description,
         contact_info: null,
+        awards: parsedAwards,
+    }
+
+
+    function extractAwardsFromDescription(desc: string | null): { awards: string | null; cleanDescription: string | null } {
+        if (!desc) return { awards: null, cleanDescription: null }
+        const match = desc.match(/🏆 Награды: (.+?)(?=\n\n|$)/)
+        if (!match) return { awards: null, cleanDescription: desc }
+        const awards = match[1].trim()
+        const cleanDescription = desc.replace(match[0], '').replace(/\n{3,}/g, '\n\n').trim() || null
+        return { awards, cleanDescription }
     }
 
     const pdfInfo = replacedPdf ?? (
