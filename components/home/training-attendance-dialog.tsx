@@ -47,7 +47,8 @@ export function TrainingAttendanceDialog({
                                         <UserAvatar
                                             name={a.profile.full_name}
                                             avatarUrl={a.profile.avatar_url}
-                                            size={'sm'} src={""}                                        />
+                                            size="sm"
+                                        />
                                         <span className="text-sm">{a.profile.full_name}</span>
                                         {a.player_id === currentUserId && (
                                             <AvatarBadge className="text-[10px]">
@@ -73,7 +74,8 @@ export function TrainingAttendanceDialog({
                                         <UserAvatar
                                             name={a.profile.full_name}
                                             avatarUrl={a.profile.avatar_url}
-                                            size={"lg"} src={""}                                        />
+                                            size="sm"
+                                        />
                                         <span className="text-sm text-muted-foreground">
                       {a.profile.full_name}
                     </span>

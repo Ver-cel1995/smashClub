@@ -1,5 +1,3 @@
-import imageCompression from 'browser-image-compression'
-
 export type CompressOptions = {
     /** Максимальный размер в МБ */
     maxSizeMB?: number
@@ -17,19 +15,19 @@ const DEFAULTS: Required<CompressOptions> = {
 
 /**
  * Сжимает изображение в браузере перед загрузкой.
- * Возвращает исходный файл, если сжатие не применимо (напр. это не картинка).
+ * Загружает 'browser-image-compression' динамически по требованию.
  */
 export async function compressImage(
     file: File,
     options: CompressOptions = {}
 ): Promise<File> {
     if (!file.type.startsWith('image/')) return file
-    // GIF/SVG не трогаем
     if (file.type === 'image/gif' || file.type === 'image/svg+xml') return file
 
     const opts = { ...DEFAULTS, ...options }
 
     try {
+        const imageCompression = (await import('browser-image-compression')).default
         const compressed = await imageCompression(file, {
             maxSizeMB: opts.maxSizeMB,
             maxWidthOrHeight: opts.maxWidthOrHeight,
@@ -38,10 +36,8 @@ export async function compressImage(
             initialQuality: 0.85,
         })
 
-        // Если после сжатия стало БОЛЬШЕ — возвращаем оригинал
         if (compressed.size >= file.size) return file
 
-        // Восстанавливаем нормальное имя с новым расширением
         const nameNoExt = file.name.replace(/\.[^.]+$/, '')
         const ext = opts.useWebp ? 'webp' : file.name.split('.').pop() || 'jpg'
         return new File([compressed], `${nameNoExt}.${ext}`, {

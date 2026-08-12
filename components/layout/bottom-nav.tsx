@@ -55,7 +55,7 @@ export function BottomNav() {
         <nav
             className={cn(
                 'fixed bottom-0 left-0 right-0 z-40',
-                'border-t border-neutral-800 bg-neutral-950/95 backdrop-blur',
+                'border-t border-neutral-800 bg-neutral-950/98',
                 'pb-[env(safe-area-inset-bottom)]'
             )}
             aria-busy={navLocked}
@@ -78,7 +78,7 @@ export function BottomNav() {
                                 'flex flex-1 flex-col items-center gap-1 px-2 py-3',
                                 'transition-colors duration-150',
                                 active
-                                    ? 'text-lime-400'
+                                    ? 'text-[var(--accent-color,#a3e635)]'
                                     : 'text-neutral-500 hover:text-neutral-300',
                                 (navLocked || active) && 'disabled:cursor-default',
                                 pending && 'opacity-90'

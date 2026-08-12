@@ -13,7 +13,7 @@ import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 export function CreatePollForm() {
     const router = useProgressRouter()
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     const [question, setQuestion] = useState('')
     const [description, setDescription] = useState('')
@@ -72,7 +72,7 @@ export function CreatePollForm() {
         formData.set('poll_multiple_choice', multipleChoice ? 'on' : '')
         formData.set('is_pinned', isPinned ? 'on' : '')
 
-        startTransition(async () => {
+        runAction(async () => {
             const result = await createPoll(formData)
 
             if (result.success) {

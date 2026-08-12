@@ -29,7 +29,7 @@ type Props = {
 export function GalleryTab(_props: Props) {
     const [groups, setGroups] = useState<GalleryPostGroup[]>([])
     const [month, setMonth] = useState<number | null>(null) // null = все
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     // Lightbox
     const [lightbox, setLightbox] = useState<{
@@ -38,7 +38,7 @@ export function GalleryTab(_props: Props) {
     } | null>(null)
 
     useEffect(() => {
-        startTransition(async () => {
+        runAction(async () => {
             const data = await fetchGalleryGroupsAction({
                 month: month ?? undefined,
             })
@@ -68,7 +68,7 @@ export function GalleryTab(_props: Props) {
                             className={cn(
                                 'flex items-center gap-1.5 rounded-xl border border-neutral-700 px-3 py-2 text-xs font-medium transition',
                                 month !== null
-                                    ? 'border-lime-400/40 bg-lime-400/10 text-lime-400'
+                                    ? 'border-accent bg-accent-muted text-accent'
                                     : 'text-neutral-300 hover:bg-neutral-800/60'
                             )}
                         >
@@ -84,7 +84,7 @@ export function GalleryTab(_props: Props) {
                             {month !== null && (
                                 <button
                                     onClick={() => setMonth(null)}
-                                    className="text-xs text-lime-400 hover:underline"
+                                    className="text-xs text-accent hover:underline"
                                 >
                                     Сбросить
                                 </button>
@@ -101,7 +101,7 @@ export function GalleryTab(_props: Props) {
                                         className={cn(
                                             'rounded-lg px-2 py-2 text-xs font-medium transition',
                                             active
-                                                ? 'bg-lime-400 text-neutral-950'
+                                                ? 'bg-accent'
                                                 : 'bg-neutral-800/60 text-neutral-200 hover:bg-neutral-800'
                                         )}
                                     >
@@ -117,7 +117,7 @@ export function GalleryTab(_props: Props) {
             {/* Контент */}
             {isPending ? (
                 <div className="flex justify-center py-12">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-lime-400 border-t-transparent" />
+                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent border-t-transparent" />
                 </div>
             ) : groups.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-16 text-center">
@@ -134,7 +134,7 @@ export function GalleryTab(_props: Props) {
                                 href={`/feed/${group.postId}`}
                                 className="mb-2 flex items-baseline justify-between gap-2 px-1"
                             >
-                                <h3 className="line-clamp-1 text-sm font-semibold text-neutral-100 hover:text-lime-400">
+                                <h3 className="line-clamp-1 text-sm font-semibold text-neutral-100 hover:text-accent">
                                     {group.postTitle ?? 'Без заголовка'}
                                 </h3>
                                 <span className="shrink-0 text-[11px] text-neutral-500">

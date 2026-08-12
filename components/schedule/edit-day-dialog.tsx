@@ -42,14 +42,14 @@ export function EditDayDialog({
     const [status, setStatus] = useState<TrainingStatus>(first.status)
     const [note, setNote] = useState(first.status_note || '')
     const [substitute, setSubstitute] = useState(first.substitute_name || '')
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
 
     const dateLabel = format(date, 'd MMMM', { locale: ru })
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault()
 
-        startTransition(async () => {
+        runAction(async () => {
             // Обновляем все тренировки этого дня
             const results = await Promise.all(
                 trainings.map((t) =>
@@ -159,8 +159,9 @@ export function EditDayDialog({
                         </Button>
                         <Button
                             type="submit"
+                            variant="secondary"
                             disabled={isPending}
-                            className="flex-1 bg-lime-400 hover:bg-lime-500 text-neutral-950 font-semibold"
+                            className="flex-1 font-semibold"
                         >
                             {isPending ? (
                                 <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />

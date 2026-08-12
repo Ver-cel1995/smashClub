@@ -1,20 +1,117 @@
 @import "tailwindcss";
 @plugin "tailwindcss-animate";
 
-
-body {
-    color: white;
+:root {
+  --accent-color: #a3e635;
+  --accent-hover: #84cc16;
+  --accent-glow: rgba(163, 230, 53, 0.4);
+  --accent-foreground: #09090b;
+  --accent-muted: rgba(163, 230, 53, 0.12);
+  --accent-border: rgba(163, 230, 53, 0.3);
+  
+  --bg-main: #0f131d;
+  --bg-card: #171c2c;
+  --bg-input: #121624;
+  --border-card: #252d47;
+  --text-main: #ffffff;
+  --text-muted: #8a94a6;
 }
 
+/* ===== Тёмная тема (Dark Theme - по макету дизайна) ===== */
+html.dark,
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg-main: #0f131d;
+  --bg-card: #171c2c;
+  --bg-input: #121624;
+  --border-card: #252d47;
+  --text-main: #ffffff;
+  --text-muted: #8a94a6;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
 
+html.dark body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
 
+/* ===== Светлая тема (Light Theme - чистый современный UI) ===== */
+html.light,
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg-main: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-input: #f8fafc;
+  --border-card: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
 
+html.light body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+}
 
+/* Адаптивные вспомогательные классы для Светлой и Тёмной темы */
+html.light .bg-neutral-950,
+html.light .bg-neutral-900 {
+  background-color: var(--bg-card) !important;
+}
 
+html.light .bg-neutral-800,
+html.light .bg-neutral-950\/50,
+html.light .bg-neutral-900\/50 {
+  background-color: #f8fafc !important;
+}
 
+html.light .border-neutral-800,
+html.light .border-neutral-700 {
+  border-color: var(--border-card) !important;
+}
 
+html.light .text-white,
+html.light .text-neutral-100,
+html.light .text-neutral-200 {
+  color: var(--text-main) !important;
+}
 
-/* ===== Shuttle Loader Animations ===== */
+html.light .text-neutral-300,
+html.light .text-neutral-400,
+html.light .text-neutral-500 {
+  color: var(--text-muted) !important;
+}
+
+/* ===== Динамические Акцентные Классы (Акцент везде одинаковый!) ===== */
+.bg-accent {
+  background-color: var(--accent-color) !important;
+  color: var(--accent-foreground) !important;
+}
+
+.bg-accent-hover:hover {
+  background-color: var(--accent-hover) !important;
+}
+
+.text-accent {
+  color: var(--accent-color) !important;
+}
+
+.border-accent {
+  border-color: var(--accent-border) !important;
+}
+
+.bg-accent-muted {
+  background-color: var(--accent-muted) !important;
+  color: var(--accent-color) !important;
+}
+
+.shadow-accent {
+  box-shadow: 0 8px 20px -6px var(--accent-glow) !important;
+}
+
+/* ===== Shuttle Loader & CSS Animations ===== */
 .bl-badge {
     transform-origin: 210px 190px;
     animation: bl-badge-pulse 1.9s ease-in-out infinite;
@@ -57,31 +154,6 @@ body {
 .bl-racket-right {
     transform-origin: 210px 280px;
     animation: bl-racket-right 1.55s ease-in-out infinite;
-}
-
-.bl-main-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 45px;
-    font-weight: 950;
-    letter-spacing: -1.4px;
-}
-.bl-city-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 27px;
-    font-weight: 950;
-    letter-spacing: 0.5px;
-}
-.bl-slogan-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 14px;
-    font-weight: 850;
-    letter-spacing: 0.3px;
-}
-.bl-loading-text {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 15px;
-    font-weight: 850;
-    letter-spacing: 2.4px;
 }
 
 @keyframes bl-spin { to { transform: rotate(360deg); } }

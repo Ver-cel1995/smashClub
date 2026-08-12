@@ -10,13 +10,13 @@ import {Button} from "@/components/ui/button";
 import {useProgressAction} from "@/shared/hooks/use-progress-action";
 
 export default function ForgotPasswordPage() {
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
     const [error, setError] = useState<string | null>(null)
     const [sent, setSent] = useState(false)
 
     const handleSubmit = (formData: FormData) => {
         // setError(null)
-        // startTransition(async () => {
+        // runAction(async () => {
         //     const result = await requestPasswordReset(formData)
         //     if (!result.success) {
         //         setError(result.error || 'Что-то пошло не так')
@@ -42,7 +42,7 @@ export default function ForgotPasswordPage() {
                 </div>
 
                 {sent ? (
-                    <div className="rounded-2xl border border-lime-400/30 bg-lime-400/10 p-4 text-center text-sm text-lime-300">
+                    <div className="rounded-2xl border border-accent bg-accent-muted p-4 text-center text-sm text-accent">
                         Если аккаунт с таким email существует, письмо с инструкцией уже отправлено.
                     </div>
                 ) : (
@@ -68,8 +68,9 @@ export default function ForgotPasswordPage() {
 
                         <Button
                             type="submit"
+                            variant="secondary"
                             disabled={isPending}
-                            className="w-full bg-lime-400 hover:bg-lime-500 text-neutral-950 font-semibold"
+                            className="w-full font-semibold"
                         >
                             {isPending ? 'Отправляем...' : 'Отправить инструкцию'}
                         </Button>
@@ -78,7 +79,7 @@ export default function ForgotPasswordPage() {
 
                 <div className="text-center text-sm text-neutral-400">
                     Вспомнили пароль?{' '}
-                    <Link href="/login" className="text-lime-400 hover:underline font-medium">
+                    <Link href="/login" className="text-accent hover:underline font-medium">
                         Войти
                     </Link>
                 </div>

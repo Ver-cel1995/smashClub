@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import {
     Bookmark,
     Loader2,
@@ -38,7 +38,7 @@ interface PostCardProps {
     votedFor?: string[]
 }
 
-export function PostCard({
+export const PostCard = memo(function PostCard({
                              post,
                              isCoach,
                              reactions = [],
@@ -126,14 +126,14 @@ export function PostCard({
         >
             {busy && (
                 <div className="absolute inset-0 z-10 flex items-center justify-center bg-neutral-900/50">
-                    <Loader2 className="h-5 w-5 animate-spin text-lime-400" />
+                    <Loader2 className="h-5 w-5 animate-spin text-accent" />
                 </div>
             )}
 
             {post.is_pinned && (
-                <div className="flex items-center gap-1.5 border-b border-lime-400/20 bg-lime-400/5 px-4 py-2">
-                    <Pin className="h-3 w-3 text-lime-400" />
-                    <span className="text-[11px] font-semibold uppercase tracking-wider text-lime-400">
+                <div className="flex items-center gap-1.5 border-b border-accent bg-accent-muted px-4 py-2">
+                    <Pin className="h-3 w-3 text-accent" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wider text-accent">
                         Закреплено
                     </span>
                 </div>
@@ -155,7 +155,7 @@ export function PostCard({
                                     {post.author.full_name}
                                 </p>
                                 {post.author.role === 'coach' && (
-                                    <span className="shrink-0 rounded-full border border-lime-400/30 bg-lime-400/10 px-1.5 py-0.5 text-[9px] font-bold uppercase text-lime-400">
+                                    <span className="shrink-0 rounded-full border border-accent bg-accent-muted px-1.5 py-0.5 text-[9px] font-bold uppercase text-accent">
                                         Тренер
                                     </span>
                                 )}
@@ -267,4 +267,4 @@ export function PostCard({
             </div>
         </article>
     )
-}
+})

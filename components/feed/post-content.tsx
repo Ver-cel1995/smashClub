@@ -90,7 +90,7 @@ export function PostContent({ title, content, postId, full = false }: PostConten
                         e.stopPropagation()
                         setState(isLong ? 'partial' : 'full')
                     }}
-                    className="text-sm font-medium text-lime-400 hover:text-lime-300 transition-colors"
+                    className="text-sm font-medium text-accent hover:opacity-80 transition-colors"
                 >
                     Показать полностью
                 </button>
@@ -104,7 +104,7 @@ export function PostContent({ title, content, postId, full = false }: PostConten
                         e.stopPropagation()
                         router.push(`/feed/${postId}`)
                     }}
-                    className="text-sm font-medium text-lime-400 hover:text-lime-300 transition-colors"
+                    className="text-sm font-medium text-accent hover:opacity-80 transition-colors"
                 >
                     Читать далее →
                 </button>

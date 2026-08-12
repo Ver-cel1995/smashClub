@@ -106,7 +106,7 @@ function PlayerRow({
                             {player.rackets.length === 1 ? 'запись' : 'записей'}
                         </span>
                         <span className="text-neutral-600">·</span>
-                        <span className="font-medium text-lime-400">
+                        <span className="font-medium text-accent">
                             {player.total_cost}₽
                         </span>
                         {hasUnpaid && (
@@ -130,7 +130,7 @@ function PlayerRow({
                         disabled={isPending}
                         className={cn(
                             'rounded-lg p-2 text-neutral-400 transition',
-                            'hover:bg-lime-400/10 hover:text-lime-400',
+                            'hover:bg-accent-muted hover:text-accent',
                             'disabled:opacity-40'
                         )}
                         aria-label="Напомнить об оплате"

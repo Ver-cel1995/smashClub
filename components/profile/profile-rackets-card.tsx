@@ -26,7 +26,7 @@ export function ProfileRacketsCard({ rackets }: Props) {
                 </div>
                 <Link
                     href="/profile/rackets"
-                    className="text-[11px] text-lime-400 hover:underline"
+                    className="text-[11px] text-accent hover:underline"
                 >
                     Все
                 </Link>
@@ -55,7 +55,7 @@ export function ProfileRacketsCard({ rackets }: Props) {
                                             </div>
                                         </div>
                                         {totalCost > 0 && (
-                                            <div className="text-sm font-medium text-lime-400">
+                                            <div className="text-sm font-medium text-accent">
                                                 {totalCost}₽
                                             </div>
                                         )}

@@ -55,7 +55,7 @@ export default function LoginPage() {
                         <div className="flex justify-end">
                             <Link
                                 href="/forgot-password"
-                                className="text-xs font-medium text-lime-400 hover:underline"
+                                className="text-xs font-medium text-accent hover:underline"
                             >
                                 Забыли пароль?
                             </Link>
@@ -68,8 +68,9 @@ export default function LoginPage() {
 
                     <Button
                         type="submit"
+                        variant="secondary"
                         disabled={isPending}
-                        className="w-full bg-lime-400 hover:bg-lime-500 text-neutral-950 font-semibold"
+                        className="w-full font-semibold"
                     >
                         {isPending ? 'Входим...' : 'Войти'}
                     </Button>

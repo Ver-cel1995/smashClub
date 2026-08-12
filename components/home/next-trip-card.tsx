@@ -22,7 +22,7 @@ const MAX_AVATARS_SHOWN = 5
 
 export function NextTripCard({ trip, currentUserId }: Props) {
     const [openDialog, setOpenDialog] = useState(false)
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
     const [optimisticStatus, setOptimisticStatus] = useState<TripParticipantStatus | null>(
         trip.my_status
     )
@@ -33,7 +33,7 @@ export function NextTripCard({ trip, currentUserId }: Props) {
         const prev = optimisticStatus
         setOptimisticStatus(status)
 
-        startTransition(async () => {
+        runAction(async () => {
             const res = await setTripAttendance(trip.id, status)
             if (!res.success) {
                 setOptimisticStatus(prev)
@@ -89,8 +89,9 @@ export function NextTripCard({ trip, currentUserId }: Props) {
                                     key={p.id}
                                     name={p.profile.full_name}
                                     avatarUrl={p.profile.avatar_url}
-                                    size={"lg"}
-                                    className="ring-2 ring-card" src={""}                                />
+                                    size="lg"
+                                    className="ring-2 ring-card"
+                                />
                             ))}
                             {going.length > MAX_AVATARS_SHOWN && (
                                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[10px] font-medium ring-2 ring-card">
@@ -123,12 +124,14 @@ export function NextTripCard({ trip, currentUserId }: Props) {
                 </div>
             </div>
 
-            <TripParticipantsDialog
-                open={openDialog}
-                onOpenChange={setOpenDialog}
-                trip={trip}
-                currentUserId={currentUserId}
-            />
+            {openDialog && (
+                <TripParticipantsDialog
+                    open={openDialog}
+                    onOpenChange={setOpenDialog}
+                    trip={trip}
+                    currentUserId={currentUserId}
+                />
+            )}
         </>
     )
 }

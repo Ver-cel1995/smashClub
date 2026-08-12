@@ -9,6 +9,13 @@ export type GalleryPostGroup = {
     images: string[]
 }
 
+export type GalleryItem = {
+    url: string
+    postId: string
+    postTitle: string | null
+    createdAt: string
+}
+
 export type GalleryFilters = {
     month?: number
 }

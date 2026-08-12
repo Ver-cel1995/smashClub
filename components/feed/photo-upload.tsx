@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useImperativeHandle, forwardRef } from 'react'
+import { useState, useRef, useImperativeHandle, forwardRef, useEffect } from 'react'
 import { ImagePlus, X, GripVertical, Loader2 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { toast } from 'sonner'
@@ -66,6 +66,15 @@ export const PhotoUpload = forwardRef<PhotoUploadHandle, PhotoUploadProps>(
         useImperativeHandle(ref, () => ({
             getFiles: () => previews.map((p) => p.file),
         }))
+
+        // Очистка Blob URL при размонтировании
+        useEffect(() => {
+            return () => {
+                previews.forEach((p) => {
+                    if (p.url) URL.revokeObjectURL(p.url)
+                })
+            }
+        }, [previews])
 
         const handleFiles = async (files: FileList | null) => {
             if (!files) return

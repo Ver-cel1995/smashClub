@@ -113,7 +113,7 @@ function CommentItem({
                                 {comment.author.full_name}
                             </span>
                             {comment.author.role === 'coach' && (
-                                <span className="shrink-0 rounded-full border border-lime-400/30 bg-lime-400/10 px-1 py-0.5 text-[8px] font-bold uppercase text-lime-400">
+                                <span className="shrink-0 rounded-full border border-accent bg-accent-muted px-1 py-0.5 text-[8px] font-bold uppercase text-accent">
                                     Тренер
                                 </span>
                             )}
@@ -132,7 +132,7 @@ function CommentItem({
                             <button
                                 type="button"
                                 onClick={() => setShowReplyInput(!showReplyInput)}
-                                className="text-[11px] font-medium text-neutral-400 transition-colors hover:text-lime-400"
+                                className="text-[11px] font-medium text-neutral-400 transition-colors hover:text-accent"
                             >
                                 Ответить
                             </button>

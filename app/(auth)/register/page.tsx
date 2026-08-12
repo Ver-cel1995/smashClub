@@ -88,8 +88,9 @@ export default function RegisterPage() {
 
                     <Button
                         type="submit"
+                        variant="secondary"
                         disabled={isPending}
-                        className="w-full bg-lime-400 hover:bg-lime-500 text-neutral-950 font-semibold"
+                        className="w-full font-semibold"
                     >
                         {isPending ? 'Регистрируем...' : 'Зарегистрироваться'}
                     </Button>

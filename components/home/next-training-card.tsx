@@ -32,7 +32,7 @@ const NO_COACH_STATUSES = new Set(['no_coach_open', 'tournament_trip'])
 
 export function NextTrainingCard({ training, currentUserId }: Props) {
     const [openDialog, setOpenDialog] = useState(false)
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
     const [optimisticStatus, setOptimisticStatus] = useState<AttendanceStatus | null>(
         training.my_status
     )
@@ -50,7 +50,7 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
         const prev = optimisticStatus
         setOptimisticStatus(status)
 
-        startTransition(async () => {
+        runAction(async () => {
             const res = await setTrainingAttendance(training.id, status)
             if (!res.success) {
                 setOptimisticStatus(prev)
@@ -145,14 +145,14 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
                                 className={cn(
                                     'flex-1 gap-2 transition-all duration-200',
                                     isGoing
-                                        ? 'border-lime-500/40 bg-lime-500/10 text-lime-400 hover:bg-lime-500/15'
-                                        : 'hover:border-lime-500/20 hover:text-lime-400'
+                                        ? 'border-accent bg-accent-muted text-accent'
+                                        : 'hover:border-accent hover:text-accent'
                                 )}
                             >
                                 <Check
                                     className={cn(
                                         'h-4 w-4 transition-all duration-200',
-                                        isGoing ? 'text-lime-400' : 'text-muted-foreground'
+                                        isGoing ? 'text-accent' : 'text-muted-foreground'
                                     )}
                                 />
                                 Я приду
@@ -182,12 +182,14 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
                 )}
             </div>
 
-            <TrainingAttendanceDialog
-                open={openDialog}
-                onOpenChange={setOpenDialog}
-                training={training}
-                currentUserId={currentUserId}
-            />
+            {openDialog && (
+                <TrainingAttendanceDialog
+                    open={openDialog}
+                    onOpenChange={setOpenDialog}
+                    training={training}
+                    currentUserId={currentUserId}
+                />
+            )}
         </>
     )
 }

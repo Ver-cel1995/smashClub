@@ -20,7 +20,7 @@ export function AuthTabs({ active }: { active: AuthTab }) {
                     className={cn(
                         'rounded-xl py-2.5 text-center text-sm font-semibold transition-colors duration-150',
                         active === tab.key
-                            ? 'bg-lime-400 text-neutral-950'
+                            ? 'bg-accent'
                             : 'text-neutral-400 hover:text-neutral-200'
                     )}
                 >

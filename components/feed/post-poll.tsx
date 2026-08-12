@@ -29,7 +29,7 @@ export function PostPoll({
                              multipleChoice,
                              votedFor,
                          }: PostPollProps) {
-    const [isPending, startTransition] = useProgressAction()
+    const [runAction, isPending] = useProgressAction()
     const hasVoted = votedFor.length > 0
 
     const [optimisticOptions, updateOptimistic] = useOptimistic(
@@ -74,7 +74,7 @@ export function PostPoll({
     const currentVotedFor = optimisticOptions.votedFor
 
     const handleVote = (optionId: string) => {
-        startTransition(async () => {
+        runAction(async () => {
             updateOptimistic({ optionId })
 
             const result = await votePoll(postId, optionId)
@@ -110,7 +110,7 @@ export function PostPoll({
                                 'relative w-full overflow-hidden rounded-xl border px-3 py-2.5 text-left transition-all',
                                 'disabled:opacity-70',
                                 isVoted
-                                    ? 'border-lime-400/40 bg-lime-400/5'
+                                    ? 'border-accent bg-accent-muted'
                                     : 'border-neutral-800 bg-neutral-900 hover:border-neutral-700'
                             )}
                         >
@@ -119,7 +119,7 @@ export function PostPoll({
                                 <div
                                     className={cn(
                                         'absolute inset-y-0 left-0 transition-all duration-500',
-                                        isVoted ? 'bg-lime-400/15' : 'bg-neutral-800/40'
+                                        isVoted ? 'bg-accent-muted opacity-60' : 'bg-neutral-800/40'
                                     )}
                                     style={{ width: `${percentage}%` }}
                                 />
@@ -127,8 +127,8 @@ export function PostPoll({
 
                             <div className="relative flex items-center justify-between gap-2">
                                 <div className="flex items-center gap-2 min-w-0">
-                                    {isVoted && <Check className="h-3.5 w-3.5 text-lime-400 shrink-0" />}
-                                    <span className={cn('text-sm', isVoted ? 'text-lime-300 font-medium' : 'text-white')}>
+                                    {isVoted && <Check className="h-3.5 w-3.5 text-accent shrink-0" />}
+                                    <span className={cn('text-sm', isVoted ? 'text-accent font-medium' : 'text-white')}>
                     {option.text}
                   </span>
                                 </div>

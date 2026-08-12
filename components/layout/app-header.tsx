@@ -21,13 +21,13 @@ export function AppHeader({
                           }: AppHeaderProps) {
     return (
         <header
-            className="sticky top-0 z-30 border-b border-neutral-800/50 bg-neutral-950/80 backdrop-blur"
+            className="sticky top-0 z-30 border-b border-neutral-800/80 bg-neutral-950/98"
             style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
             <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
                 {/* Левая часть — аватар и приветствие */}
                 <Link href="/profile" className="flex items-center gap-3">
-                    <UserAvatar name={userName} avatarUrl={userAvatarUrl} size="md" src={""} />
+                    <UserAvatar name={userName} avatarUrl={userAvatarUrl} size="md" />
                     <div>
                         <p className="text-xs text-neutral-500">Привет,</p>
                         <div className="flex items-center gap-2">

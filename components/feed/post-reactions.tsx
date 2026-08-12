@@ -78,7 +78,7 @@ export function PostReactions({ postId, reactions }: PostReactionsProps) {
                     className={cn(
                         'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition-all active:scale-95',
                         r.reacted
-                            ? 'border-lime-400/40 bg-lime-400/10 text-lime-300'
+                            ? 'border-accent bg-accent-muted text-accent font-medium'
                             : 'border-neutral-800 bg-neutral-950 text-neutral-300 hover:border-neutral-700'
                     )}
                 >
