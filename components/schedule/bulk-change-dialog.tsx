@@ -113,6 +113,12 @@ export function BulkChangeDialog({ open, onOpenChange }: BulkChangeDialogProps) 
                         />
                     </div>
 
+                    <div className="rounded-lg border border-warning bg-warning-muted p-2.5">
+                        <p className="text-[11px] text-warning leading-relaxed">
+                            💡 Изменение применится только к дням с тренировками (пн, вт, ср, чт, сб).
+                            Пятницы и воскресенья пропускаются автоматически.
+                        </p>
+                    </div>
                     {/* Причина */}
                     <div className="space-y-2">
                         <Label className="text-neutral-300 text-xs">Причина</Label>

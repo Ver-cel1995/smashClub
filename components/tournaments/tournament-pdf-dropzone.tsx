@@ -202,6 +202,7 @@ export function TournamentPdfDropzone({ onParsed, onManual }: Props) {
                 type="button"
                 onClick={onManual}
                 disabled={isBusy}
+                data-tour="tournaments-manual-fill"
             >
                 Заполнить вручную
             </Button>

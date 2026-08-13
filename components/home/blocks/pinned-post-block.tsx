@@ -1,9 +1,13 @@
-import { getHomeFeedPost } from '@/app/(main)/home/queries'
-import { PinnedFeedCard } from '../pinned-feed-card'
+import {getHomeFeedPost} from '@/app/(main)/home/queries'
+import {PinnedFeedCard} from '../pinned-feed-card'
 
 export async function PinnedPostBlock() {
     const post = await getHomeFeedPost()
     if (!post) return null
 
-    return <PinnedFeedCard post={post} />
+    return (
+        <div data-tour="home-pinned-post">
+            <PinnedFeedCard post={post}/>
+        </div>
+    )
 }

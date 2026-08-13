@@ -7,10 +7,10 @@ import {Button} from '@/components/ui/button'
 import {cn} from '@/shared/lib/utils'
 import {formatDateRange, formatTrainingDate} from '@/shared/lib/format'
 import {setTrainingAttendance} from '@/app/(main)/home/actions'
-import {TrainingAttendanceDialog} from './training-attendance-dialog'
 import type {AttendanceStatus, TrainingWithAttendance} from '@/types'
 import {TRAINING_STATUS_META} from "@/shared/lib/training-status";
 import {useProgressAction} from "@/shared/hooks/use-progress-action";
+import {useProgressRouter} from '@/shared/hooks/use-progress-router'
 
 type Props = {
     training: TrainingWithAttendance
@@ -31,7 +31,6 @@ const CLOSED_WHEN_NO_COACH: Set<string> = new Set(['school'])
 const NO_COACH_STATUSES = new Set(['no_coach_open', 'tournament_trip'])
 
 export function NextTrainingCard({ training, currentUserId }: Props) {
-    const [openDialog, setOpenDialog] = useState(false)
     const [runAction, isPending] = useProgressAction()
     const [optimisticStatus, setOptimisticStatus] = useState<AttendanceStatus | null>(
         training.my_status
@@ -39,6 +38,8 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
 
     const isNoCoach = NO_COACH_STATUSES.has(training.status)
     const isSchool = training.training_group === 'school'
+
+    const router = useProgressRouter()
 
     // school + без тренера = закрыто для всех
     const isClosedCompletely = isNoCoach && CLOSED_WHEN_NO_COACH.has(training.training_group ?? '')
@@ -63,9 +64,9 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
     const isNotGoing = optimisticStatus === 'not_going'
 
     const handleCardClick = () => {
-        // Не открываем модалку если зал закрыт полностью
+        // Не переходим если зал закрыт полностью
         if (!isClosedCompletely) {
-            setOpenDialog(true)
+            router.push(`/schedule/${training.id}`)
         }
     }
 
@@ -181,15 +182,6 @@ export function NextTrainingCard({ training, currentUserId }: Props) {
                     </>
                 )}
             </div>
-
-            {openDialog && (
-                <TrainingAttendanceDialog
-                    open={openDialog}
-                    onOpenChange={setOpenDialog}
-                    training={training}
-                    currentUserId={currentUserId}
-                />
-            )}
         </>
     )
 }

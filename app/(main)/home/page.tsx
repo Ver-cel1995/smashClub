@@ -21,7 +21,7 @@ export default async function HomePage() {
     const isCoach = user.profile.role === 'coach'
 
     return (
-        <div className="flex flex-col gap-3 p-4 pb-safe-nav">
+        <div data-tour="home-main" className="flex flex-col gap-3 p-4 pb-safe-nav">
             <Suspense fallback={null}>
                 <ScheduleNoteBlock />
             </Suspense>

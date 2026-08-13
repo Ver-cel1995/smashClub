@@ -193,6 +193,7 @@ export const PostCard = memo(function PostCard({
                         <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
                             <DropdownMenuTrigger asChild>
                                 <button
+                                    data-tour="post-menu"
                                     type="button"
                                     className="shrink-0 rounded-lg p-2 text-neutral-400 transition-colors hover:bg-neutral-800 hover:text-white"
                                     aria-label="Меню поста"

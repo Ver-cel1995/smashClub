@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useRef, useState } from 'react'
-import { Camera, Loader2 } from 'lucide-react'
+import {Camera, ChevronRight, HelpCircle, Loader2} from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/user-avatar'
@@ -14,6 +14,7 @@ import type { Profile } from '@/types'
 import { ThemeSelector } from '@/components/theme/theme-selector'
 import { cn } from '@/shared/lib/utils'
 import type { Gender } from '@/shared/lib/gender'
+import Link from "next/link";
 
 type Props = {
     profile: Profile
@@ -185,6 +186,21 @@ export function SettingsForm({ profile }: Props) {
 
             {/* Тема */}
             <ThemeSelector />
+
+            {/* Помощь / инструкция */}
+            <Link
+                href="/profile/settings/help"
+                className="flex items-center gap-3 rounded-2xl border border-card bg-card p-4 transition-colors hover:border-strong hover:bg-hover"
+            >
+                <div className="rounded-full bg-accent-muted p-2">
+                    <HelpCircle className="h-5 w-5 text-accent" />
+                </div>
+                <div className="flex-1">
+                    <p className="text-sm font-semibold text-strong">Помощь и обучение</p>
+                    <p className="text-xs text-muted">Интерактивная экскурсия по приложению</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted" />
+            </Link>
 
             <Button
                 variant="secondary"

@@ -21,6 +21,7 @@ export function AppHeader({
                           }: AppHeaderProps) {
     return (
         <header
+            data-tour="app-header"
             className="sticky top-0 z-30 border-subtle border/80 bg-neutral-950/98"
             style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >

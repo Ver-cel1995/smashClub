@@ -26,17 +26,20 @@ export function CreatePostFab() {
                             icon={<BarChart3 className="h-5 w-5" />}
                             label="Опросник"
                             onClick={() => setFabOpen(false)}
+                            dataTour="feed-fab-poll"    // ← ДОБАВИТЬ
                         />
                         <FabOption
                             href="/feed/new?type=post"
                             icon={<FileText className="h-5 w-5" />}
                             label="Пост"
                             onClick={() => setFabOpen(false)}
+                            dataTour="feed-fab-post"    // ← ДОБАВИТЬ
                         />
                     </>
                 )}
 
                 <button
+                    data-tour="feed-create-fab"
                     type="button"
                     onClick={toggleFab}
                     className={cn(
@@ -54,24 +57,26 @@ export function CreatePostFab() {
     )
 }
 
-function FabOption({ href,icon,label,onClick }: { // todo
+function FabOption({ href, icon, label, onClick, dataTour }: {
     href: string
     icon: ReactNode
     label: string
     onClick: () => void
+    dataTour?: string    // ← ДОБАВИТЬ
 }) {
     return (
         <Link
             href={href}
             onClick={onClick}
+            data-tour={dataTour}    // ← ДОБАВИТЬ
             className="flex items-center gap-3 animate-in slide-in-from-bottom-2 fade-in duration-200"
         >
-      <span className="rounded-full bg-card border-card px-3 py-1.5 text-xs font-medium text-white shadow-lg">
-        {label}
-      </span>
+            <span className="rounded-full bg-card border-card px-3 py-1.5 text-xs font-medium text-white shadow-lg">
+                {label}
+            </span>
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-accent shadow-accent">
-        {icon}
-      </span>
+                {icon}
+            </span>
         </Link>
     )
 }

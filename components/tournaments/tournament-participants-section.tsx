@@ -5,14 +5,19 @@ import {UserAvatar} from '@/components/user-avatar'
 import {cn} from '@/shared/lib/utils'
 import {useProgressAction} from '@/shared/hooks/use-progress-action'
 import {useConfirm} from '@/shared/lib/confirm/confirm-context'
-import {cancelRegistration, registerForTournament, removePartner,} from '@/app/(main)/tournaments/actions'
+import {
+    cancelRegistration,
+    leavePairAsPartner,
+    registerForTournament,
+    removePartner,
+} from '@/app/(main)/tournaments/actions'
 import type {
     MyParticipationInCategory,
     ParticipantPlayerInfo,
     ParticipantRecord,
     TournamentCategoryFull,
 } from '@/app/(main)/tournaments/[id]/queries'
-import { Trash2, UserPlus, Users, Clock, Loader2, UserX } from 'lucide-react'
+import {Trash2, UserPlus, Users, Clock, Loader2, UserX, LogOut} from 'lucide-react'
 
 const CATEGORY_LABELS: Record<string, string> = {
     MS: 'Мужская одиночка',
@@ -184,13 +189,29 @@ function ParticipantRow({
     const confirm = useConfirm()
     const [runAction, isPending] = useProgressAction()
 
-    const iAmInvolved =
-        (record.player1?.kind === 'player' && record.player1.id === currentUserId) ||
-        (record.player2?.kind === 'player' && record.player2.id === currentUserId)
+    // Кто я в этой записи
+    const iAmPlayer1 =
+        record.player1?.kind === 'player' && record.player1.id === currentUserId
+    const iAmPlayer2 =
+        record.player2?.kind === 'player' && record.player2.id === currentUserId
+    const iAmInvolved = iAmPlayer1 || iAmPlayer2
 
-    const canCancel =
+    // Кнопка "Отменить участие" (удаляет всю запись)
+    // Доступна: player1 до дедлайна, тренер всегда
+    const canCancelFully =
         isCoach ||
-        (record.registered_by === currentUserId && isRegistrationOpen)
+        (iAmPlayer1 && isRegistrationOpen)
+
+    // Кнопка "Освободить пару" — для player2 (уходит из пары, запись остаётся)
+    // Доступна: player2 всегда (без дедлайна — освободить свою часть можно всегда)
+    const canLeavePair =
+        iAmPlayer2 && !iAmPlayer1  // если я оба (что невозможно) — идёт cancel
+
+    // Кнопка "Убрать партнёра" — для player1 или тренера
+    // Доступна: если есть партнёр (player2 или guest2) + я player1 или тренер
+    const canRemovePartner =
+        record.player2 !== null &&
+        (isCoach || iAmPlayer1)
 
     const handleCancel = async () => {
         const ok = await confirm({
@@ -206,6 +227,27 @@ function ParticipantRow({
             const result = await cancelRegistration(record.id)
             if (result.success) {
                 toast.success('Регистрация отменена')
+            } else {
+                toast.error(result.error || 'Ошибка')
+            }
+        })
+    }
+
+    const handleLeavePair = async () => {
+        const ok = await confirm({
+            title: 'Освободить пару?',
+            description:
+                'Ты выйдешь из пары, а игрок останется искать нового партнёра.',
+            confirmText: 'Освободить',
+            cancelText: 'Остаться',
+            variant: 'danger',
+        })
+        if (!ok) return
+
+        runAction(async () => {
+            const result = await leavePairAsPartner(record.id)
+            if (result.success) {
+                toast.success('Ты вышел из пары')
             } else {
                 toast.error(result.error || 'Ошибка')
             }
@@ -232,14 +274,6 @@ function ParticipantRow({
         })
     }
 
-    const iAmInPair =
-        (record.player1?.kind === 'player' && record.player1.id === currentUserId) ||
-        (record.player2?.kind === 'player' && record.player2.id === currentUserId)
-
-    const canRemovePartner =
-        record.player2 !== null &&
-        (isCoach || iAmInPair)
-
     return (
         <div
             className={cn(
@@ -251,7 +285,7 @@ function ParticipantRow({
             {/* Player 1 */}
             <PlayerBadge player={record.player1} currentUserId={currentUserId} />
 
-            {/* Разделитель если пара */}
+            {/* Разделитель + Player 2 */}
             {record.player2 && (
                 <>
                     <span className="text-xs text-muted">/</span>
@@ -271,6 +305,7 @@ function ParticipantRow({
                 </span>
             )}
 
+            {/* Кнопка "Убрать партнёра" — только для player1 или тренера */}
             {canRemovePartner && (
                 <button
                     type="button"
@@ -288,13 +323,33 @@ function ParticipantRow({
                 </button>
             )}
 
-            {canCancel && (
+            {/* Кнопка "Освободить пару" — только для player2 (для тех кто застрял) */}
+            {canLeavePair && (
+                <button
+                    type="button"
+                    onClick={handleLeavePair}
+                    disabled={isPending}
+                    className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-warning-muted hover:text-warning transition-colors"
+                    aria-label="Освободить пару"
+                    title="Выйти из пары"
+                >
+                    {isPending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                        <LogOut className="h-3.5 w-3.5" />
+                    )}
+                </button>
+            )}
+
+            {/* Кнопка "Отменить" (удалить всю запись) — только для player1 или тренера */}
+            {canCancelFully && (
                 <button
                     type="button"
                     onClick={handleCancel}
                     disabled={isPending}
                     className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-danger-muted hover:text-danger transition-colors"
                     aria-label="Отменить участие"
+                    title="Отменить участие"
                 >
                     {isPending ? (
                         <Loader2 className="h-3.5 w-3.5 animate-spin" />

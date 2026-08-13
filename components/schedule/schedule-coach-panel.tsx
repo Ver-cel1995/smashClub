@@ -72,6 +72,7 @@ export function ScheduleCoachPanel({ trainings }: ScheduleCoachPanelProps) {
         <>
             <div className="flex gap-2">
                 <Button
+                    data-tour="schedule-bulk-change"
                     type="button"
                     onClick={() => setBulkOpen(true)}
                     variant="outline"
@@ -83,6 +84,7 @@ export function ScheduleCoachPanel({ trainings }: ScheduleCoachPanelProps) {
 
                 {nextTraining && (
                     <Button
+                        data-tour="schedule-quick-cancel"
                         type="button"
                         onClick={handleQuickCancel}
                         disabled={isCancelling}

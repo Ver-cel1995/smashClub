@@ -29,7 +29,7 @@ export function FeedTabs({
     const [tab, setTab] = useState<Tab>('feed')
 
     return (
-        <div className="flex flex-col">
+        <div  className="flex flex-col">
             {/* Табы */}
             <div className="flex gap-2 px-4 pt-4">
                 <Button
@@ -49,7 +49,7 @@ export function FeedTabs({
             </div>
 
             {/* Контент */}
-            <div className="p-4">
+            <div className="p-4" data-tour="feed-list">
                 {tab === 'feed' && (
                     <>
                         {posts.length === 0 ? (

@@ -1,6 +1,6 @@
-import { getCurrentUser } from '@/shared/lib/auth'
-import { getNextTournament } from '@/app/(main)/home/queries'
-import { NextTournamentCard } from '@/components/home/next-tournament-card'
+import {getCurrentUser} from '@/shared/lib/auth'
+import {getNextTournament} from '@/app/(main)/home/queries'
+import {NextTournamentCard} from '@/components/home/next-tournament-card'
 
 /**
  * Async server component для Suspense.
@@ -14,5 +14,9 @@ export async function NextTournamentBlock() {
     const tournament = await getNextTournament(user.userId)
     if (!tournament) return null
 
-    return <NextTournamentCard tournament={tournament} />
+    return (
+        <div data-tour="home-next-tournament">
+            <NextTournamentCard tournament={tournament}/>
+        </div>
+    )
 }

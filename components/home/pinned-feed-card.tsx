@@ -13,7 +13,7 @@ export function PinnedFeedCard({ post }: Props) {
     const firstImage = post.media_urls?.[0]
 
     return (
-        <div>
+        <>
             <div className="mb-2 flex items-center justify-between px-1">
             <span className="text-xs font-medium uppercase text-muted-foreground">
               Лента
@@ -69,6 +69,6 @@ export function PinnedFeedCard({ post }: Props) {
                     )}
                 </div>
             </Link>
-        </div>
+        </>
     )
 }

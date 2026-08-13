@@ -6,7 +6,32 @@ import type { ActionResult } from '@/shared/lib/actions/types'
 import type { AttendanceStatus, TrainingStatus } from '@/types'
 
 // ============================================
-// ОТМЕТКА "ПРИДУ / НЕ ПРИДУ" (вызывается с главной)
+// Helpers
+// ============================================
+
+/**
+ * Формирует auto_expires_at на основе последней затронутой даты тренировки.
+ * Возвращает ISO строку: следующий день после trainingDate в 00:00 UTC.
+ */
+function computeAutoExpiresAt(trainingDate: string): string {
+    // trainingDate = 'YYYY-MM-DD'
+    const [year, month, day] = trainingDate.split('-').map(Number)
+    // Следующий день в 00:00 UTC
+    const nextDay = new Date(Date.UTC(year, month - 1, day + 1, 0, 0, 0))
+    return nextDay.toISOString()
+}
+
+const STATUS_ICONS: Record<string, string> = {
+    cancelled: '❌',
+    holiday: '🎉',
+    tournament_trip: '🏆',
+    no_coach_open: '🔓',
+    substitute: '👤',
+    normal: '🏸',
+}
+
+// ============================================
+// ОТМЕТКА "ПРИДУ / НЕ ПРИДУ"
 // ============================================
 export async function setAttendance(
     trainingId: string,
@@ -45,6 +70,17 @@ export async function cancelNextTraining(
 ): Promise<ActionResult> {
     const supabase = await createClient()
 
+    // Сначала получаем инфу о тренировке (нужна дата для auto_expires_at)
+    const { data: training } = await supabase
+        .from('trainings')
+        .select('date, start_time, training_group')
+        .eq('id', trainingId)
+        .single()
+
+    if (!training) {
+        return { success: false, error: 'Тренировка не найдена' }
+    }
+
     const { error: updateError } = await supabase
         .from('trainings')
         .update({
@@ -66,29 +102,21 @@ export async function cancelNextTraining(
     } = await supabase.auth.getUser()
 
     if (user) {
-        // Получаем дату тренировки для поста
-        const { data: training } = await supabase
-            .from('trainings')
-            .select('date, start_time, training_group')
-            .eq('id', trainingId)
-            .single()
+        const dateStr = new Date(training.date).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+            weekday: 'long',
+        })
 
-        if (training) {
-            const dateStr = new Date(training.date).toLocaleDateString('ru-RU', {
-                day: 'numeric',
-                month: 'long',
-                weekday: 'long',
-            })
-
-            await supabase.from('posts').insert({
-                author_id: user.id,
-                title: '❌ Тренировка отменена',
-                content: `Тренировка ${dateStr} отменена.\nТренер не сможет быть.`,
-                post_type: 'auto',
-                is_pinned: true,
-                pinned_at: new Date().toISOString(),
-            })
-        }
+        await supabase.from('posts').insert({
+            author_id: user.id,
+            title: '❌ Тренировка отменена',
+            content: `Тренировка ${dateStr} отменена.\nТренер не сможет быть.`,
+            post_type: 'auto',
+            is_pinned: true,
+            pinned_at: new Date().toISOString(),
+            auto_expires_at: computeAutoExpiresAt(training.date),   // ← НОВОЕ
+        })
     }
 
     revalidatePath('/home')
@@ -98,7 +126,7 @@ export async function cancelNextTraining(
 }
 
 // ============================================
-// МАССОВОЕ ИЗМЕНЕНИЕ СТАТУСА (диапазон дат)
+// МАССОВОЕ ИЗМЕНЕНИЕ СТАТУСА
 // ============================================
 export async function updateTrainingsInRange(
     startDate: string,
@@ -114,7 +142,6 @@ export async function updateTrainingsInRange(
 
     if (!user) return { success: false, error: 'Нужно войти' }
 
-    // Автозаметка по причине
     const autoNotes: Record<string, string> = {
         cancelled: 'Тренировки отменены',
         holiday: 'Праздничные дни — тренировок не будет',
@@ -125,7 +152,6 @@ export async function updateTrainingsInRange(
 
     const note = customNote?.trim() || autoNotes[status] || ''
 
-    // Обновляем только тренировки в диапазоне (НЕ все дни)
     const { data: affected, error } = await supabase
         .from('trainings')
         .update({
@@ -147,10 +173,12 @@ export async function updateTrainingsInRange(
     const count = affected?.length || 0
 
     if (count === 0) {
-        return { success: false, error: 'Нет тренировок в этом периоде' }
+        return {
+            success: false,
+            error: 'В выбранном периоде нет тренировок для изменения',
+        }
     }
 
-    // Создаём автопост
     const startStr = new Date(startDate).toLocaleDateString('ru-RU', {
         day: 'numeric',
         month: 'long',
@@ -160,17 +188,7 @@ export async function updateTrainingsInRange(
         month: 'long',
     })
 
-    const statusIcons: Record<string, string> = {
-        cancelled: '❌',
-        holiday: '🎉',
-        tournament_trip: '🏆',
-        no_coach_open: '🔓',
-        substitute: '👤',
-        normal: '🏸',
-    }
-
-    const icon = statusIcons[status] || '📢'
-
+    const icon = STATUS_ICONS[status] || '📢'
     const postTitle = `${icon} Изменение в расписании`
     const postContent = `${note}\n\nПериод: ${startStr} — ${endStr}\nЗатронуто тренировок: ${count}`
 
@@ -181,6 +199,7 @@ export async function updateTrainingsInRange(
         post_type: 'auto',
         is_pinned: true,
         pinned_at: new Date().toISOString(),
+        auto_expires_at: computeAutoExpiresAt(endDate),   // ← НОВОЕ
     })
 
     revalidatePath('/home')
@@ -190,23 +209,31 @@ export async function updateTrainingsInRange(
 }
 
 // ============================================
-// ОБНОВЛЕНИЕ ОДНОЙ ТРЕНИРОВКИ
+// ОБНОВЛЕНИЕ ОДНОЙ ТРЕНИРОВКИ (с поддержкой смены времени)
 // ============================================
 export async function updateTrainingStatus(
     trainingId: string,
     status: TrainingStatus,
     note?: string,
-    substituteName?: string
+    substituteName?: string,
+    /** Новое: смена start_time — используется в табе «Изменить время» и «Турнир» */
+    customStartTime?: string
 ): Promise<ActionResult> {
     const supabase = await createClient()
 
+    const updatePayload: Record<string, unknown> = {
+        status,
+        status_note: note || null,
+        substitute_name: substituteName || null,
+    }
+
+    if (customStartTime) {
+        updatePayload.start_time = customStartTime
+    }
+
     const { error } = await supabase
         .from('trainings')
-        .update({
-            status,
-            status_note: note || null,
-            substitute_name: substituteName || null,
-        })
+        .update(updatePayload)
         .eq('id', trainingId)
 
     if (error) {
@@ -222,7 +249,103 @@ export async function updateTrainingStatus(
 }
 
 // ============================================
-// ГЕНЕРАЦИЯ ТРЕНИРОВОК
+// СОЗДАНИЕ ТРЕНИРОВКИ НА ЛЮБОЙ ДЕНЬ
+// (используется для «Добавить тренировку» на пт/вс,
+//  либо для добавления «Турнир» на нетренировочный день)
+// ============================================
+export async function createTrainingDay(input: {
+    date: string
+    trainingGroup?: string   // default 'main'
+    status: TrainingStatus
+    startTime: string        // 'HH:MM' или 'HH:MM:SS'
+    endTime?: string         // если не задано — берём +2 часа
+    note?: string
+    substituteName?: string
+}): Promise<ActionResult<{ id: string }>> {
+    const supabase = await createClient()
+
+    const {
+        data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: 'Нужно войти' }
+
+    const group = input.trainingGroup ?? 'main'
+    const start = input.startTime.length === 5 ? `${input.startTime}:00` : input.startTime
+
+    // Вычисляем end_time
+    let end: string
+    if (input.endTime) {
+        end = input.endTime.length === 5 ? `${input.endTime}:00` : input.endTime
+    } else {
+        // +2 часа
+        const [h, m] = start.split(':').map(Number)
+        const endH = (h + 2) % 24
+        end = `${String(endH).padStart(2, '0')}:${String(m).padStart(2, '0')}:00`
+    }
+
+    // Проверяем что записи ещё нет (уникальность date + training_group)
+    const { data: existing } = await supabase
+        .from('trainings')
+        .select('id')
+        .eq('date', input.date)
+        .eq('training_group', group)
+        .maybeSingle()
+
+    if (existing) {
+        return {
+            success: false,
+            error: 'На эту дату уже есть событие. Отредактируй его.',
+        }
+    }
+
+    const { data: created, error } = await supabase
+        .from('trainings')
+        .insert({
+            date: input.date,
+            training_group: group,
+            status: input.status,
+            start_time: start,
+            end_time: end,
+            status_note: input.note || null,
+            substitute_name: input.substituteName || null,
+        })
+        .select('id')
+        .single()
+
+    if (error || !created) {
+        if (error?.code === '42501') {
+            return { success: false, error: 'Только тренер может создавать события' }
+        }
+        console.error('Failed to create training day:', error)
+        return { success: false, error: 'Не удалось создать событие' }
+    }
+
+    // Автопост в ленте если это турнир (для тренера же)
+    if (input.status === 'tournament_trip') {
+        const dateStr = new Date(input.date).toLocaleDateString('ru-RU', {
+            day: 'numeric',
+            month: 'long',
+        })
+        await supabase.from('posts').insert({
+            author_id: user.id,
+            title: '🏆 Турнир в расписании',
+            content: `${dateStr}, начало в ${start.slice(0, 5)}\n${input.note || ''}`.trim(),
+            post_type: 'auto',
+            is_pinned: true,
+            pinned_at: new Date().toISOString(),
+            auto_expires_at: computeAutoExpiresAt(input.date),
+        })
+    }
+
+    revalidatePath('/schedule')
+    revalidatePath('/home')
+    revalidatePath('/feed')
+    return { success: true, data: { id: created.id } }
+}
+
+// ============================================
+// ГЕНЕРАЦИЯ ТРЕНИРОВОК (по шаблону)
 // ============================================
 export async function generateTrainings(months: number = 1): Promise<ActionResult> {
     const supabase = await createClient()

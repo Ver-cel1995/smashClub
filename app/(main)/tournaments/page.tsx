@@ -10,9 +10,12 @@ export default async function TournamentsPage() {
     if (!user) redirect('/login')
 
     const supabase = await createClient()
+    const today = new Date().toISOString().slice(0, 10)
+
     const { data: tournaments } = await supabase
         .from('tournaments')
         .select('id, title, location, start_date, end_date, tournament_type, status, pdf_url')
+        .or(`end_date.gte.${today},and(end_date.is.null,start_date.gte.${today})`)
         .order('start_date', { ascending: true })
 
     const isCoach = user.profile.role === 'coach'
@@ -23,7 +26,7 @@ export default async function TournamentsPage() {
                 <h1 className="text-2xl font-bold text-strong">Турниры</h1>
                 {isCoach && (
                     <Link href="/tournaments/new">
-                        <Button variant="secondary" size="sm">
+                        <Button variant="secondary" size="sm" data-tour="tournaments-create">
                             <Plus className="mr-1 h-4 w-4" />
                             Новый
                         </Button>
@@ -41,7 +44,7 @@ export default async function TournamentsPage() {
                     )}
                 </div>
             ) : (
-                <div className="space-y-2">
+                <div className="space-y-2" data-tour="tournaments-list">
                     {tournaments.map((t) => (
                         <Link
                             key={t.id}

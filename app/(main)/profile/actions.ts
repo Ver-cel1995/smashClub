@@ -5,6 +5,8 @@ import { z } from 'zod'
 import { createClient } from '@/shared/lib/supabase/server'
 import { getCurrentUser } from '@/shared/lib/auth'
 import type { ActionResult } from '@/shared/lib/actions/types'
+import type { TourId, OnboardingProgress } from '@/shared/onboarding/types'
+import { TOUR_VERSIONS } from '@/shared/onboarding/types'
 
 const CITIES = ['kushchevskaya', 'rostov', 'krasnodar', 'other'] as const
 
@@ -135,5 +137,123 @@ export async function updatePlayerGender(
     }
 
     revalidatePath('/people')
+    return { success: true }
+}
+
+
+
+
+
+
+
+
+
+
+
+/**
+ * Отмечает тур как завершённый.
+ */
+export async function markTourCompleted(tourId: TourId): Promise<ActionResult> {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Не авторизован' }
+
+    return updateTourStatus(user.userId, tourId, {
+        completed_at: new Date().toISOString(),
+        skipped_at: null,
+        version: TOUR_VERSIONS[tourId],
+    })
+}
+
+/**
+ * Отмечает тур как пропущенный.
+ */
+export async function markTourSkipped(tourId: TourId): Promise<ActionResult> {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Не авторизован' }
+
+    return updateTourStatus(user.userId, tourId, {
+        completed_at: null,
+        skipped_at: new Date().toISOString(),
+        version: TOUR_VERSIONS[tourId],
+    })
+}
+
+/**
+ * Сбрасывает статус тура (например, при нажатии "Показать инструкцию заново").
+ */
+export async function resetTour(tourId: TourId): Promise<ActionResult> {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Не авторизован' }
+
+    const supabase = await createClient()
+
+    // Читаем текущий onboarding
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('onboarding')
+        .eq('id', user.userId)
+        .single()
+
+    const currentOnboarding = (profile?.onboarding ?? {}) as OnboardingProgress
+    const updated = { ...currentOnboarding }
+    delete updated[tourId]
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding: updated })
+        .eq('id', user.userId)
+
+    if (error) {
+        console.error('[resetTour]', error)
+        return { success: false, error: 'Не удалось сбросить тур' }
+    }
+
+    revalidatePath('/', 'layout')
+    return { success: true }
+}
+
+/**
+ * Внутренний helper: обновляет статус одного тура в JSONB.
+ */
+async function updateTourStatus(
+    userId: string,
+    tourId: TourId,
+    newStatus: {
+        completed_at: string | null
+        skipped_at: string | null
+        version: number
+    }
+): Promise<ActionResult> {
+    const supabase = await createClient()
+
+    // Читаем текущий JSONB
+    const { data: profile, error: readError } = await supabase
+        .from('profiles')
+        .select('onboarding')
+        .eq('id', userId)
+        .single()
+
+    if (readError) {
+        console.error('[updateTourStatus] read failed:', readError)
+        return { success: false, error: 'Не удалось прочитать профиль' }
+    }
+
+    const currentOnboarding = (profile?.onboarding ?? {}) as OnboardingProgress
+    const updated: OnboardingProgress = {
+        ...currentOnboarding,
+        [tourId]: newStatus,
+    }
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({ onboarding: updated })
+        .eq('id', userId)
+
+    if (error) {
+        console.error('[updateTourStatus] update failed:', error)
+        return { success: false, error: 'Не удалось сохранить прогресс' }
+    }
+
+    revalidatePath('/', 'layout')
     return { success: true }
 }

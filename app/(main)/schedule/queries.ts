@@ -10,6 +10,12 @@ export type TrainingAttendee = {
 export type TrainingWithMeta = Training & {
     going_count: number
     my_status: string | null
+    /** Виртуальная запись из tournaments (не из trainings). Не редактируется через EditDayDialog. */
+    is_virtual_tournament?: boolean
+    /** ID турнира — если это виртуальная запись */
+    virtual_tournament_id?: string
+    /** Название турнира — для отображения */
+    virtual_tournament_title?: string
 }
 
 export type TrainingDetailed = Training & {
@@ -20,7 +26,9 @@ export type TrainingDetailed = Training & {
 }
 
 /**
- * Тренировки за период (для календаря)
+ * Тренировки за период (для календаря).
+ * Дополнительно добавляет "виртуальные" турнирные дни из tournaments,
+ * если тип турнира 'home' и на эту дату НЕТ реальной тренировки.
  */
 export async function getTrainingsInRange(
     startDate: string,
@@ -29,31 +37,99 @@ export async function getTrainingsInRange(
 ): Promise<TrainingWithMeta[]> {
     const supabase = await createClient()
 
-    const { data: trainings, error } = await supabase
+    // 1. Обычные тренировки из БД
+    const { data: trainings } = await supabase
         .from('trainings')
         .select('*')
         .gte('date', startDate)
         .lte('date', endDate)
         .order('date', { ascending: true })
 
-    if (error || !trainings) return []
-    if (trainings.length === 0) return []
+    const trainingsList = trainings || []
+    const trainingIds = trainingsList.map((t) => t.id)
 
-    const trainingIds = trainings.map((t) => t.id)
-
-    const { data: attendance } = await supabase
+    // 2. Attendance для этих тренировок
+    const attendance = trainingIds.length > 0
+        ? (await supabase
         .from('training_attendance')
         .select('training_id, player_id, status')
-        .in('training_id', trainingIds)
+        .in('training_id', trainingIds)).data || []
+        : []
 
-    return trainings.map((t) => {
-        const ta = attendance?.filter((a) => a.training_id === t.id) || []
+    // 3. Домашние турниры в диапазоне
+    // Логика: если турнир 'home' и на дату турнира нет реальной тренировки —
+    // добавляем "виртуальную" запись
+    const { data: tournaments } = await supabase
+        .from('tournaments')
+        .select('id, title, tournament_type, start_date, end_date')
+        .eq('tournament_type', 'home')
+        .lte('start_date', endDate)
+        .or(`end_date.gte.${startDate},and(end_date.is.null,start_date.gte.${startDate})`)
+
+    const virtualTrainings: TrainingWithMeta[] = []
+
+    if (tournaments) {
+        // Мапа дат где есть реальная тренировка
+        const realTrainingDates = new Set(trainingsList.map((t) => t.date.slice(0, 10)))
+
+        for (const tour of tournaments) {
+            // Собираем все даты турнира (start_date..end_date)
+            const dates = expandDateRange(tour.start_date, tour.end_date ?? tour.start_date)
+            for (const date of dates) {
+                if (date < startDate || date > endDate) continue
+                if (realTrainingDates.has(date)) continue  // уже есть реальная тренировка
+
+                virtualTrainings.push({
+                    id: `virtual-${tour.id}-${date}`,
+                    date,
+                    start_time: '10:00:00',   // дефолтное время — реальное хранится в description
+                    end_time: '18:00:00',
+                    status: 'tournament_trip',
+                    status_note: `Турнир: ${tour.title}`,
+                    substitute_name: null,
+                    training_group: 'main',
+                    auto_post_id: null,
+                    created_at: null,
+                    updated_at: null,
+                    going_count: 0,
+                    my_status: null,
+                    is_virtual_tournament: true,
+                    virtual_tournament_id: tour.id,
+                    virtual_tournament_title: tour.title,
+                })
+            }
+        }
+    }
+
+    // 4. Реальные тренировки с attendance
+    const realWithMeta: TrainingWithMeta[] = trainingsList.map((t) => {
+        const ta = attendance.filter((a) => a.training_id === t.id)
         return {
             ...t,
             going_count: ta.filter((a) => a.status === 'going').length,
             my_status: ta.find((a) => a.player_id === currentUserId)?.status || null,
         }
     })
+
+    // 5. Объединяем и сортируем по дате
+    return [...realWithMeta, ...virtualTrainings].sort((a, b) =>
+        a.date.localeCompare(b.date)
+    )
+}
+
+/**
+ * Разворачивает диапазон дат в массив ['2026-01-01', '2026-01-02', ...]
+ */
+function expandDateRange(start: string, end: string): string[] {
+    const startD = new Date(start + 'T00:00:00Z')
+    const endD = new Date(end + 'T00:00:00Z')
+    const result: string[] = []
+    const cursor = new Date(startD)
+    while (cursor <= endD) {
+        result.push(cursor.toISOString().slice(0, 10))
+        cursor.setUTCDate(cursor.getUTCDate() + 1)
+    }
+    return result
 }
 
 /**
@@ -65,7 +141,6 @@ export async function getNextTraining(
 ): Promise<TrainingWithMeta | null> {
     const supabase = await createClient()
 
-    // Берём сегодня по московскому времени
     const now = new Date()
     const mskOffset = 3 * 60
     const msk = new Date(now.getTime() + (mskOffset + now.getTimezoneOffset()) * 60000)
