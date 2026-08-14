@@ -362,3 +362,89 @@ export async function generateTrainings(months: number = 1): Promise<ActionResul
     revalidatePath('/schedule')
     return { success: true }
 }
+
+
+
+
+
+// КОММЕНТАРИИ К ТРЕНИРОВКЕ
+
+const commentSchema = {
+    content: (val: string) => val.trim().length >= 1 && val.trim().length <= 1000,
+}
+
+export async function addTrainingComment(
+    trainingId: string,
+    content: string,
+    parentCommentId?: string | null
+): Promise<ActionResult<{ id: string }>> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: 'Нужно войти' }
+
+    const trimmed = content.trim()
+    if (!commentSchema.content(trimmed)) {
+        return { success: false, error: 'Комментарий пустой или слишком длинный (макс. 1000 символов)' }
+    }
+
+    const { data: created, error } = await supabase
+        .from('training_comments')
+        .insert({
+            training_id: trainingId,
+            author_id: user.id,
+            content: trimmed,
+            parent_comment_id: parentCommentId ?? null,
+        })
+        .select('id')
+        .single()
+
+    if (error || !created) {
+        console.error('[addTrainingComment]', error)
+        return { success: false, error: 'Не удалось добавить комментарий' }
+    }
+
+    revalidatePath(`/schedule/${trainingId}`)
+    return { success: true, data: { id: created.id } }
+}
+
+export async function deleteTrainingComment(commentId: string): Promise<ActionResult> {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { success: false, error: 'Нужно войти' }
+
+    // Читаем комментарий чтобы узнать training_id для revalidate
+    const { data: comment } = await supabase
+        .from('training_comments')
+        .select('training_id, author_id')
+        .eq('id', commentId)
+        .single()
+
+    if (!comment) return { success: false, error: 'Комментарий не найден' }
+
+    // Проверка прав: автор ИЛИ тренер
+    const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single()
+    const isCoach = profile?.role === 'coach' || profile?.role === 'development'
+
+    if (!isCoach && comment.author_id !== user.id) {
+        return { success: false, error: 'Нет прав на удаление' }
+    }
+
+    const { error } = await supabase
+        .from('training_comments')
+        .delete()
+        .eq('id', commentId)
+
+    if (error) {
+        console.error('[deleteTrainingComment]', error)
+        return { success: false, error: 'Не удалось удалить' }
+    }
+
+    revalidatePath(`/schedule/${comment.training_id}`)
+    return { success: true }
+}

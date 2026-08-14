@@ -203,3 +203,68 @@ export async function getTraining(
         my_status: attendance.find((a) => a.player.id === currentUserId)?.status || null,
     }
 }
+
+
+
+
+
+// Комментарии к тренировке
+export type TrainingComment = {
+    id: string
+    training_id: string
+    author_id: string
+    content: string
+    parent_comment_id: string | null
+    created_at: string
+    author: {
+        id: string
+        full_name: string
+        avatar_url: string | null
+        role: string
+    } | null
+}
+
+export async function getTrainingComments(trainingId: string): Promise<TrainingComment[]> {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('training_comments')
+        .select(`
+            id, training_id, author_id, content, parent_comment_id, created_at,
+            author:profiles!training_comments_author_id_fkey(id, full_name, avatar_url, role)
+        `)
+        .eq('training_id', trainingId)
+        .order('created_at', { ascending: true })
+
+    if (error) {
+        console.error('[getTrainingComments]', error)
+        return []
+    }
+
+    return (data ?? []) as unknown as TrainingComment[]
+}
+
+/**
+ * Все игроки клуба + тренер (для списка "не ответили").
+ * Возвращает всех авторизованных пользователей за исключением тренера.
+ */
+export async function getAllClubPlayers(): Promise<Array<{
+    id: string
+    full_name: string
+    avatar_url: string | null
+    role: string
+}>> {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, avatar_url, role')
+        .order('full_name', { ascending: true })
+
+    if (error) {
+        console.error('[getAllClubPlayers]', error)
+        return []
+    }
+
+    return data ?? []
+}

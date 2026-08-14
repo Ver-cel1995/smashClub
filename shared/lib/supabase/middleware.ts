@@ -43,9 +43,15 @@ export async function updateSession(request: NextRequest) {
 
     // 1. Не залогинен и идёт на защищённый маршрут → на login
     if (!user && !isPublic && !isRoot) {
-        const url = request.nextUrl.clone()
-        url.pathname = '/login'
-        return NextResponse.redirect(url)
+            const loginUrl = new URL('/login', request.url)
+
+            // Сохраняем куда юзер хотел попасть — вернём после логина
+            const currentPath = request.nextUrl.pathname + request.nextUrl.search
+            if (currentPath && currentPath !== '/' && currentPath !== '/login') {
+                loginUrl.searchParams.set('next', currentPath)
+            }
+
+            return NextResponse.redirect(loginUrl)
     }
 
     // 2. Залогинен и идёт на login/register → на home

@@ -22,6 +22,7 @@ import type { TrainingWithMeta } from '@/app/(main)/schedule/queries'
 import type { TrainingStatus } from '@/types'
 import { EditDayDialog } from './edit-day-dialog'
 import { useProgressRouter } from '@/shared/hooks/use-progress-router'
+import {CalendarShareButton} from "@/components/schedule/calendar-share-button";
 
 type ScheduleCalendarProps = {
     trainings: TrainingWithMeta[]
@@ -211,24 +212,31 @@ export function ScheduleCalendar({ trainings, isCoach }: ScheduleCalendarProps) 
 
             {/* Кнопка действия для тренера */}
             {bottomButtonInfo && (
-                <button
-                    data-tour="schedule-edit-day"
-                    type="button"
-                    onClick={handleBottomButtonClick}
-                    className={cn(
-                        'w-full rounded-2xl border p-3 text-sm font-medium transition-colors',
-                        bottomButtonInfo.mode === 'open-tournament'
-                            ? 'border-accent bg-accent-muted text-accent hover:bg-accent hover:text-neutral-950'
-                            : 'border-card bg-card text-accent hover:bg-neutral-800'
-                    )}
-                >
-                    <span className="inline-flex items-center gap-2">
-                        {bottomButtonInfo.mode === 'open-tournament' && (
-                            <ExternalLink className="h-4 w-4" />
+                <div className="flex gap-2">
+                    <button
+                        data-tour="schedule-edit-day"
+                        type="button"
+                        onClick={handleBottomButtonClick}
+                        className={cn(
+                            'flex-1 rounded-2xl border p-3 text-sm font-medium transition-colors',
+                            bottomButtonInfo.mode === 'open-tournament'
+                                ? 'border-accent bg-accent-muted text-accent hover:bg-accent hover:text-neutral-950'
+                                : 'border-card bg-card text-accent hover:bg-neutral-800'
                         )}
-                        {bottomButtonInfo.label}
-                    </span>
-                </button>
+                    >
+            <span className="inline-flex items-center gap-2">
+                {bottomButtonInfo.mode === 'open-tournament' && (
+                    <ExternalLink className="h-4 w-4" />
+                )}
+                {bottomButtonInfo.label}
+            </span>
+                    </button>
+
+                    {/* Кнопка "Поделиться" — если есть реальные тренировки в дне */}
+                    {selectedRealTrainings.length > 0 && !bottomButtonInfo.mode.includes('open-tournament') && (
+                        <CalendarShareButton training={selectedRealTrainings[0]} />
+                    )}
+                </div>
             )}
 
             {/* Диалог редактирования / создания */}
