@@ -14,6 +14,12 @@ import {useProgressRouter} from '@/shared/hooks/use-progress-router'
 import {useProgressAction} from '@/shared/hooks/use-progress-action'
 import {useConfirm} from '@/shared/lib/confirm/confirm-context'
 import dynamic from "next/dynamic";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from "@/components/tournaments/tournament-actions-menu";
 
 type PostCardProps = {
     post: PostWithAuthor
@@ -33,27 +39,6 @@ const PostPoll = dynamic(
     () => import('./post-poll').then((m) => m.PostPoll),
     { ssr: true }
 )
-
-// Dropdown только для тренера
-const DropdownMenu = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenu),
-    { ssr: false }
-)
-const DropdownMenuContent = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuContent),
-    { ssr: false }
-)
-const DropdownMenuItem = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuItem),
-    { ssr: false }
-)
-const DropdownMenuTrigger = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuTrigger),
-    { ssr: false }
-)
-
-
-
 export const PostCard = memo(function PostCard({
                              post,
                              isCoach,

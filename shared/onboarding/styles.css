@@ -1,7 +1,5 @@
-/* ============================================================
-   Driver.js — кастомизация под тему SmashClub
-   Переопределяет CSS-переменные библиотеки нашими семантическими.
-   ============================================================ */
+/* Driver.js — кастомизация под тему SmashClub
+   Переопределяет CSS-переменные библиотеки нашими семантическими */
 
 /* Popover container */
 .driver-popover.smashclub-popover {
@@ -130,20 +128,22 @@
     border-radius: 0.75rem !important;
     transition: outline 200ms ease !important;
     position: relative !important;
-    z-index: 100000 !important;
+    z-index: 100001 !important;
+    isolation: isolate !important;
 }
 
-/* Убедимся что stage (dark overlay с дыркой) виден */
 .driver-overlay {
-    background-color: rgba(0, 0, 0, 0.65) !important;
+    background-color: transparent !important;
 }
 
-/* Stage — SVG-подсветка "прожектора" */
+/* Stage — SVG-подсветка */
 .driver-stage {
     background: transparent !important;
-    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.65) !important;
+    box-shadow: 0 0 20px 2px var(--accent-glow) !important;
+    outline: 2.5px solid var(--accent-color) !important;
+    outline-offset: 3px !important;
     border-radius: 12px !important;
-    transition: all 250ms ease !important;
+    transition: all 200ms ease !important;
 }
 
 /* Popover должен быть выше overlay и stage */
@@ -165,11 +165,9 @@
     }
 }
 
-/* ============================================================
-   Практический режим (Interactive) — специальные стили
-   ============================================================ */
+/*Практический режим (Interactive) — специальные стили
 
-/* Индикатор "👆 Тыкни сюда" — используется рядом с элементом */
+ Индикатор "👆 Тыкни сюда" — используется рядом с элементом */
 .smashclub-click-hint {
     position: fixed;
     z-index: 100003;

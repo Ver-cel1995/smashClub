@@ -13,25 +13,6 @@
     --accent-muted: rgba(163, 230, 53, 0.12);
     --accent-border: rgba(163, 230, 53, 0.3);
 
-    /* Фоны */
-    --bg-main: #0f131d;        /* фон приложения */
-    --bg-card: #171c2c;        /* карточки */
-    --bg-elevated: #1e2438;    /* модалки, popover, поднятые элементы */
-    --bg-subtle: #131826;      /* вложенные блоки, secondary поверхности */
-    --bg-input: #121624;       /* поля ввода */
-    --bg-hover: #1c2237;       /* hover для интерактивных */
-
-    /* Бордеры */
-    --border-card: #252d47;    /* основной бордер */
-    --border-subtle: #1e2540;  /* тонкий бордер */
-    --border-strong: #313a5c;  /* сильный бордер / divider */
-
-    /* Текст */
-    --text-strong: #ffffff;    /* заголовки */
-    --text-main: #e5e7eb;      /* основной */
-    --text-muted: #8a94a6;     /* приглушённый */
-    --text-dim: #5b6577;       /* самый блёклый */
-
     /* Семантические цвета (для статусов, не завязаны на акцент) */
     --danger: #f43f5e;
     --danger-muted: rgba(244, 63, 94, 0.12);
@@ -64,21 +45,24 @@ html.dark,
 html[data-theme="dark"] {
     color-scheme: dark;
 
-    --bg-main: #0f131d;
-    --bg-card: #171c2c;
-    --bg-elevated: #1e2438;
-    --bg-subtle: #131826;
-    --bg-input: #121624;
-    --bg-hover: #1c2237;
+    /* Фоны */
+    --bg-main: #0f131d;        /* фон приложения */
+    --bg-card: #171c2c;        /* карточки */
+    --bg-elevated: #1e2438;    /* модалки, popover, поднятые элементы */
+    --bg-subtle: #131826;      /* вложенные блоки, secondary поверхности */
+    --bg-input: #121624;       /* поля ввода */
+    --bg-hover: #1c2237;       /* hover для интерактивных */
 
-    --border-card: #252d47;
-    --border-subtle: #1e2540;
-    --border-strong: #313a5c;
+    /* Бордеры */
+    --border-card: #252d47;    /* основной бордер */
+    --border-subtle: #1e2540;  /* тонкий бордер */
+    --border-strong: #313a5c;  /* сильный бордер / divider */
 
-    --text-strong: #ffffff;
-    --text-main: #e5e7eb;
-    --text-muted: #8a94a6;
-    --text-dim: #5b6577;
+    /* Текст */
+    --text-strong: #ffffff;    /* заголовки */
+    --text-main: #e5e7eb;      /* основной */
+    --text-muted: #8a94a6;     /* приглушённый */
+    --text-dim: #5b6577;       /* самый блёклый */
 
     --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.35);
     --shadow-elevated: 0 12px 32px -8px rgba(0, 0, 0, 0.55);

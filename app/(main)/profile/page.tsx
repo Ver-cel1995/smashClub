@@ -135,14 +135,30 @@ export default async function ProfilePage() {
                     Настройки
                     <ChevronRight className="ml-auto h-4 w-4 text-neutral-500"/>
                 </Link>
+                {/*<Link*/}
+                {/*    href="/help"*/}
+                {/*    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"*/}
+                {/*>*/}
+                {/*    <HelpCircle className="h-4 w-4 text-neutral-400"/>*/}
+                {/*    Помощь*/}
+                {/*    <ChevronRight className="ml-auto h-4 w-4 text-neutral-500"/>*/}
+                {/*</Link>*/}
+
+                {/* Помощь / инструкция */}
                 <Link
-                    href="/help"
-                    className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm text-white transition-colors hover:bg-neutral-800"
+                    href="/profile/settings/help"
+                    className="flex items-center gap-3 rounded-2xl border border-card bg-card p-4 transition-colors hover:border-strong hover:bg-hover"
                 >
-                    <HelpCircle className="h-4 w-4 text-neutral-400"/>
-                    Помощь
-                    <ChevronRight className="ml-auto h-4 w-4 text-neutral-500"/>
+                    <div className="rounded-full bg-accent-muted p-2">
+                        <HelpCircle className="h-5 w-5 text-accent" />
+                    </div>
+                    <div className="flex-1">
+                        <p className="text-sm font-semibold text-strong">Помощь и обучение</p>
+                        <p className="text-xs text-muted">Интерактивная экскурсия по приложению</p>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted" />
                 </Link>
+
                 <Link
                     href="/profile/feedback"
                     className="flex items-center gap-3 rounded-2xl border border-card bg-card p-4 transition-colors hover:border-strong hover:bg-hover"

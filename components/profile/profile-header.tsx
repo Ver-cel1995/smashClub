@@ -12,7 +12,7 @@ export function ProfileHeader({ profile }: Props) {
     const cityLabel = profile.city ? CITY_LABEL[profile.city] ?? profile.city : null
 
     return (
-        <div className="flex flex-col items-center gap-3 rounded-2xl border border bg-card p-6 text-center">
+        <div className="flex flex-col items-center gap-3 rounded-2xl bg-card p-6 text-center">
             <div className="relative">
                 <UserAvatar
                     name={profile.full_name}
@@ -24,7 +24,7 @@ export function ProfileHeader({ profile }: Props) {
             <div>
                 <h2 className="text-lg font-bold text-white">{profile.full_name}</h2>
                 {profile.role === 'coach' && (
-                    <span className="rounded-full border border-accent bg-accent-muted px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
+                    <span className="rounded-full bg-accent-muted px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
                         Тренер
                     </span>
                 )}
@@ -40,7 +40,7 @@ export function ProfileHeader({ profile }: Props) {
 
             <Link
                 href="/profile/settings"
-                className="mt-1 flex items-center gap-1.5 rounded-xl border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-800"
+                className="mt-1 flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs text-neutral-300 transition hover:bg-neutral-800"
             >
                 <Edit2 className="h-3.5 w-3.5" />
                 Редактировать

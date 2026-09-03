@@ -187,21 +187,6 @@ export function SettingsForm({ profile }: Props) {
             {/* Тема */}
             <ThemeSelector />
 
-            {/* Помощь / инструкция */}
-            <Link
-                href="/profile/settings/help"
-                className="flex items-center gap-3 rounded-2xl border border-card bg-card p-4 transition-colors hover:border-strong hover:bg-hover"
-            >
-                <div className="rounded-full bg-accent-muted p-2">
-                    <HelpCircle className="h-5 w-5 text-accent" />
-                </div>
-                <div className="flex-1">
-                    <p className="text-sm font-semibold text-strong">Помощь и обучение</p>
-                    <p className="text-xs text-muted">Интерактивная экскурсия по приложению</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-muted" />
-            </Link>
-
             <Button
                 variant="secondary"
                 size="md"

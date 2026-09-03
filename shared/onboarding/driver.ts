@@ -1,10 +1,8 @@
-import { driver, type Config, type Driver, type DriveStep } from 'driver.js'
 import 'driver.js/dist/driver.css'
 import './styles.css'
+import { driver, type Config, type Driver, type DriveStep } from 'driver.js'
 
-// ============================================================
 // Обзорный режим (existing)
-// ============================================================
 
 export type TourStep = {
     element?: string
@@ -106,7 +104,7 @@ export function startTour(config: TourConfig): Driver {
         popoverClass: 'smashclub-popover',
         overlayColor: '#000',
         overlayOpacity: 0.65,
-        allowClose: false,  // ← НЕ даём закрыть кликом вне
+        allowClose: false,  // no даём закрыть кликом вне
         smoothScroll: true,
         stagePadding: 6,
         stageRadius: 16,
@@ -129,9 +127,7 @@ export function startTour(config: TourConfig): Driver {
     return driverInstance
 }
 
-// ============================================================
 // Интерактивный режим (для тренера)
-// ============================================================
 
 export type InteractiveStep =
     | InteractiveWaitClickStep
@@ -360,10 +356,10 @@ export function startInteractiveTour(config: InteractiveTourConfig): Driver {
         progressText: `{{current}} из ${preparedSteps.length}`,
         popoverClass: 'smashclub-popover',
         overlayColor: '#000',
-        overlayOpacity: 0.65,
+        overlayOpacity: 0.2,
         allowClose: false,
         smoothScroll: true,
-        stagePadding: 8,
+        stagePadding: 6,
         stageRadius: 16,
         allowKeyboardControl: true,
         disableActiveInteraction: false,
@@ -386,9 +382,7 @@ export function startInteractiveTour(config: InteractiveTourConfig): Driver {
     return driverInstance
 }
 
-// ============================================================
 // Утилиты
-// ============================================================
 
 export function sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))

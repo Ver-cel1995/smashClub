@@ -9,19 +9,19 @@ import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import { useConfirm } from '@/shared/lib/confirm/confirm-context'
 import { deleteTournament } from '@/app/(main)/tournaments/actions'
 
-const DropdownMenu = dynamic(
+export const DropdownMenu = dynamic(
     () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenu),
     { ssr: false }
 )
-const DropdownMenuContent = dynamic(
+export const DropdownMenuContent = dynamic(
     () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuContent),
     { ssr: false }
 )
-const DropdownMenuItem = dynamic(
+export const DropdownMenuItem = dynamic(
     () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuItem),
     { ssr: false }
 )
-const DropdownMenuTrigger = dynamic(
+export const DropdownMenuTrigger = dynamic(
     () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuTrigger),
     { ssr: false }
 )

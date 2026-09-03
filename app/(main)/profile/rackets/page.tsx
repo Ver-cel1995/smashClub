@@ -30,21 +30,21 @@ export default async function RacketsPage() {
             <div className="flex items-center justify-between">
                 <Link
                     href="/profile"
-                    className="flex items-center gap-1 text-sm text-neutral-400 hover:text-white"
+                    className="flex items-center gap-1 text-sm text-neutral-400 hover:text-main"
                 >
                     <ChevronLeft className="h-4 w-4" />
                     Профиль
                 </Link>
                 <Link
                     href="/profile/rackets/new"
-                    className="flex items-center gap-1.5 rounded-xl bg-lime-400 px-3 py-1.5 text-xs font-semibold text-neutral-950"
+                    className="flex items-center gap-1.5 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-neutral-950"
                 >
                     <Plus className="h-3.5 w-3.5" />
                     Новая заявка
                 </Link>
             </div>
 
-            <h1 className="text-xl font-bold text-white">Мои ракетки</h1>
+            <h1 className="text-xl font-bold text-main">Мои ракетки</h1>
 
             {batches.length === 0 ? (
                 <EmptyState
@@ -69,19 +69,19 @@ function BatchCard({ items }: { items: RepairRacket[] }) {
     const createdAt = items[0].created_at
 
     return (
-        <div className="rounded-2xl border border bg-card p-4">
+        <div className="rounded-2xl bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
                 <div>
                     <div className="text-xs text-neutral-500">
                         Заявка от {createdAt ? formatDayMonth(createdAt) : '—'}
                     </div>
-                    <div className="text-sm font-medium text-lime-400">
+                    <div className="text-sm font-medium text-accent">
                         {RACKET_STATUS_LABEL[status]}
                     </div>
                 </div>
                 <div className="text-right">
-                    <div className="text-xs text-neutral-500">Сумма</div>
-                    <div className="text-lg font-bold text-white">{totalCost}₽</div>
+                    <div className="text-xs text-neutral-500">Итоговая сумма</div>
+                    <div className="text-lg font-bold text-main">{totalCost}₽</div>
                 </div>
             </div>
 
@@ -89,14 +89,14 @@ function BatchCard({ items }: { items: RepairRacket[] }) {
                 {items.map((r) => (
                     <li
                         key={r.id}
-                        className="flex items-center justify-between rounded-xl bg-neutral-950 p-2.5 text-sm"
+                        className="flex items-center justify-between rounded-xl bg-elevated p-2.5 text-sm"
                     >
                         <div>
-                            <div className="text-white">{r.racket_model ?? 'Ракетка'}</div>
+                            <div className="text-main">{r.racket_model ?? 'Ракетка'}</div>
                             <div className="text-xs text-neutral-500">
                                 {getRepairTypesLabel([r])}
                                 {r.string_type && ` · ${r.string_type}`}
-                                {r.tension && ` · ${r.tension}`}
+                                {r.tension && ` · ${r.tension} кг`}
                             </div>
                         </div>
                         {r.cost && (

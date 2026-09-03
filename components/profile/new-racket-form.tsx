@@ -8,7 +8,7 @@ import { cn } from '@/shared/lib/utils'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import { useProgressRouter } from '@/shared/hooks/use-progress-router'
 import { createRacketRequest } from '@/app/(main)/profile/rackets/actions'
-import {STRING_OPTIONS, TENSION_OPTIONS} from "@/shared/lib/rackets";
+import { STRING_OPTIONS, TENSION_OPTIONS } from "@/shared/lib/rackets"
 
 type RacketItem = {
     id: string
@@ -34,7 +34,6 @@ const emptyItem = (): RacketItem => ({
     notes: '',
 })
 
-// Примерные цены — синхронизируй с actions.ts
 const PRICE_REPAIR = 500
 const PRICE_RESTRING = 350
 
@@ -72,20 +71,32 @@ export function NewRacketForm() {
         }
 
         runAction(async () => {
+            // Формируем payload с учётом выбора "другое"
+            const payload = items.map((i) => {
+                const stringType = i.needs_restring
+                    ? i.string_type === 'other'
+                        ? i.string_custom.trim() || null
+                        : i.string_type.trim() || null
+                    : null
+
+                const tension = i.needs_restring
+                    ? i.tension === 'other'
+                        ? i.tension_custom.trim() || null
+                        : i.tension.trim() || null
+                    : null
+
+                return {
+                    racket_model: i.racket_model.trim(),
+                    needs_repair: i.needs_repair,
+                    needs_restring: i.needs_restring,
+                    string_type: stringType,
+                    tension: tension,
+                    notes: i.notes.trim() || null,
+                }
+            })
+
             const formData = new FormData()
-            formData.append(
-                'items',
-                JSON.stringify(
-                    items.map((i) => ({
-                        racket_model: i.racket_model.trim(),
-                        needs_repair: i.needs_repair,
-                        needs_restring: i.needs_restring,
-                        string_type: i.string_type.trim() || null,
-                        tension: i.tension.trim() || null,
-                        notes: i.notes.trim() || null,
-                    }))
-                )
-            )
+            formData.append('items', JSON.stringify(payload))
 
             const result = await createRacketRequest(formData)
             if (result.success) {
@@ -95,25 +106,6 @@ export function NewRacketForm() {
                 toast.error(result.error || 'Ошибка')
             }
         })
-
-        items.map((i) => ({
-            racket_model: i.racket_model.trim(),
-            needs_repair: i.needs_repair,
-            needs_restring: i.needs_restring,
-            string_type:
-                i.needs_restring
-                    ? i.string_type === 'other'
-                        ? i.string_custom.trim() || null
-                        : i.string_type || null
-                    : null,
-            tension:
-                i.needs_restring
-                    ? i.tension === 'other'
-                        ? i.tension_custom.trim() || null
-                        : i.tension || null
-                    : null,
-            notes: i.notes.trim() || null,
-        }))
     }
 
     return (
@@ -133,16 +125,16 @@ export function NewRacketForm() {
                 type="button"
                 onClick={addRacket}
                 disabled={isPending}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-neutral-700 p-3 text-sm text-neutral-400 transition hover:border-neutral-600 hover:text-neutral-300 disabled:opacity-40"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-subtle p-3 text-sm text-muted transition hover:border-card hover:text-strong disabled:opacity-40"
             >
                 <Plus className="h-4 w-4" />
                 Добавить ещё ракетку
             </button>
 
             {/* Итог */}
-            <div className="sticky bottom-20 z-10 flex items-center justify-between rounded-2xl border border-accent bg-accent-muted p-4">
+            <div className="sticky bottom-20 z-10 flex items-center justify-between rounded-2xl border border-accent bg-accent-muted p-4 shadow-card">
                 <div>
-                    <div className="text-xs uppercase text-neutral-500">Итого</div>
+                    <div className="text-xs uppercase text-muted">Итого</div>
                     <div className="text-2xl font-bold text-accent">{totalCost}₽</div>
                 </div>
                 <Button
@@ -172,16 +164,16 @@ function RacketItemCard({
     onRemove: () => void
 }) {
     return (
-        <div className="space-y-3 rounded-2xl border border bg-card p-4">
+        <div className="space-y-3 rounded-2xl bg-card border border-card p-4 shadow-card">
             <div className="flex items-center justify-between">
-                <div className="text-xs font-medium uppercase text-neutral-500">
+                <div className="text-xs font-medium uppercase text-muted">
                     Ракетка {index + 1}
                 </div>
                 {canRemove && (
                     <button
                         type="button"
                         onClick={onRemove}
-                        className="rounded-lg p-1 text-neutral-500 hover:bg-red-500/10 hover:text-red-400"
+                        className="rounded-lg p-1 text-muted hover:bg-danger-muted hover:text-danger"
                     >
                         <X className="h-4 w-4" />
                     </button>
@@ -190,7 +182,7 @@ function RacketItemCard({
 
             {/* Модель */}
             <div>
-                <label className="mb-1 block text-xs text-neutral-400">
+                <label className="mb-1 block text-xs text-muted">
                     Модель
                 </label>
                 <input
@@ -198,13 +190,13 @@ function RacketItemCard({
                     value={item.racket_model}
                     onChange={(e) => onUpdate({ racket_model: e.target.value })}
                     placeholder="Например: Yonex Astrox 88D"
-                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl bg-input px-3 py-2 text-sm text-strong placeholder:text-dim border border-subtle focus:border-accent focus:outline-none"
                 />
             </div>
 
             {/* Действия */}
             <div>
-                <div className="mb-2 text-xs text-neutral-400">Что нужно</div>
+                <div className="mb-2 text-xs text-muted">Что нужно</div>
                 <div className="grid grid-cols-2 gap-2">
                     <ActionToggle
                         label="Ремонт"
@@ -224,18 +216,17 @@ function RacketItemCard({
             </div>
 
             {/* Детали натяжки */}
-            {/* Детали натяжки */}
             {item.needs_restring && (
-                <div className="space-y-2 rounded-xl bg-neutral-950 p-3">
+                <div className="space-y-2 rounded-xl bg-subtle p-3 border border-subtle">
                     <div className="grid grid-cols-2 gap-2">
                         <div>
-                            <label className="mb-1 block text-xs text-neutral-400">
+                            <label className="mb-1 block text-xs text-muted">
                                 Струна
                             </label>
                             <select
                                 value={item.string_type}
                                 onChange={(e) => onUpdate({ string_type: e.target.value })}
-                                className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                                className="w-full rounded-lg bg-card px-2.5 py-2 text-sm text-strong border border-subtle focus:border-accent focus:outline-none"
                             >
                                 <option value="">— выбери —</option>
                                 {STRING_OPTIONS.map((s) => (
@@ -246,13 +237,13 @@ function RacketItemCard({
                             </select>
                         </div>
                         <div>
-                            <label className="mb-1 block text-xs text-neutral-400">
+                            <label className="mb-1 block text-xs text-muted">
                                 Натяжение
                             </label>
                             <select
                                 value={item.tension}
                                 onChange={(e) => onUpdate({ tension: e.target.value })}
-                                className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white focus:border-lime-400/40 focus:outline-none"
+                                className="w-full rounded-lg bg-card px-2.5 py-2 text-sm text-strong border border-subtle focus:border-accent focus:outline-none"
                             >
                                 <option value="">— выбери —</option>
                                 {TENSION_OPTIONS.map((t) => (
@@ -271,7 +262,7 @@ function RacketItemCard({
                             value={item.string_custom ?? ''}
                             onChange={(e) => onUpdate({ string_custom: e.target.value })}
                             placeholder="Название струны"
-                            className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                            className="w-full rounded-lg bg-card px-2.5 py-2 text-sm text-strong placeholder:text-dim border border-subtle focus:border-accent focus:outline-none"
                         />
                     )}
                     {item.tension === 'other' && (
@@ -280,7 +271,7 @@ function RacketItemCard({
                             value={item.tension_custom ?? ''}
                             onChange={(e) => onUpdate({ tension_custom: e.target.value })}
                             placeholder="Натяжение (например: 13.5 кг)"
-                            className="w-full rounded-lg border border bg-card px-2.5 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                            className="w-full rounded-lg bg-card px-2.5 py-2 text-sm text-strong placeholder:text-dim border border-subtle focus:border-accent focus:outline-none"
                         />
                     )}
                 </div>
@@ -288,7 +279,7 @@ function RacketItemCard({
 
             {/* Комментарий */}
             <div>
-                <label className="mb-1 block text-xs text-neutral-400">
+                <label className="mb-1 block text-xs text-muted">
                     Комментарий (необязательно)
                 </label>
                 <input
@@ -296,7 +287,7 @@ function RacketItemCard({
                     value={item.notes}
                     onChange={(e) => onUpdate({ notes: e.target.value })}
                     placeholder="Что-то ещё..."
-                    className="w-full rounded-xl border border bg-neutral-950 px-3 py-2 text-sm text-white placeholder-neutral-600 focus:border-lime-400/40 focus:outline-none"
+                    className="w-full rounded-xl bg-input px-3 py-2 text-sm text-strong placeholder:text-dim border border-subtle focus:border-accent focus:outline-none"
                 />
             </div>
         </div>
@@ -321,16 +312,18 @@ function ActionToggle({
             type="button"
             onClick={onToggle}
             className={cn(
-                'flex items-center gap-2 rounded-xl border p-3 text-left transition',
+                'flex items-center gap-2 rounded-xl p-3 text-left transition border',
                 active
                     ? 'border-accent bg-accent-muted'
-                    : 'border bg-neutral-950 hover:border-neutral-700'
+                    : 'border-subtle bg-input hover:border-card'
             )}
         >
             <div
                 className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-lg',
-                    active ? 'bg-accent-muted text-accent' : 'bg-card text-neutral-500'
+                    active
+                        ? 'bg-accent-muted text-accent'
+                        : 'bg-card text-muted'
                 )}
             >
                 {icon}
@@ -339,12 +332,12 @@ function ActionToggle({
                 <div
                     className={cn(
                         'text-sm font-medium',
-                        active ? 'text-white' : 'text-neutral-400'
+                        active ? 'text-strong' : 'text-muted'
                     )}
                 >
                     {label}
                 </div>
-                <div className="text-xs text-neutral-500">{price}₽</div>
+                <div className="text-xs text-muted">{price}₽</div>
             </div>
         </button>
     )

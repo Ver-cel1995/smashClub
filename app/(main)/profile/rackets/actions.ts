@@ -19,7 +19,6 @@ const CreateRacketRequestSchema = z.object({
     items: z.array(RacketItemSchema).min(1, 'Добавьте хотя бы одну ракетку'),
 })
 
-/** Примерные цены — потом настроишь */
 const PRICE_REPAIR = 500
 const PRICE_RESTRING = 350
 
@@ -29,7 +28,8 @@ export async function createRacketRequest(
     const user = await getCurrentUser()
     if (!user) return { success: false, error: 'Не авторизован' }
 
-    // Достаём JSON из скрытого поля
+    const userId = user.id
+
     const raw = formData.get('items')
     if (!raw || typeof raw !== 'string') {
         return { success: false, error: 'Нет данных' }
@@ -64,9 +64,9 @@ export async function createRacketRequest(
     const { data: batch, error: batchErr } = await supabase
         .from('repair_batches')
         .insert({
-            created_by: user.userId,
+            created_by: userId,
             status: 'collecting',
-            title: `Заявка ${user.profile.full_name}`,
+            title: `Заявка ${user.profile?.full_name || 'Игрока'}`,
         })
         .select('id')
         .single()
@@ -77,13 +77,12 @@ export async function createRacketRequest(
     }
 
     // 2. Раскладываем items → repair_rackets
-    // На каждую ракетку с обоими действиями создаём 2 записи
     const rows: any[] = []
     for (const item of items) {
         if (item.needs_repair) {
             rows.push({
                 batch_id: batch.id,
-                owner_id: user.userId,
+                owner_id: userId,
                 racket_model: item.racket_model,
                 repair_type: 'repair',
                 cost: PRICE_REPAIR,
@@ -94,7 +93,7 @@ export async function createRacketRequest(
         if (item.needs_restring) {
             rows.push({
                 batch_id: batch.id,
-                owner_id: user.userId,
+                owner_id: userId,
                 racket_model: item.racket_model,
                 repair_type: 'restring',
                 string_type: item.string_type || null,

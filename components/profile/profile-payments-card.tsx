@@ -22,7 +22,7 @@ export function ProfilePaymentsCard({ payments }: Props) {
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="flex w-full items-center gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/5 p-4 text-left transition active:scale-[0.99]"
+                className="flex w-full items-center gap-3 rounded-2xl border-rose-500/30 bg-rose-500/5 p-4 text-left transition active:scale-[0.99]"
             >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-500/15">
                     <Wallet className="h-5 w-5 text-rose-400" />
