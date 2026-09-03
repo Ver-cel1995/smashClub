@@ -2,11 +2,46 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import type { Database } from '@/types/database'
 
-const PUBLIC_ROUTES = ['/login', '/register']
+// Маршруты, где авторизация НЕ обязательна
+const PUBLIC_PREFIXES = [
+    '/login',
+    '/register',
+    '/home',
+    '/feed',
+    '/profile',
+    '/schedule',
+    '/tournaments',
+]
 
-const AUTH_ONLY_ROUTES = ['/login', '/register']
+// Маршруты строго только для залогиненных
+const STRICT_PROTECTED_PREFIXES = [
+    '/feed/new',
+    '/tournaments/new',
+    '/profile/settings',
+    '/profile/rackets',
+    '/profile/feedback',
+]
 
 export async function updateSession(request: NextRequest) {
+    const { pathname } = request.nextUrl
+
+    // 1. Корень `/`: быстрый редирект без тяжёлых сетевых проверок
+    if (pathname === '/') {
+        const hasAuthCookie = request.cookies.getAll().some(c => c.name.includes('auth-token'))
+        const url = request.nextUrl.clone()
+        url.pathname = hasAuthCookie ? '/home' : '/feed'
+        return NextResponse.redirect(url)
+    }
+
+    // 2. Если это публичный роут и НЕ строго защищённый — пропускаем МГНОВЕННО
+    const isStrictProtected = STRICT_PROTECTED_PREFIXES.some((p) => pathname.startsWith(prefix(p)))
+    const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(prefix(p)))
+
+    if (isPublic && !isStrictProtected) {
+        return NextResponse.next()
+    }
+
+    // 3. Для защищённых роутов создаём клиент Supabase
     let supabaseResponse = NextResponse.next({ request })
 
     const supabase = createServerClient<Database>(
@@ -30,43 +65,35 @@ export async function updateSession(request: NextRequest) {
         }
     )
 
-    // ВАЖНО: getUser() ходит в сеть. Обязательно вызываем — иначе токены не обновятся.
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { user } } = await supabase.auth.getUser()
 
-    const pathname = request.nextUrl.pathname
-
-    const isPublic = PUBLIC_ROUTES.some((route) => pathname.startsWith(route))
-    const isAuthOnly = AUTH_ONLY_ROUTES.some((route) => pathname.startsWith(route))
-    const isRoot = pathname === '/'
-
-    // 1. Не залогинен и идёт на защищённый маршрут → на login
-    if (!user && !isPublic && !isRoot) {
-            const loginUrl = new URL('/login', request.url)
-
-            // Сохраняем куда юзер хотел попасть — вернём после логина
-            const currentPath = request.nextUrl.pathname + request.nextUrl.search
-            if (currentPath && currentPath !== '/' && currentPath !== '/login') {
-                loginUrl.searchParams.set('next', currentPath)
-            }
-
-            return NextResponse.redirect(loginUrl)
+    // Если пытаются зайти на защищённый роут без юзера
+    if (!user && !isPublic) {
+        const loginUrl = new URL('/login', request.url)
+        const currentPath = request.nextUrl.pathname + request.nextUrl.search
+        if (currentPath && currentPath !== '/' && currentPath !== '/login') {
+            loginUrl.searchParams.set('next', currentPath)
+        }
+        return NextResponse.redirect(loginUrl)
     }
 
-    // 2. Залогинен и идёт на login/register → на home
-    if (user && isAuthOnly) {
+    // Залогинен и идёт на логин/регистрацию → отправляем на /home
+    if (user && (pathname === '/login' || pathname === '/register')) {
         const url = request.nextUrl.clone()
         url.pathname = '/home'
         return NextResponse.redirect(url)
     }
 
-    // 3. Корень: редиректим здесь а не в page.tsx, чтобы не дублировать
-    if (isRoot) {
-        const url = request.nextUrl.clone()
-        url.pathname = user ? '/home' : '/login'
-        return NextResponse.redirect(url)
-    }
-
     return supabaseResponse
+}
+
+function prefix(p: string) { return p }
+
+export const config = {
+    matcher: [
+        /*
+         * Исключаем статику, картинки, шрифты и внутренние _next файлы
+         */
+        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    ],
 }

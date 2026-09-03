@@ -1,6 +1,6 @@
 import { createClient } from '@/shared/lib/supabase/server'
 import type { Profile, Post, PostComment } from '@/types'
-import {cache} from "react";
+import { cache } from 'react'
 
 export type PostWithAuthor = Post & {
     author: Pick<Profile, 'id' | 'full_name' | 'avatar_url' | 'role'>
@@ -18,16 +18,14 @@ export type ReactionGroup = {
 
 const POST_SELECT = '*, author:author_id(id, full_name, avatar_url, role)'
 
-export async function getPosts(): Promise<PostWithAuthor[]> {
+export const getPosts = cache(async (): Promise<PostWithAuthor[]> => {
     const supabase = await createClient()
     const nowIso = new Date().toISOString()
 
     const { data, error } = await supabase
         .from('posts')
         .select(POST_SELECT)
-        .or(
-            `post_type.neq.auto,auto_expires_at.gt.${nowIso},and(post_type.eq.auto,auto_expires_at.is.null)`
-        )
+        .or(`auto_expires_at.gt.${nowIso},and(post_type.neq.auto,auto_expires_at.is.null)`)
         .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
 
@@ -37,9 +35,9 @@ export async function getPosts(): Promise<PostWithAuthor[]> {
     }
 
     return (data as unknown as PostWithAuthor[]) || []
-}
+})
 
-export async function getPost(postId: string): Promise<PostWithAuthor | null> {
+export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
     const supabase = await createClient()
 
     const { data, error } = await supabase
@@ -54,16 +52,16 @@ export async function getPost(postId: string): Promise<PostWithAuthor | null> {
     }
 
     return data as unknown as PostWithAuthor
-}
+})
 
 /**
  * Загружает реакции для массива постов одним запросом.
- * Возвращает Map<postId, ReactionGroup[]>
+ * Поддерживает гостевой режим (currentUserId может быть null / undefined)
  */
-export async function getReactionsForPosts(
+export const getReactionsForPosts = cache(async (
     postIds: string[],
-    currentUserId: string
-): Promise<Map<string, ReactionGroup[]>> {
+    currentUserId?: string | null
+): Promise<Map<string, ReactionGroup[]>> => {
     const result = new Map<string, ReactionGroup[]>()
     if (postIds.length === 0) return result
 
@@ -89,13 +87,15 @@ export async function getReactionsForPosts(
         const postMap = grouped.get(r.post_id)!
         const existing = postMap.get(r.emoji)
 
+        const isMyReaction = Boolean(currentUserId && r.user_id === currentUserId)
+
         if (existing) {
             existing.count++
-            if (r.user_id === currentUserId) existing.reacted = true
+            if (isMyReaction) existing.reacted = true
         } else {
             postMap.set(r.emoji, {
                 count: 1,
-                reacted: r.user_id === currentUserId,
+                reacted: isMyReaction,
             })
         }
     }
@@ -116,19 +116,19 @@ export async function getReactionsForPosts(
     }
 
     return result
-}
+})
 
-export async function getPostReactions(
+export const getPostReactions = cache(async (
     postId: string,
-    currentUserId: string
-): Promise<ReactionGroup[]> {
+    currentUserId?: string | null
+): Promise<ReactionGroup[]> => {
     const map = await getReactionsForPosts([postId], currentUserId)
     return map.get(postId) || []
-}
+})
 
-export async function getPostComments(
+export const getPostComments = cache(async (
     postId: string
-): Promise<CommentWithAuthor[]> {
+): Promise<CommentWithAuthor[]> => {
     const supabase = await createClient()
 
     const { data, error } = await supabase
@@ -143,13 +143,14 @@ export async function getPostComments(
     }
 
     return (data as unknown as CommentWithAuthor[]) || []
-}
+})
 
-
-export async function getUserVotes(
+export const getUserVotes = cache(async (
     postId: string,
-    userId: string
-): Promise<string[]> {
+    userId?: string | null
+): Promise<string[]> => {
+    if (!userId) return []
+
     const supabase = await createClient()
 
     const { data, error } = await supabase
@@ -161,17 +162,21 @@ export async function getUserVotes(
     if (error || !data) return []
 
     return data.map((v) => v.option_id)
-}
+})
 
 /**
- * Загружает голоса для массива постов-опросов одним запросом
+ * Загружает голоса для массива постов-опросов одним запросом.
+ * Для гостя (userId == null) сразу возвращает пустую карту без запроса в БД.
  */
-export async function getVotesForPosts(
+export const getVotesForPosts = cache(async (
     postIds: string[],
-    userId: string
-): Promise<Map<string, string[]>> {
+    userId?: string | null
+): Promise<Map<string, string[]>> => {
     const result = new Map<string, string[]>()
-    if (postIds.length === 0) return result
+    if (postIds.length === 0 || !userId) {
+        postIds.forEach((id) => result.set(id, []))
+        return result
+    }
 
     const supabase = await createClient()
 
@@ -193,4 +198,4 @@ export async function getVotesForPosts(
     }
 
     return result
-}
+})

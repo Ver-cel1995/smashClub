@@ -1,16 +1,12 @@
-import { createClient } from '@/shared/lib/supabase/server'
-import type { Profile } from '@/types'
+import {createClient} from '@/shared/lib/supabase/server'
+import {cache} from "react";
 
 /**
  * Получает текущего пользователя вместе с профилем.
  * Возвращает null если не залогинен.
  * Использовать в Server Components.
  */
-export async function getCurrentUser(): Promise<{
-    userId: string
-    email: string
-    profile: Profile
-} | null> {
+export const getCurrentUser = cache(async () => {
     const supabase = await createClient()
 
     const {
@@ -19,23 +15,20 @@ export async function getCurrentUser(): Promise<{
 
     if (!user) return null
 
-    const { data: profile, error } = await supabase
+    const { data: profile } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
         .single()
 
-    if (error || !profile) {
-        console.error('Failed to load profile:', error)
-        return null
-    }
+    if (!profile) return null
 
     return {
+        ...user,
         userId: user.id,
-        email: user.email!,
-        profile: profile as Profile,
+        profile,
     }
-}
+})
 
 /**
  * Проверка: текущий пользователь — тренер?

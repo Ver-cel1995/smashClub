@@ -1,10 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import type { Database } from '@/types/database'
 
 export async function createClient() {
     const cookieStore = await cookies()
 
-    return createServerClient(
+    return createServerClient<Database>(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
@@ -18,9 +19,17 @@ export async function createClient() {
                             cookieStore.set(name, value, options)
                         )
                     } catch {
-                        // Игнорируем — вызвано из Server Component
-                        // Middleware обновит сессию сам
+                        // Игнорируем вызов из Server Components
                     }
+                },
+            },
+            //отключает ошибочный кеш Next.js для сетевых запросов Supabase
+            global: {
+                fetch: (url, options) => {
+                    return fetch(url, {
+                        ...options,
+                        cache: 'no-store',
+                    })
                 },
             },
         }

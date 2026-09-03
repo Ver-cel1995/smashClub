@@ -11,12 +11,15 @@ import {
     PostCardSkeleton,
 } from '@/components/home/skeletons'
 import {NextTournamentBlock} from "@/components/home/blocks/next-tournament-block";
+import {GuestRestricted} from "@/components/shared/guest-restricted";
 
 export const dynamic = 'force-dynamic'
 
 export default async function HomePage() {
     const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    if (!user) {
+        return <GuestRestricted title="Главный экран доступен участникам клуба" />;
+    }
 
     const isCoach = user.profile.role === 'coach'
 

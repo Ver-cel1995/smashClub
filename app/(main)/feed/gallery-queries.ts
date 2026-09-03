@@ -58,7 +58,7 @@ export async function getGalleryGroups(
         groups.push({
             postId: p.id,
             postTitle: p.title,
-            createdAt: p.created_at,
+            createdAt: p.created_at || '',
             images,
         })
     }

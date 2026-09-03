@@ -17,7 +17,7 @@ export default async function PostDetailPage({ params }: Props) {
 
     const [post, reactions, comments, votedFor] = await Promise.all([
         getPost(id),
-        getPostReactions(id, user.userId),
+        getPostReactions(id, user.profile.id),
         getPostComments(id),
         getUserVotes(id, user.userId),
     ])

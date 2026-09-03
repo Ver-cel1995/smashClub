@@ -1,5 +1,4 @@
 import { getCurrentUser } from '@/shared/lib/auth'
-import { redirect } from 'next/navigation'
 import { AppHeader } from '@/components/layout/app-header'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { ReactNode } from 'react'
@@ -13,23 +12,23 @@ import type { OnboardingProgress } from '@/shared/onboarding/types'
 export default async function MainLayout({ children }: { children: ReactNode }) {
     const user = await getCurrentUser()
 
-    if (!user) {
-        redirect('/login')
-    }
-
-    const needsGender = !user.profile.gender
-    const onboarding = (user.profile.onboarding ?? {}) as OnboardingProgress
-    const isCoach = user.profile.role === 'coach'
-    const userName = (user.profile.full_name ?? 'Игрок').trim().split(/\s+/)[0]
+    // Данные для зарегистрированного или гостя
+    const isGuest = !user
+    const needsGender = !isGuest && !user?.profile?.gender
+    const onboarding = (user?.profile?.onboarding ?? {}) as OnboardingProgress
+    const isCoach = user?.profile?.role === 'coach' || user?.profile?.role === 'development'
+    const userName = user?.profile?.full_name ?? 'Гость'
+    const firstName = (userName ?? 'Игрок').trim().split(/\s+/)[0]
+    const userRole = user?.profile?.role ?? 'guest'
 
     return (
         <ConfirmProvider>
             <RouteProgress />
             <div className="min-h-screen bg-app" data-tour="app-shell">
                 <AppHeader
-                    userName={user.profile.full_name}
-                    userAvatarUrl={user.profile.avatar_url}
-                    isCoach={isCoach}
+                    userName={userName}
+                    userAvatarUrl={user?.profile?.avatar_url ?? null}
+                    role={userRole}
                 />
                 <main className="mx-auto max-w-md pb-24">
                     {children}
@@ -38,15 +37,15 @@ export default async function MainLayout({ children }: { children: ReactNode }) 
                 <BottomNav />
             </div>
 
-            {needsGender && <GenderRequiredModal />}
+            {/* Модалка указания пола только для авторизованных */}
+            {!isGuest && needsGender && <GenderRequiredModal />}
 
-            {/* TourLauncher — автозапуск тура при первом входе.
-                Запускается только если gender уже задан */}
-            {!needsGender && (
+            {/* Автозапуск туров онбординга только для авторизованных */}
+            {!isGuest && !needsGender && (
                 <TourLauncher
                     onboarding={onboarding}
                     isCoach={isCoach}
-                    userName={userName}
+                    userName={firstName}
                 />
             )}
         </ConfirmProvider>

@@ -1,17 +1,15 @@
 'use server'
 
-import { createClient } from '@/shared/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
-import { z } from 'zod'
-import { getCurrentUser } from '@/shared/lib/auth'
-import type { ActionResult } from '@/shared/lib/actions/types'
-import type { Database } from '@/types/database'
-import { checkRateLimit } from '@/shared/lib/rate-limit'
-import { mapPgError } from '@/shared/lib/actions/pg-errors'
+import {createClient} from '@/shared/lib/supabase/server'
+import {revalidatePath} from 'next/cache'
+import {z} from 'zod'
+import {getCurrentUser} from '@/shared/lib/auth'
+import type {ActionResult} from '@/shared/lib/actions/types'
+import type {Database} from '@/types/database'
+import {checkRateLimit} from '@/shared/lib/rate-limit'
+import {mapPgError} from '@/shared/lib/actions/pg-errors'
 
-// ============================================================
 // Rate limit config
-// ============================================================
 const FEEDBACK_RATE_LIMIT = {
     action: 'send_feedback',
     maxAttempts: 5,
@@ -19,9 +17,6 @@ const FEEDBACK_RATE_LIMIT = {
     errorMessage: 'Слишком много сообщений. Попробуй позже.',
 }
 
-// ============================================================
-// Типы
-// ============================================================
 export type FeedbackRow = Database['public']['Tables']['feedback']['Row']
 export type FeedbackType = 'bug' | 'idea' | 'other'
 export type FeedbackStatus = 'new' | 'seen' | 'in_progress' | 'done' | 'rejected'
@@ -35,9 +30,7 @@ export type FeedbackWithAuthor = FeedbackRow & {
     } | null
 }
 
-// ============================================================
 // Zod schema
-// ============================================================
 const sendFeedbackSchema = z.object({
     type: z.enum(['bug', 'idea', 'other']),
     title: z.string().min(3, 'Заголовок минимум 3 символа').max(200),
@@ -48,9 +41,7 @@ const sendFeedbackSchema = z.object({
 
 export type SendFeedbackInput = z.infer<typeof sendFeedbackSchema>
 
-// ============================================================
-// UPLOAD SCREENSHOT
-// ============================================================
+
 export async function uploadFeedbackScreenshot(
     formData: FormData
 ): Promise<ActionResult<{ url: string; path: string }>> {
@@ -93,9 +84,9 @@ export async function uploadFeedbackScreenshot(
     return { success: true, data: { url: publicUrl, path } }
 }
 
-// ============================================================
-// SEND FEEDBACK
-// ============================================================
+
+// FEEDBACK
+
 export async function sendFeedback(
     input: SendFeedbackInput
 ): Promise<ActionResult<{ id: string }>> {
@@ -141,9 +132,7 @@ export async function sendFeedback(
     return { success: true, data: { id: created.id } }
 }
 
-// ============================================================
 // GET MY FEEDBACK
-// ============================================================
 export async function getMyFeedback(): Promise<FeedbackRow[]> {
     const user = await getCurrentUser()
     if (!user) return []
@@ -162,9 +151,7 @@ export async function getMyFeedback(): Promise<FeedbackRow[]> {
     return data ?? []
 }
 
-// ============================================================
 // GET ALL FEEDBACK (dev only)
-// ============================================================
 export async function getAllFeedback(
     filter?: { status?: FeedbackStatus; type?: FeedbackType }
 ): Promise<FeedbackWithAuthor[]> {
@@ -194,9 +181,6 @@ export async function getAllFeedback(
     return (data ?? []) as unknown as FeedbackWithAuthor[]
 }
 
-// ============================================================
-// UPDATE STATUS + REPLY (dev only)
-// ============================================================
 export async function updateFeedback(
     id: string,
     input: { status?: FeedbackStatus; dev_reply?: string | null }
@@ -221,7 +205,7 @@ export async function updateFeedback(
 
     const { error } = await supabase
         .from('feedback')
-        .update(updatePayload)
+        .update(updatePayload as any)
         .eq('id', id)
 
     if (error) {
@@ -234,9 +218,7 @@ export async function updateFeedback(
     return { success: true }
 }
 
-// ============================================================
-// DELETE FEEDBACK
-// ============================================================
+
 export async function deleteFeedback(id: string): Promise<ActionResult> {
     const user = await getCurrentUser()
     if (!user) return { success: false, error: 'Нужно войти' }

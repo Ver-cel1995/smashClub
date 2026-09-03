@@ -4,10 +4,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Calendar, MapPin } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import {GuestRestricted} from "@/components/shared/guest-restricted";
 
 export default async function TournamentsPage() {
     const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    if (!user) {
+        return <GuestRestricted title="Главный экран доступен участникам клуба" />;
+    }
 
     const supabase = await createClient()
     const today = new Date().toISOString().slice(0, 10)

@@ -90,8 +90,8 @@ export async function remindRepairPayment(
     const supabase = await createClient()
 
     const { error } = await supabase.from('notifications').insert({
-        user_id: playerId,
-        type: 'repair_payment_reminder',
+        recipient_id: playerId,
+        type: 'payment_reminder',
         title: 'Напоминание об оплате',
         body: 'Пожалуйста, оплатите ремонт ракетки',
     })

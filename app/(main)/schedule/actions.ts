@@ -221,7 +221,7 @@ export async function updateTrainingStatus(
 ): Promise<ActionResult> {
     const supabase = await createClient()
 
-    const updatePayload: Record<string, unknown> = {
+    const updatePayload: any = {
         status,
         status_note: note || null,
         substitute_name: substituteName || null,
@@ -388,14 +388,18 @@ export async function addTrainingComment(
         return { success: false, error: 'Комментарий пустой или слишком длинный (макс. 1000 символов)' }
     }
 
+    const insertPayload: any = {
+        training_id: trainingId,
+        author_id: user.id,
+        content: trimmed,
+    }
+    if (parentCommentId) {
+        insertPayload.parent_comment_id = parentCommentId
+    }
+
     const { data: created, error } = await supabase
         .from('training_comments')
-        .insert({
-            training_id: trainingId,
-            author_id: user.id,
-            content: trimmed,
-            parent_comment_id: parentCommentId ?? null,
-        })
+        .insert(insertPayload)
         .select('id')
         .single()
 

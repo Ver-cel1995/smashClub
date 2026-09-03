@@ -1,5 +1,6 @@
 import { createClient } from '@/shared/lib/supabase/server'
 import type { Training, Profile } from '@/types'
+import { cache } from 'react'
 
 export type TrainingAttendee = {
     id: string
@@ -10,11 +11,9 @@ export type TrainingAttendee = {
 export type TrainingWithMeta = Training & {
     going_count: number
     my_status: string | null
-    /** Виртуальная запись из tournaments (не из trainings). Не редактируется через EditDayDialog. */
+    /** Виртуальная запись из tournaments (не из trainings) */
     is_virtual_tournament?: boolean
-    /** ID турнира — если это виртуальная запись */
     virtual_tournament_id?: string
-    /** Название турнира — для отображения */
     virtual_tournament_title?: string
 }
 
@@ -27,99 +26,95 @@ export type TrainingDetailed = Training & {
 
 /**
  * Тренировки за период (для календаря).
- * Дополнительно добавляет "виртуальные" турнирные дни из tournaments,
- * если тип турнира 'home' и на эту дату НЕТ реальной тренировки.
+ * Оптимизировано: 1 JOIN-запрос + параллельный запрос турниров.
  */
-export async function getTrainingsInRange(
+export const getTrainingsInRange = cache(async (
     startDate: string,
     endDate: string,
-    currentUserId: string
-): Promise<TrainingWithMeta[]> {
+    currentUserId?: string | null
+): Promise<TrainingWithMeta[]> => {
     const supabase = await createClient()
 
-    // 1. Обычные тренировки из БД
-    const { data: trainings } = await supabase
-        .from('trainings')
-        .select('*')
-        .gte('date', startDate)
-        .lte('date', endDate)
-        .order('date', { ascending: true })
+    // Загружаем тренировки вместе с посещаемостью и домашние турниры ПАРАЛЛЕЛЬНО
+    const [trainingsRes, tournamentsRes] = await Promise.all([
+        supabase
+            .from('trainings')
+            .select('*, training_attendance(player_id, status)')
+            .gte('date', startDate)
+            .lte('date', endDate)
+            .order('date', { ascending: true }),
+        supabase
+            .from('tournaments')
+            .select('id, title, tournament_type, start_date, end_date')
+            .eq('tournament_type', 'home')
+    ])
 
-    const trainingsList = trainings || []
-    const trainingIds = trainingsList.map((t) => t.id)
+    const trainingsList = trainingsRes.data || []
+    const tournamentsList = tournamentsRes.data || []
 
-    // 2. Attendance для этих тренировок
-    const attendance = trainingIds.length > 0
-        ? (await supabase
-        .from('training_attendance')
-        .select('training_id, player_id, status')
-        .in('training_id', trainingIds)).data || []
-        : []
+    // Мапа дат где есть реальная тренировка
+    const realTrainingDates = new Set(trainingsList.map((t) => t.date.slice(0, 10)))
 
-    // 3. Домашние турниры в диапазоне
-    // Логика: если турнир 'home' и на дату турнира нет реальной тренировки —
-    // добавляем "виртуальную" запись
-    const { data: tournaments } = await supabase
-        .from('tournaments')
-        .select('id, title, tournament_type, start_date, end_date')
-        .eq('tournament_type', 'home')
-        .lte('start_date', endDate)
-        .or(`end_date.gte.${startDate},and(end_date.is.null,start_date.gte.${startDate})`)
-
+    // Фильтруем домашние турниры в JS (без лагающих SQL .or() фильтров)
     const virtualTrainings: TrainingWithMeta[] = []
 
-    if (tournaments) {
-        // Мапа дат где есть реальная тренировка
-        const realTrainingDates = new Set(trainingsList.map((t) => t.date.slice(0, 10)))
+    for (const tour of tournamentsList) {
+        const tourStart = tour.start_date.slice(0, 10)
+        const tourEnd = tour.end_date ? tour.end_date.slice(0, 10) : tourStart
 
-        for (const tour of tournaments) {
-            // Собираем все даты турнира (start_date..end_date)
-            const dates = expandDateRange(tour.start_date, tour.end_date ?? tour.start_date)
-            for (const date of dates) {
-                if (date < startDate || date > endDate) continue
-                if (realTrainingDates.has(date)) continue  // уже есть реальная тренировка
+        if (tourEnd < startDate || tourStart > endDate) continue
 
-                virtualTrainings.push({
-                    id: `virtual-${tour.id}-${date}`,
-                    date,
-                    start_time: '10:00:00',   // дефолтное время — реальное хранится в description
-                    end_time: '18:00:00',
-                    status: 'tournament_trip',
-                    status_note: `Турнир: ${tour.title}`,
-                    substitute_name: null,
-                    training_group: 'main',
-                    auto_post_id: null,
-                    created_at: null,
-                    updated_at: null,
-                    going_count: 0,
-                    my_status: null,
-                    is_virtual_tournament: true,
-                    virtual_tournament_id: tour.id,
-                    virtual_tournament_title: tour.title,
-                })
-            }
+        const dates = expandDateRange(tourStart, tourEnd)
+        for (const date of dates) {
+            if (date < startDate || date > endDate) continue
+            if (realTrainingDates.has(date)) continue
+
+            virtualTrainings.push({
+                id: `virtual-${tour.id}-${date}`,
+                date,
+                start_time: '10:00:00',
+                end_time: '18:00:00',
+                status: 'tournament_trip',
+                status_note: `Турнир: ${tour.title}`,
+                substitute_name: null,
+                training_group: 'main',
+                auto_post_id: null,
+                created_at: null,
+                updated_at: null,
+                going_count: 0,
+                my_status: null,
+                is_virtual_tournament: true,
+                virtual_tournament_id: tour.id,
+                virtual_tournament_title: tour.title,
+            })
         }
     }
 
-    // 4. Реальные тренировки с attendance
-    const realWithMeta: TrainingWithMeta[] = trainingsList.map((t) => {
-        const ta = attendance.filter((a) => a.training_id === t.id)
+    // Преобразуем реальные тренировки
+    const realWithMeta: TrainingWithMeta[] = trainingsList.map((t: any) => {
+        const ta = (t.training_attendance || []) as Array<{ player_id: string; status: string }>
         return {
-            ...t,
+            id: t.id,
+            date: t.date,
+            start_time: t.start_time,
+            end_time: t.end_time,
+            status: t.status,
+            status_note: t.status_note,
+            substitute_name: t.substitute_name,
+            training_group: t.training_group,
+            auto_post_id: t.auto_post_id,
+            created_at: t.created_at,
+            updated_at: t.updated_at,
             going_count: ta.filter((a) => a.status === 'going').length,
-            my_status: ta.find((a) => a.player_id === currentUserId)?.status || null,
+            my_status: currentUserId ? ta.find((a) => a.player_id === currentUserId)?.status || null : null,
         }
     })
 
-    // 5. Объединяем и сортируем по дате
     return [...realWithMeta, ...virtualTrainings].sort((a, b) =>
         a.date.localeCompare(b.date)
     )
-}
+})
 
-/**
- * Разворачивает диапазон дат в массив ['2026-01-01', '2026-01-02', ...]
- */
 function expandDateRange(start: string, end: string): string[] {
     const startD = new Date(start + 'T00:00:00Z')
     const endD = new Date(end + 'T00:00:00Z')
@@ -132,13 +127,10 @@ function expandDateRange(start: string, end: string): string[] {
     return result
 }
 
-/**
- * Ближайшая тренировка основной группы (для главной)
- */
-export async function getNextTraining(
+export const getNextTraining = cache(async (
     currentUserId: string,
     group: string = 'main'
-): Promise<TrainingWithMeta | null> {
+): Promise<TrainingWithMeta | null> => {
     const supabase = await createClient()
 
     const now = new Date()
@@ -148,7 +140,7 @@ export async function getNextTraining(
 
     const { data: training } = await supabase
         .from('trainings')
-        .select('*')
+        .select('*, training_attendance(player_id, status)')
         .gte('date', today)
         .eq('training_group', group)
         .neq('status', 'cancelled')
@@ -159,25 +151,19 @@ export async function getNextTraining(
 
     if (!training) return null
 
-    const { data: attendance } = await supabase
-        .from('training_attendance')
-        .select('player_id, status')
-        .eq('training_id', training.id)
+    const ta = (training.training_attendance || []) as Array<{ player_id: string; status: string }>
 
     return {
         ...training,
-        going_count: attendance?.filter((a) => a.status === 'going').length || 0,
-        my_status: attendance?.find((a) => a.player_id === currentUserId)?.status || null,
+        going_count: ta.filter((a) => a.status === 'going').length,
+        my_status: ta.find((a) => a.player_id === currentUserId)?.status || null,
     }
-}
+})
 
-/**
- * Одна тренировка с деталями
- */
-export async function getTraining(
+export const getTraining = cache(async (
     trainingId: string,
     currentUserId: string
-): Promise<TrainingDetailed | null> {
+): Promise<TrainingDetailed | null> => {
     const supabase = await createClient()
 
     const { data: training, error } = await supabase
@@ -202,13 +188,8 @@ export async function getTraining(
         not_going_count: attendance.filter((a) => a.status === 'not_going').length,
         my_status: attendance.find((a) => a.player.id === currentUserId)?.status || null,
     }
-}
+})
 
-
-
-
-
-// Комментарии к тренировке
 export type TrainingComment = {
     id: string
     training_id: string
@@ -224,7 +205,7 @@ export type TrainingComment = {
     } | null
 }
 
-export async function getTrainingComments(trainingId: string): Promise<TrainingComment[]> {
+export const getTrainingComments = cache(async (trainingId: string): Promise<TrainingComment[]> => {
     const supabase = await createClient()
 
     const { data, error } = await supabase
@@ -242,18 +223,14 @@ export async function getTrainingComments(trainingId: string): Promise<TrainingC
     }
 
     return (data ?? []) as unknown as TrainingComment[]
-}
+})
 
-/**
- * Все игроки клуба + тренер (для списка "не ответили").
- * Возвращает всех авторизованных пользователей за исключением тренера.
- */
-export async function getAllClubPlayers(): Promise<Array<{
+export const getAllClubPlayers = cache(async (): Promise<Array<{
     id: string
     full_name: string
     avatar_url: string | null
     role: string
-}>> {
+}>> => {
     const supabase = await createClient()
 
     const { data, error } = await supabase
@@ -267,4 +244,4 @@ export async function getAllClubPlayers(): Promise<Array<{
     }
 
     return data ?? []
-}
+})

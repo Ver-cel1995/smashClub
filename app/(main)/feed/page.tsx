@@ -4,18 +4,21 @@ import { FeedTabs } from '@/components/feed/feed-tabs'
 
 export default async function FeedPage() {
     const user = await getCurrentUser()
-    if (!user) return null
 
-    const isCoach = user.profile.role === 'coach'
+    // Для гостя user === null, поэтому задаём безопасные значения:
+    const userId = user?.id ?? null
+    const isCoach = user?.profile?.role === 'coach' || user?.profile?.role === 'development'
 
+    // Загружаем посты (они видны всем)
     const posts = await getPosts()
 
     const postIds = posts.map((p) => p.id)
     const pollPostIds = posts.filter((p) => p.post_type === 'poll').map((p) => p.id)
 
+    // Загружаем реакции и голоса (для гостя userId === null)
     const [reactionsMap, votesMap] = await Promise.all([
-        getReactionsForPosts(postIds, user.userId),
-        getVotesForPosts(pollPostIds, user.userId),
+        getReactionsForPosts(postIds, userId),
+        getVotesForPosts(pollPostIds, userId),
     ])
 
     const reactionsObj: Record<string, any[]> = {}

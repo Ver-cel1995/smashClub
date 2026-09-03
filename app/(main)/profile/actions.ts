@@ -48,7 +48,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
 
     const { error } = await supabase
         .from('profiles')
-        .update(updatePayload)
+        .update(updatePayload as any)
         .eq('id', user.userId)
 
     if (error) {

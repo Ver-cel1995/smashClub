@@ -1,3 +1,13 @@
-export default function RootPage() {
-  return null
+import { redirect } from 'next/navigation';
+import { createClient } from '@/shared/lib/supabase/server';
+
+export default async function RootPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (user) {
+    redirect('/home');
+  } else {
+    redirect('/feed');
+  }
 }

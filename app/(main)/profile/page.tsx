@@ -86,12 +86,15 @@ import {ProfileCoachRacketsCard} from '@/components/profile/profile-coach-racket
 import {ProfileTournamentsCard} from '@/components/profile/profile-tournaments-card'
 import {ProfileAchievements} from '@/components/profile/profile-achievements'
 import {ProfileSignOutButton} from '@/components/profile/profile-sign-out-button'
+import {GuestProfileView} from "@/app/(main)/profile/guest-profile-view";
 
 export const dynamic = 'force-dynamic'
 
 export default async function ProfilePage() {
     const user = await getCurrentUser()
-    if (!user) redirect('/login')
+    if (!user) {
+        return <GuestProfileView />;
+    }
 
     const isCoach = user.profile.role === 'coach'
 
