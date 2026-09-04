@@ -15,7 +15,6 @@ type PostReactionsProps = {
 }
 
 export function PostReactions({ postId, reactions }: PostReactionsProps) {
-    // Начальное состояние: какие эмодзи мы уже поставили
     const initial = useMemo(() => {
         const map: Record<string, boolean> = {}
         for (const id of AVAILABLE_EMOJI_IDS) {
@@ -29,14 +28,30 @@ export function PostReactions({ postId, reactions }: PostReactionsProps) {
         commit: async (emojiId) => {
             const result = await toggleReaction(postId, emojiId)
             if (!result.success) {
-                toast.error(result.error || 'Не удалось поставить реакцию')
+                toast.error(result.error || 'Не удалось обновить реакцию')
                 throw new Error(result.error || 'toggle failed')
             }
         },
-        delay: 500,
+        delay: 400,
     })
 
-    // Отображаемые реакции с учётом optimistic-состояния
+    // Считаем, сколько реакций у текущего пользователя прямо сейчас включено
+    const myActiveCount = useMemo(() => {
+        return Object.values(state).filter(Boolean).length
+    }, [state])
+
+    const handleToggle = (emojiId: string) => {
+        const isCurrentlyActive = Boolean(state[emojiId])
+
+        // Если пытаемся поставить новую реакцию (не снять имеющуюся) и их УЖЕ 2
+        if (!isCurrentlyActive && myActiveCount >= 2) {
+            toast.warning('Можно выбрать не более 2 реакций')
+            return
+        }
+
+        toggle(emojiId)
+    }
+
     const displayReactions = useMemo(() => {
         return AVAILABLE_EMOJI_IDS.map((id) => {
             const server = reactions.find((r) => r.emoji === id)
@@ -56,7 +71,6 @@ export function PostReactions({ postId, reactions }: PostReactionsProps) {
         }).filter((r) => r.count > 0 || r.reacted)
     }, [reactions, state])
 
-    // ID эмодзи, которых ещё нет в реакциях — показываются в picker
     const unusedEmojiIds = useMemo(
         () =>
             AVAILABLE_EMOJI_IDS.filter(
@@ -73,13 +87,13 @@ export function PostReactions({ postId, reactions }: PostReactionsProps) {
                     type="button"
                     onClick={(e) => {
                         e.stopPropagation()
-                        toggle(r.id)
+                        handleToggle(r.id)
                     }}
                     className={cn(
-                        'flex items-center gap-1 rounded-full border-card px-2 py-0.5 text-xs transition-all active:scale-95',
+                        'flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-all active:scale-95 shadow-sm',
                         r.reacted
-                            ? 'border-accent bg-accent-muted text-accent font-medium'
-                            : 'border-card bg-neutral-950 text-neutral-300 hover:border-neutral-700'
+                            ? 'border-accent bg-accent-muted text-accent font-semibold'
+                            : 'border-card bg-card text-muted hover:bg-hover hover:text-strong'
                     )}
                 >
                     <LottieEmoji emojiId={r.id} size={20} loop />
@@ -87,10 +101,11 @@ export function PostReactions({ postId, reactions }: PostReactionsProps) {
                 </button>
             ))}
 
-            {unusedEmojiIds.length > 0 && (
+            {/* Показываем выбор нового эмодзи, только если не исчерпан лимит в 2 реакции */}
+            {unusedEmojiIds.length > 0 && myActiveCount < 2 && (
                 <EmojiPicker
                     emojiIds={unusedEmojiIds}
-                    onSelect={(id) => toggle(id)}
+                    onSelect={(id) => handleToggle(id)}
                 />
             )}
         </div>
@@ -114,9 +129,10 @@ function EmojiPicker({
                     e.stopPropagation()
                     setIsOpen(!isOpen)
                 }}
-                className="flex items-center gap-1 rounded-full border-card border-dashed border-neutral-700 px-2.5 py-1 text-xs text-neutral-400 transition-colors hover:border-neutral-600 hover:text-neutral-300"
+                className="flex items-center justify-center w-7 h-7 rounded-full border border-dashed border-strong bg-subtle text-muted transition-colors hover:border-accent hover:text-accent active:scale-95"
+                aria-label="Добавить реакцию"
             >
-                <span className="text-sm">+</span>
+                <span className="text-sm leading-none">+</span>
             </button>
 
             {isOpen && (
@@ -125,7 +141,7 @@ function EmojiPicker({
                         className="fixed inset-0 z-40"
                         onClick={() => setIsOpen(false)}
                     />
-                    <div className="absolute bottom-full left-0 z-50 mb-2 flex gap-1 rounded-xl border border bg-card p-2 shadow-xl">
+                    <div className="absolute bottom-full left-0 z-50 mb-2 flex gap-1 rounded-2xl border border-card bg-elevated p-1.5 shadow-elevated animate-in fade-in zoom-in-95 duration-150">
                         {emojiIds.map((id) => (
                             <button
                                 key={id}
@@ -135,9 +151,9 @@ function EmojiPicker({
                                     onSelect(id)
                                     setIsOpen(false)
                                 }}
-                                className="rounded-lg p-1.5 transition-colors hover:bg-neutral-800 active:scale-90"
+                                className="rounded-xl p-1.5 transition-colors hover:bg-hover active:scale-90"
                             >
-                                <LottieEmoji emojiId={id} size={28} playOnHover />
+                                <LottieEmoji emojiId={id} size={26} playOnHover />
                             </button>
                         ))}
                     </div>

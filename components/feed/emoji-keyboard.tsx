@@ -61,7 +61,7 @@ export function EmojiKeyboard({ onSelect }: Props) {
             </div>
 
             {/* Категории */}
-            <div className="flex items-center gap-1 border-t border px-2 py-2">
+            <div className="flex items-center gap-1 px-2 py-2">
                 {CATEGORIES.map((cat) => (
                     <button
                         key={cat.id}

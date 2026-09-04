@@ -11,7 +11,7 @@ const EmojiKeyboard = dynamic(
         ssr: false,
         loading: () => (
             <div className="flex h-[280px] items-center justify-center bg-card">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-lime-400 border-t-transparent" />
+                <div className="h-5 w-5 animate-spin rounded-full border-lime-400 border-t-transparent" />
             </div>
         ),
     }
@@ -108,7 +108,7 @@ export const TextareaWithEmoji = forwardRef<TextareaWithEmojiHandle, Props>(
         return (
             <div
                 className={cn(
-                    'overflow-hidden rounded-2xl border border bg-neutral-950 transition-colors focus-within:border-accent',
+                    'overflow-hidden rounded-2xl bg-neutral-950 transition-colors focus-within:border-accent',
                     disabled && 'opacity-60',
                     className
                 )}
@@ -126,7 +126,7 @@ export const TextareaWithEmoji = forwardRef<TextareaWithEmojiHandle, Props>(
                         rows={rows}
                         maxLength={maxLength}
                         style={{ minHeight, maxHeight }}
-                        className="w-full resize-none bg-transparent px-4 py-3 pr-12 text-sm text-white placeholder-neutral-500 focus:outline-none"
+                        className="w-full resize-none bg-transparent px-4 py-3 pr-12 text-sm placeholder-neutral-500 focus:outline-none"
                     />
 
                     <button
@@ -152,7 +152,7 @@ export const TextareaWithEmoji = forwardRef<TextareaWithEmojiHandle, Props>(
                 )}
 
                 {emojiOpen && (
-                    <div className="border-t border">
+                    <div>
                         <EmojiKeyboard onSelect={insertEmoji} />
                     </div>
                 )}

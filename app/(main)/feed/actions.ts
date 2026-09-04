@@ -5,6 +5,7 @@ import {revalidatePath} from 'next/cache'
 import {createPollSchema, createPostSchema} from '@/shared/lib/validations/post'
 import type {ActionResult} from '@/shared/lib/actions/types'
 import {GalleryFilters, getGalleryGroups} from "@/app/(main)/feed/gallery-queries";
+import {getCurrentUser} from "@/shared/lib/auth";
 
 function extractFieldErrors(error: unknown): Record<string, string> {
     if (
@@ -341,17 +342,13 @@ export async function togglePinPost(
 export async function toggleReaction(
     postId: string,
     emoji: string
-): Promise<ActionResult<{ added: boolean }>> {
+): Promise<ActionResult> {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Нужно войти' }
+
     const supabase = await createClient()
 
-    const {
-        data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-        return { success: false, error: 'Нужно войти в аккаунт' }
-    }
-
+    // 1. Проверяем, стояла ли уже именно ЭТА реакция от текущего юзера
     const { data: existing } = await supabase
         .from('post_reactions')
         .select('id')
@@ -361,34 +358,56 @@ export async function toggleReaction(
         .maybeSingle()
 
     if (existing) {
-        const { error } = await supabase
+        // Убираем реакцию (TOGGLE OFF)
+        const { error: delErr } = await supabase
             .from('post_reactions')
             .delete()
             .eq('id', existing.id)
 
-        if (error) {
+        if (delErr) {
+            console.error('[toggleReaction] delete error:', delErr)
             return { success: false, error: 'Не удалось убрать реакцию' }
         }
 
+        // Уменьшаем счетчик постов
         await supabase.rpc('decrement_reactions_count', { p_post_id: postId })
 
         revalidatePath('/feed')
-        return { success: true, data: { added: false } }
+        return { success: true }
     } else {
-        const { error } = await supabase.from('post_reactions').insert({
-            post_id: postId,
-            user_id: user.id,
-            emoji,
-        })
+        // Добавляем реакцию (TOGGLE ON): сначала проверяем сколько УЖЕ стоит реакций у пользователя
+        const { count, error: countErr } = await supabase
+            .from('post_reactions')
+            .select('id', { count: 'exact', head: true })
+            .eq('post_id', postId)
+            .eq('user_id', user.id)
 
-        if (error) {
+        if (!countErr && count !== null && count >= 2) {
+            return {
+                success: false,
+                error: 'Можно выбрать не более 2 реакций на один пост',
+            }
+        }
+
+        // Ставим реакцию
+        const { error: insErr } = await supabase
+            .from('post_reactions')
+            .insert({
+                post_id: postId,
+                user_id: user.id,
+                emoji,
+            })
+
+        if (insErr) {
+            console.error('[toggleReaction] insert error:', insErr)
             return { success: false, error: 'Не удалось поставить реакцию' }
         }
 
+        // Увеличиваем счетчик
         await supabase.rpc('increment_reactions_count', { p_post_id: postId })
 
         revalidatePath('/feed')
-        return { success: true, data: { added: true } }
+        return { success: true }
     }
 }
 

@@ -257,3 +257,93 @@ async function updateTourStatus(
     revalidatePath('/', 'layout')
     return { success: true }
 }
+
+
+
+type DevSwitchOnboarding = {
+    dev_real_role?: 'development'
+    [key: string]: unknown
+}
+
+function canUseRoleSwitcher(
+    userId: string,
+    role: string,
+    onboarding: DevSwitchOnboarding
+): boolean {
+    const allowIds =
+        process.env.ROLE_SWITCHER_USER_IDS?.split(',').map((s) => s.trim()).filter(Boolean) ??
+        []
+
+    if (allowIds.includes(userId)) return true
+    if (role === 'development') return true
+    if (onboarding?.dev_real_role === 'development') return true
+    return false
+}
+
+/**
+ * Dev-only: переключение coach ↔ player.
+ * Доступно role=development или ROLE_SWITCHER_USER_IDS / метка в onboarding.
+ */
+export async function switchDevRole(
+    nextRole: 'coach' | 'player'
+): Promise<ActionResult> {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Не авторизован' }
+
+    const onboarding = (user.profile.onboarding ?? {}) as DevSwitchOnboarding
+    const currentRole = user.profile.role
+
+    if (!canUseRoleSwitcher(user.id, currentRole, onboarding)) {
+        return { success: false, error: 'Переключатель ролей недоступен' }
+    }
+
+    if (nextRole !== 'coach' && nextRole !== 'player') {
+        return { success: false, error: 'Недопустимая роль' }
+    }
+
+    // Уже в этой роли
+    if (currentRole === nextRole) {
+        return { success: true }
+    }
+
+    const supabase = await createClient()
+
+    // Помечаем, что это dev-аккаунт — чтобы свитчер не пропал после смены на player
+    const nextOnboarding: DevSwitchOnboarding = {
+        ...onboarding,
+        dev_real_role: 'development',
+    }
+
+    const { error } = await supabase
+        .from('profiles')
+        .update({
+            role: nextRole,
+            onboarding: nextOnboarding as any,
+        } as any)
+        .eq('id', user.id)
+
+    if (error) {
+        console.error('[switchDevRole]', error)
+        // Если RLS/триггер режет смену role — нужен SQL ниже
+        return {
+            success: false,
+            error: 'Не удалось сменить роль. Проверь RLS на profiles.role',
+        }
+    }
+
+    revalidatePath('/', 'layout')
+    revalidatePath('/profile')
+    revalidatePath('/home')
+    revalidatePath('/feed')
+    revalidatePath('/schedule')
+    revalidatePath('/tournaments')
+
+    return { success: true }
+}
+
+export async function canShowRoleSwitcher(): Promise<boolean> {
+    const user = await getCurrentUser()
+    if (!user) return false
+    const onboarding = (user.profile.onboarding ?? {}) as DevSwitchOnboarding
+    return canUseRoleSwitcher(user.id, user.profile.role, onboarding)
+}

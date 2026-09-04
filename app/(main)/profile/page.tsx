@@ -87,6 +87,8 @@ import {ProfileTournamentsCard} from '@/components/profile/profile-tournaments-c
 import {ProfileAchievements} from '@/components/profile/profile-achievements'
 import {ProfileSignOutButton} from '@/components/profile/profile-sign-out-button'
 import {GuestProfileView} from "@/app/(main)/profile/guest-profile-view";
+import { DevRoleSwitcher } from '@/components/profile/dev-role-switcher'
+
 
 export const dynamic = 'force-dynamic'
 
@@ -107,6 +109,17 @@ export default async function ProfilePage() {
 
     return (
         <div className="flex flex-col gap-3 p-4 pb-24" data-tour="profile-main">
+            {(user.profile.role === 'coach' ||
+                (user.profile.onboarding as any)?.dev_real_role === 'coach' ||
+                process.env.ROLE_SWITCHER_USER_IDS?.split(',').includes(user.id)) && (
+                <div className="px-4">
+                    <DevRoleSwitcher currentRole={user.profile.role} />
+                </div>
+            )}
+
+
+
+
             <ProfileHeader profile={user.profile}/>
             <ProfileStats profile={user.profile}/>
 
