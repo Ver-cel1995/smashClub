@@ -30,7 +30,7 @@ export default async function HomePage() {
             </Suspense>
 
             <Suspense fallback={<TrainingCardSkeleton />}>
-                <NextTrainingBlock userId={user.userId} />
+                <NextTrainingBlock userId={user.id} />
             </Suspense>
 
             <Suspense fallback={<TrainingCardSkeleton />}>
@@ -38,11 +38,11 @@ export default async function HomePage() {
             </Suspense>
 
             <Suspense fallback={null}>
-                <NextTripBlock userId={user.userId} />
+                <NextTripBlock userId={user.id} />
             </Suspense>
 
             <Suspense fallback={null}>
-                <RepairBlock userId={user.userId} isCoach={isCoach} />
+                <RepairBlock userId={user.id} isCoach={isCoach} />
             </Suspense>
 
             <Suspense fallback={<PostCardSkeleton />}>

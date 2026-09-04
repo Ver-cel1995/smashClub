@@ -19,7 +19,7 @@ export default async function PostDetailPage({ params }: Props) {
         getPost(id),
         getPostReactions(id, user.profile.id),
         getPostComments(id),
-        getUserVotes(id, user.userId),
+        getUserVotes(id, user.id),
     ])
 
     if (!post) notFound()
@@ -50,7 +50,7 @@ export default async function PostDetailPage({ params }: Props) {
             <CommentSection
                 postId={id}
                 comments={comments}
-                currentUserId={user.userId}
+                currentUserId={user.id}
                 isCoach={isCoach}
             />
         </div>

@@ -1,30 +1,45 @@
 'use client'
 
 import Link from 'next/link'
-import {Button} from '@/components/ui/button'
-import {Input} from '@/components/ui/input'
-import {Label} from '@/components/ui/label'
-import {Card} from '@/components/ui/card'
-import {LogoBadge} from '@/components/logo-badge'
-import {AuthTabs} from "@/components/auth-tabs";
-import {AuthFooter} from "@/components/auth-footer";
-import {useFormAction} from "@/shared/hooks/useFormAction";
-import {signIn} from "@/app/(auth)/actions";
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card } from '@/components/ui/card'
+import { LogoBadge } from '@/components/logo-badge'
+import { AuthTabs } from '@/components/auth-tabs'
+import { AuthFooter } from '@/components/auth-footer'
+import { useFormAction } from '@/shared/hooks/useFormAction'
+import { signIn } from '@/app/(auth)/actions'
+import { TelegramAuthButton } from '@/components/auth/telegram-auth-button'
 
 export default function LoginPage() {
     const { isPending, handleSubmit, getFieldError, generalError } = useFormAction(signIn)
 
     return (
         <div className="flex min-h-screen items-center justify-center px-4 py-10">
-            <Card className="max-w-sm space-y-6">
+            <Card className="max-w-sm w-full space-y-6">
                 <LogoBadge />
 
                 <AuthTabs active="login" />
 
-                {/* Форма */}
+                {/* Быстрый вход через мессенджеры */}
+                <div className="space-y-2">
+                    <TelegramAuthButton />
+                </div>
+
+                <div className="relative flex items-center justify-center my-2">
+                    <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-subtle" />
+                    </div>
+                    <span className="relative bg-card px-3 text-[11px] uppercase text-muted font-medium">
+                        или через email
+                    </span>
+                </div>
+
+                {/* Форма email/пароль */}
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="email" className="text-neutral-300">
+                        <Label htmlFor="email" className="text-muted">
                             Email
                         </Label>
                         <Input
@@ -32,15 +47,14 @@ export default function LoginPage() {
                             name="email"
                             type="email"
                             placeholder="example@mail.com"
-                            error={getFieldError('name')}
+                            error={getFieldError('email')}
                             disabled={isPending}
-
-                            className="bg-card border text-white"
+                            className="bg-input border-subtle text-strong"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="password" className="text-neutral-300">
+                        <Label htmlFor="password" className="text-muted">
                             Пароль
                         </Label>
                         <Input
@@ -50,7 +64,7 @@ export default function LoginPage() {
                             placeholder="••••••••"
                             error={getFieldError('password')}
                             disabled={isPending}
-                            className="bg-card border text-white"
+                            className="bg-input border-subtle text-strong"
                         />
                         <div className="flex justify-end">
                             <Link
@@ -62,8 +76,8 @@ export default function LoginPage() {
                         </div>
                     </div>
 
-                    {generalError && !Object.keys(getFieldError('_') ? { _: '' } : {}).length && (
-                        <p className="text-sm text-red-400 text-center">{generalError}</p>
+                    {generalError && (
+                        <p className="text-sm text-danger text-center">{generalError}</p>
                     )}
 
                     <Button

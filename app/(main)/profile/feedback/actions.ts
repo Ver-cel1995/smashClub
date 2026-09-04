@@ -93,7 +93,7 @@ export async function sendFeedback(
     const user = await getCurrentUser()
     if (!user) return { success: false, error: 'Нужно войти' }
 
-    const rateLimit = await checkRateLimit(user.userId, FEEDBACK_RATE_LIMIT)
+    const rateLimit = await checkRateLimit(user.id, FEEDBACK_RATE_LIMIT)
     if (!rateLimit.allowed) {
         return { success: false, error: rateLimit.error }
     }
@@ -111,7 +111,7 @@ export async function sendFeedback(
     const { data: created, error } = await supabase
         .from('feedback')
         .insert({
-            user_id: user.userId,
+            user_id: user.id,
             type: parsed.data.type,
             title: parsed.data.title.trim(),
             description: parsed.data.description.trim(),
@@ -141,7 +141,7 @@ export async function getMyFeedback(): Promise<FeedbackRow[]> {
     const { data, error } = await supabase
         .from('feedback')
         .select('*')
-        .eq('user_id', user.userId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
 
     if (error) {
@@ -237,7 +237,7 @@ export async function deleteFeedback(id: string): Promise<ActionResult> {
     }
 
     const canDelete =
-        user.profile.role === 'development' || feedback.user_id === user.userId
+        user.profile.role === 'development' || feedback.user_id === user.id
 
     if (!canDelete) {
         return { success: false, error: 'Нет прав' }

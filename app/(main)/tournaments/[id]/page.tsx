@@ -17,7 +17,7 @@ export default async function TournamentPage({
     if (!user) redirect('/login')
 
     const { id } = await params
-    const data = await getTournamentFullData(id, user.userId)
+    const data = await getTournamentFullData(id, user.id)
     if (!data) notFound()
 
     const { tournament, categories, my_participation, my_pending_invites } = data
@@ -101,7 +101,7 @@ export default async function TournamentPage({
                 tournamentId={tournament.id}
                 categories={categories}
                 myParticipation={my_participation}
-                currentUserId={user.userId}
+                currentUserId={user.id}
                 isCoach={isCoach}
                 isRegistrationOpen={isRegistrationOpen}
                 entryFee={tournament.entry_fee_amount}
@@ -114,7 +114,7 @@ export default async function TournamentPage({
                     tournamentId={tournament.id}
                     categories={categories}
                     myParticipation={my_participation}
-                    currentUserId={user.userId}
+                    currentUserId={user.id}
                     entryFee={tournament.entry_fee_amount}
                     hasEntryFee={tournament.has_entry_fee ?? false}
                     currentUserGender={user.profile.gender ?? null}

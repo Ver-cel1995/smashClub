@@ -24,7 +24,7 @@ export async function setTripAttendance(
         .upsert(
             {
                 trip_id: tripId,
-                player_id: user.userId,
+                player_id: user.id,
                 status,
                 responded_at: new Date().toISOString(),
             },
@@ -57,7 +57,7 @@ export async function setTrainingAttendance(
         .upsert(
             {
                 training_id: trainingId,
-                player_id: user.userId,
+                player_id: user.id,
                 status,
                 responded_at: new Date().toISOString(),
             },

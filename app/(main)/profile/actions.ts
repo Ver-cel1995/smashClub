@@ -49,7 +49,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult> {
     const { error } = await supabase
         .from('profiles')
         .update(updatePayload as any)
-        .eq('id', user.userId)
+        .eq('id', user.id)
 
     if (error) {
         console.error('[updateProfile]', error)
@@ -157,7 +157,7 @@ export async function markTourCompleted(tourId: TourId): Promise<ActionResult> {
     const user = await getCurrentUser()
     if (!user) return { success: false, error: 'Не авторизован' }
 
-    return updateTourStatus(user.userId, tourId, {
+    return updateTourStatus(user.id, tourId, {
         completed_at: new Date().toISOString(),
         skipped_at: null,
         version: TOUR_VERSIONS[tourId],
@@ -171,7 +171,7 @@ export async function markTourSkipped(tourId: TourId): Promise<ActionResult> {
     const user = await getCurrentUser()
     if (!user) return { success: false, error: 'Не авторизован' }
 
-    return updateTourStatus(user.userId, tourId, {
+    return updateTourStatus(user.id, tourId, {
         completed_at: null,
         skipped_at: new Date().toISOString(),
         version: TOUR_VERSIONS[tourId],
@@ -191,7 +191,7 @@ export async function resetTour(tourId: TourId): Promise<ActionResult> {
     const { data: profile } = await supabase
         .from('profiles')
         .select('onboarding')
-        .eq('id', user.userId)
+        .eq('id', user.id)
         .single()
 
     const currentOnboarding = (profile?.onboarding ?? {}) as OnboardingProgress
@@ -201,7 +201,7 @@ export async function resetTour(tourId: TourId): Promise<ActionResult> {
     const { error } = await supabase
         .from('profiles')
         .update({ onboarding: updated })
-        .eq('id', user.userId)
+        .eq('id', user.id)
 
     if (error) {
         console.error('[resetTour]', error)

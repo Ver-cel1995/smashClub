@@ -11,7 +11,7 @@ export async function NextTournamentBlock() {
     const user = await getCurrentUser()
     if (!user) return null
 
-    const tournament = await getNextTournament(user.userId)
+    const tournament = await getNextTournament(user.id)
     if (!tournament) return null
 
     return (

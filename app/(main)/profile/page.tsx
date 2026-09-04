@@ -22,9 +22,9 @@
 //     if (!user) redirect('/login')
 //
 //     const [payments, rackets, tournaments] = await Promise.all([
-//         getProfilePayments(user.userId),
-//         getUserRackets(user.userId),
-//         getUserUpcomingTournaments(user.userId),
+//         getProfilePayments(user.id),
+//         getUserRackets(user.id),
+//         getUserUpcomingTournaments(user.id),
 //     ])
 //
 //     return (
@@ -88,6 +88,7 @@ import {ProfileAchievements} from '@/components/profile/profile-achievements'
 import {ProfileSignOutButton} from '@/components/profile/profile-sign-out-button'
 import {GuestProfileView} from "@/app/(main)/profile/guest-profile-view";
 import { DevRoleSwitcher } from '@/components/profile/dev-role-switcher'
+import {TelegramBindCard} from "@/components/profile/telegram-bind-card";
 
 
 export const dynamic = 'force-dynamic'
@@ -101,9 +102,9 @@ export default async function ProfilePage() {
     const isCoach = user.profile.role === 'coach'
 
     const [payments, rackets, tournaments, coachRepair] = await Promise.all([
-        isCoach ? Promise.resolve(null) : getProfilePayments(user.userId),
-        isCoach ? Promise.resolve([]) : getUserRackets(user.userId),
-        getUserUpcomingTournaments(user.userId),
+        isCoach ? Promise.resolve(null) : getProfilePayments(user.id),
+        isCoach ? Promise.resolve([]) : getUserRackets(user.id),
+        getUserUpcomingTournaments(user.id),
         isCoach ? getRepairForCoach() : Promise.resolve(null),
     ])
 
@@ -185,6 +186,7 @@ export default async function ProfilePage() {
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted"/>
                 </Link>
+                <TelegramBindCard isLinked={false}/>
                 <ProfileSignOutButton/>
             </div>
         </div>

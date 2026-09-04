@@ -14,7 +14,7 @@ export default async function RacketsPage() {
     const user = await getCurrentUser()
     if (!user) redirect('/login')
 
-    const rackets = await getUserRacketsHistory(user.userId)
+    const rackets = await getUserRacketsHistory(user.id)
 
     // Группируем по batch_id (одна заявка = одна батча)
     const groupedByBatch = new Map<string, typeof rackets>()

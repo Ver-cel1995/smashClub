@@ -25,7 +25,7 @@ export default async function TrainingPage({
     if (!user) redirect('/login')
 
     const [training, comments, allPlayers] = await Promise.all([
-        getTraining(trainingId, user.userId),
+        getTraining(trainingId, user.id),
         getTrainingComments(trainingId),
         getAllClubPlayers(),
     ])
@@ -55,13 +55,13 @@ export default async function TrainingPage({
             <TrainingAttendanceLists
                 attendance={training.attendance}
                 allPlayers={allPlayers}
-                currentUserId={user.userId}
+                currentUserId={user.id}
             />
 
             <TrainingCommentsSection
                 trainingId={training.id}
                 comments={comments}
-                currentUserId={user.userId}
+                currentUserId={user.id}
                 isCoach={isCoach}
             />
         </div>

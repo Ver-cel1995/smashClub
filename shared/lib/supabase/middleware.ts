@@ -6,11 +6,14 @@ import type { Database } from '@/types/database'
 const PUBLIC_PREFIXES = [
     '/login',
     '/register',
+    '/auth', // 👈 callback magic-link / Telegram / MAX
+    '/api',  // 👈 webhooks, dev sim-tg (если ходит через middleware)
     '/home',
     '/feed',
     '/profile',
     '/schedule',
     '/tournaments',
+    '/offline',
 ]
 
 // Маршруты строго только для залогиненных
@@ -24,6 +27,10 @@ const STRICT_PROTECTED_PREFIXES = [
 
 export async function updateSession(request: NextRequest) {
     const { pathname } = request.nextUrl
+
+    if (pathname.startsWith('/auth') || pathname.startsWith('/api/webhooks') || pathname.startsWith('/api/dev')) {
+        return NextResponse.next()
+    }
 
     // 1. Корень `/`: быстрый редирект без тяжёлых сетевых проверок
     if (pathname === '/') {

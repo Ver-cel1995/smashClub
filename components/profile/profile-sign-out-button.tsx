@@ -5,12 +5,10 @@ import { toast } from 'sonner'
 import { signOutAction } from '@/app/(main)/profile/actions'
 import { useConfirm } from '@/shared/lib/confirm/confirm-context'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
-import { useProgressRouter } from '@/shared/hooks/use-progress-router'
 
 export function ProfileSignOutButton() {
     const confirm = useConfirm()
     const [runAction, isPending] = useProgressAction()
-    const router = useProgressRouter()
 
     const handleSignOut = async () => {
         const ok = await confirm({
@@ -24,7 +22,7 @@ export function ProfileSignOutButton() {
         runAction(async () => {
             const result = await signOutAction()
             if (result.success) {
-                router.push('/login')
+                window.location.href = '/login'
             } else {
                 toast.error(result.error || 'Ошибка')
             }
