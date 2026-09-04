@@ -1,16 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card } from '@/components/ui/card'
-import { LogoBadge } from '@/components/logo-badge'
-import { AuthTabs } from '@/components/auth-tabs'
-import { AuthFooter } from '@/components/auth-footer'
-import { useFormAction } from '@/shared/hooks/useFormAction'
-import { signIn } from '@/app/(auth)/actions'
-import { TelegramAuthButton } from '@/components/auth/telegram-auth-button'
+import {Button} from '@/components/ui/button'
+import {Input} from '@/components/ui/input'
+import {Label} from '@/components/ui/label'
+import {Card} from '@/components/ui/card'
+import {LogoBadge} from '@/components/logo-badge'
+import {AuthTabs} from '@/components/auth-tabs'
+import {AuthFooter} from '@/components/auth-footer'
+import {useFormAction} from '@/shared/hooks/useFormAction'
+import {signIn} from '@/app/(auth)/actions'
+import {TelegramLoginWidget} from "@/components/auth/telegram-login-widget";
 
 export default function LoginPage() {
     const { isPending, handleSubmit, getFieldError, generalError } = useFormAction(signIn)
@@ -24,7 +24,7 @@ export default function LoginPage() {
 
                 {/* Быстрый вход через мессенджеры */}
                 <div className="space-y-2">
-                    <TelegramAuthButton />
+                    <TelegramLoginWidget />
                 </div>
 
                 <div className="relative flex items-center justify-center my-2">

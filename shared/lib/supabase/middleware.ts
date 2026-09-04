@@ -6,8 +6,8 @@ import type { Database } from '@/types/database'
 const PUBLIC_PREFIXES = [
     '/login',
     '/register',
-    '/auth', // 👈 callback magic-link / Telegram / MAX
-    '/api',  // 👈 webhooks, dev sim-tg (если ходит через middleware)
+    '/auth', // Telegram / MAX
+    '/api',  // webhooks
     '/home',
     '/feed',
     '/profile',
