@@ -38,11 +38,6 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ ok: true })
         }
 
-        // Динамический импорт общей логики — или дублируй verify из actions
-        // Для простоты: проставим verified через admin + generateLink как в actions
-        const { checkTelegramAuthSession } = await import(
-            '@/app/(auth)/telegram-actions'
-            )
         // Лучше вынести verify в lib. Временно:
         const supabaseAdmin = createAdminClient()
         const { data: authCode } = await supabaseAdmin

@@ -1,13 +1,9 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
-import { Send, Loader2, CheckCircle2, ExternalLink, X } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { toast } from 'sonner'
-import {
-    createTelegramAuthSession,
-    checkTelegramAuthSession,
-} from '@/app/(auth)/telegram-actions'
+import {useRef, useState} from 'react'
+import {CheckCircle2, ExternalLink, Loader2, Send, X} from 'lucide-react'
+import {Button} from '@/components/ui/button'
+
 
 export function TelegramAuthButton() {
     const [isOpen, setIsOpen] = useState(false)
@@ -22,41 +18,11 @@ export function TelegramAuthButton() {
 
     const handleStartTgAuth = async () => {
         setLoading(true)
-        const res = await createTelegramAuthSession()
         setLoading(false)
-
-        if (!res.success || !res.data) {
-            toast.error( 'Не удалось запустить вход через Telegram')
-            return
-        }
-
-        setSession({
-            code: res.data.code,
-            botUsername: res.data.botUsername,
-        })
         setVerified(false)
         setIsOpen(true)
     }
 
-    // Polling: проверяем статус каждые 2 секунды
-    useEffect(() => {
-        if (!isOpen || !session || verified) return
-
-        timerRef.current = setInterval(async () => {
-            const res = await checkTelegramAuthSession(session.code)
-            if (res.success && res.data?.verified && res.data.redirectUrl) {
-                if (timerRef.current) clearInterval(timerRef.current)
-                setVerified(true)
-                toast.success('Успешная авторизация!')
-                // Переходим по magic-ссылке Supabase для установки сессии
-                window.location.href = res.data.redirectUrl
-            }
-        }, 2000)
-
-        return () => {
-            if (timerRef.current) clearInterval(timerRef.current)
-        }
-    }, [isOpen, session, verified])
 
 
     const tgUrl = session
