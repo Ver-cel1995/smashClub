@@ -1,107 +1,93 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Send, Loader2 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { toast } from 'sonner'
+import { loginWithDevTelegram } from '@/app/(auth)/telegram-actions'
 
-declare global {
-    interface Window {
-        Telegram?: {
-            Login?: {
-                auth: (
-                    options: { client_id: number; scope?: string[]; lang?: string },
-                    callback: (data: { id_token?: string; error?: string }) => void
-                ) => void
-            }
-        }
-    }
-}
-
-const CLIENT_ID = process.env.NEXT_PUBLIC_TELEGRAM_CLIENT_ID || '8915544846'
+const BOT_ID = process.env.NEXT_PUBLIC_TELEGRAM_BOT_ID || '8915544846'
 
 export function TelegramLoginButton({ className }: { className?: string }) {
-    const [sdkReady, setSdkReady] = useState(false)
     const [loading, setLoading] = useState(false)
-    const scriptLoaded = useRef(false)
+    const pollTimerRef = useRef<NodeJS.Timeout | null>(null)
 
-    // Загружаем официальную библиотеку Telegram OIDC
     useEffect(() => {
-        if (scriptLoaded.current) return
-        scriptLoaded.current = true
-
-        const script = document.createElement('script')
-        script.src = 'https://oauth.telegram.org/js/telegram-login.js?6'
-        script.async = true
-        script.onload = () => setSdkReady(true)
-        script.onerror = () => console.error('[TG OIDC] Failed to load telegram-login.js')
-        document.body.appendChild(script)
-
         return () => {
-            script.remove()
+            if (pollTimerRef.current) clearInterval(pollTimerRef.current)
         }
     }, [])
 
-    const handleTgLogin = () => {
-        if (!window.Telegram?.Login) {
-            toast.error('Telegram SDK загружается, попробуйте через секунду')
-            return
-        }
-
+    const handleTgLogin = async () => {
         setLoading(true)
 
-        window.Telegram.Login.auth(
-            {
-                client_id: Number(CLIENT_ID),
-                scope: ['profile'],
-                lang: 'ru',
-            },
-            async (data) => {
-                if (data.error) {
-                    setLoading(false)
-                    if (data.error !== 'user_declined') {
-                        toast.error(`Ошибка входа: ${data.error}`)
-                    }
+        try {
+            const isLocalhost =
+                typeof window !== 'undefined' &&
+                (window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1')
+
+            // 1. НА LOCALHOST: Мгновенный Dev-вход за 1 секунду
+            if (isLocalhost) {
+                const res = await loginWithDevTelegram()
+                if (res.success && res.data?.redirectUrl) {
+                    toast.success('Dev-вход через Telegram выполнен!')
+                    window.location.href = res.data.redirectUrl
                     return
-                }
-
-                if (!data.id_token) {
+                } else {
+                    toast.error('Ошибка Dev входа')
                     setLoading(false)
-                    toast.error('Не получен токен авторизации Telegram')
                     return
-                }
-
-                try {
-                    // Отправляем id_token на наш сервер
-                    const res = await fetch('/api/auth/telegram', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id_token: data.id_token }),
-                    })
-
-                    const result = await res.json()
-
-                    if (!res.ok || !result.redirectUrl) {
-                        toast.error(result.error || 'Ошибка проверки авторизации')
-                        setLoading(false)
-                        return
-                    }
-
-                    // Мгновенный переход на /home после успешной авторизации!
-                    window.location.href = result.redirectUrl
-                } catch {
-                    toast.error('Ошибка сети при входе')
-                    setLoading(false)
                 }
             }
-        )
+
+            // 2. НА ПРОДАКШЕНЕ: Динамический origin + Всплывающее окно (Popup)
+            const origin = window.location.origin
+            const returnTo = `${origin}/api/auth/telegram`
+
+            const oauthUrl =
+                `https://oauth.telegram.org/auth` +
+                `?bot_id=${encodeURIComponent(BOT_ID)}` +
+                `&origin=${encodeURIComponent(origin)}` +
+                `&embed=0` +
+                `&request_access=write` +
+                `&return_to=${encodeURIComponent(returnTo)}`
+
+            const width = 550
+            const height = 470
+            const left = Math.max(0, (window.innerWidth - width) / 2 + window.screenX)
+            const top = Math.max(0, (window.innerHeight - height) / 2 + window.screenY)
+
+            const popup = window.open(
+                oauthUrl,
+                'telegram_oauth',
+                `width=${width},height=${height},left=${left},top=${top},status=0,toolbar=0,menubar=0`
+            )
+
+            if (!popup || popup.closed || typeof popup.closed === 'undefined') {
+                // Если браузер заблокировал всплывающее окно — редиректим в текущей вкладке
+                window.location.href = oauthUrl
+                return
+            }
+
+            // Отслеживаем закрытие модального окна вручную
+            pollTimerRef.current = setInterval(() => {
+                if (popup.closed) {
+                    if (pollTimerRef.current) clearInterval(pollTimerRef.current)
+                    setLoading(false)
+                }
+            }, 500)
+        } catch {
+            toast.error('Ошибка входа')
+            setLoading(false)
+        }
     }
 
     return (
         <button
             type="button"
             onClick={handleTgLogin}
-            disabled={!sdkReady || loading}
+            disabled={loading}
             title="Войти через Telegram"
             aria-label="Войти через Telegram"
             className={cn(
