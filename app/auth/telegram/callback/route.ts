@@ -1,31 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { verifyTelegramIdToken } from '@/shared/lib/telegram/verify-id-token'
+import {NextRequest, NextResponse} from 'next/server'
+import {verifyTelegramIdToken} from '@/shared/lib/telegram/verify-id-token'
 import {completeTelegramLoginFromClaims} from "@/shared/lib/telegram/complete-login";
 
 export async function GET(req: NextRequest) {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://smash-club-three.vercel.app'
-    const { searchParams } = req.nextUrl
-
+    const { searchParams, origin } = req.nextUrl
     const code = searchParams.get('code')
     const error = searchParams.get('error')
 
     if (error || !code) {
-        return NextResponse.redirect(`${appUrl}/login?error=${encodeURIComponent(error || 'no_code')}`)
+        return NextResponse.redirect(`${origin}/login?error=tg_no_code`)
     }
 
-    const clientId = process.env.TELEGRAM_CLIENT_ID || process.env.NEXT_PUBLIC_TELEGRAM_CLIENT_ID || '8915544846'
+    const clientId = process.env.TELEGRAM_CLIENT_ID || '8915544846'
     const clientSecret = process.env.TELEGRAM_CLIENT_SECRET
-    const redirectUri = `${appUrl}/auth/telegram/callback`
+    const redirectUri = `${origin}/auth/telegram/callback`
 
     try {
-        // 1. Обмениваем code на id_token в Telegram
-        const basicAuth = Buffer.from(`${clientId}:${clientSecret || ''}`).toString('base64')
+        // 1. Обмениваем код на токены (OIDC стандарт)
+        const authHeader = Buffer.from(`${clientId}:${clientSecret || ''}`).toString('base64')
 
         const tokenRes = await fetch('https://oauth.telegram.org/token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',
-                Authorization: `Basic ${basicAuth}`,
+                Authorization: `Basic ${authHeader}`,
             },
             body: new URLSearchParams({
                 grant_type: 'authorization_code',
@@ -38,26 +36,27 @@ export async function GET(req: NextRequest) {
         const tokenData = await tokenRes.json()
 
         if (!tokenRes.ok || !tokenData.id_token) {
-            console.error('[TG Callback Exchange Error]', tokenData)
-            return NextResponse.redirect(`${appUrl}/login?error=token_exchange_failed`)
+            console.error('[TG OIDC Error]', tokenData)
+            return NextResponse.redirect(`${origin}/login?error=token_failed`)
         }
 
-        // 2. Валидируем полученный id_token
-        const verification = await verifyTelegramIdToken(tokenData.id_token, clientId)
-        if (!verification.ok) {
-            return NextResponse.redirect(`${appUrl}/login?error=${encodeURIComponent(verification.error)}`)
+        // 2. Проверяем JWT токен Telegram
+        const verified = await verifyTelegramIdToken(tokenData.id_token, clientId)
+        if (!verified.ok) {
+            return NextResponse.redirect(`${origin}/login?error=invalid_token`)
         }
 
-        // 3. Авторизуем/регистрируем пользователя в Supabase
-        const result = await completeTelegramLoginFromClaims(verification.payload)
+        // 3. Создаем/ищем пользователя в Supabase
+        const result = await completeTelegramLoginFromClaims(verified.payload)
+
         if (!result.ok) {
-            return NextResponse.redirect(`${appUrl}/login?error=${encodeURIComponent(result.error)}`)
+            return NextResponse.redirect(`${origin}/login?error=auth_failed`)
         }
 
-        // 4. Переходим на /auth/callback для установки кук сессии
+        // 4. Редирект на установку кук и домой
         return NextResponse.redirect(result.redirectUrl)
     } catch (err) {
-        console.error('[TG Callback Error]', err)
-        return NextResponse.redirect(`${appUrl}/login?error=server_error`)
+        console.error('[TG Callback Crash]', err)
+        return NextResponse.redirect(`${origin}/login?error=server_error`)
     }
 }
