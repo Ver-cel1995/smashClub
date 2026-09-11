@@ -8,6 +8,7 @@ const PUBLIC_PREFIXES = [
     '/register',
     '/auth', // Telegram / MAX
     '/api',  // webhooks
+    '/manifest.json',
     '/home',
     '/feed',
     '/profile',

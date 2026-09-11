@@ -10,7 +10,7 @@ import {AuthTabs} from '@/components/auth-tabs'
 import {AuthFooter} from '@/components/auth-footer'
 import {useFormAction} from '@/shared/hooks/useFormAction'
 import {signIn} from '@/app/(auth)/actions'
-import {TelegramLoginWidget} from "@/components/auth/telegram-login-widget";
+import {TelegramLoginButton} from "@/components/auth/telegram-login-button";
 
 export default function LoginPage() {
     const { isPending, handleSubmit, getFieldError, generalError } = useFormAction(signIn)
@@ -23,8 +23,8 @@ export default function LoginPage() {
                 <AuthTabs active="login" />
 
                 {/* Быстрый вход через мессенджеры */}
-                <div className="space-y-2">
-                    <TelegramLoginWidget />
+                <div className="space-y-2 flex justify-center">
+                    <TelegramLoginButton />
                 </div>
 
                 <div className="relative flex items-center justify-center my-2">
