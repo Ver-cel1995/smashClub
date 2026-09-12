@@ -4,7 +4,15 @@ import { sendMaxMessage } from '@/shared/lib/max/bot-api';
 
 export async function POST(req: Request) {
     try {
-        const body = await req.json();
+        const textData = await req.text();
+        let body;
+
+        try {
+            body = JSON.parse(textData);
+        } catch (e) {
+            console.error('[MAX Webhook] Failed to parse JSON:', textData);
+            return NextResponse.json({ ok: true, note: 'JSON parse fail' });
+        }
 
         // Извлекаем текст сообщения и данные пользователя из webhook
         const message = body?.message || body?.object || body;

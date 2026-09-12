@@ -1,69 +1,70 @@
-/**
- * Вспомогательные функции для работы с MAX Messenger API (platform-api2.max.ru)
- */
+import https from 'https';
 
 const MAX_BOT_TOKEN = process.env.MAX_BOT_TOKEN;
-const MAX_API_BASE = 'https://platform-api2.max.ru';
+const MAX_API_BASE = 'platform-api2.max.ru'; // Без https://
 
 /**
- * Отправляет текстовое сообщение пользователю в МАХ
+ * Универсальный исполнитель запросов к MAX API с поддержкой обхода TLS
  */
-export async function sendMaxMessage(chatId: string | number, text: string) {
-    if (!MAX_BOT_TOKEN) {
-        console.warn('[MAX Bot] MAX_BOT_TOKEN не задан в ENV');
-        return false;
-    }
+async function maxApiRequest(method: string, path: string, body: any) {
+    if (!MAX_BOT_TOKEN) return { success: false, error: 'Token missing' };
 
-    try {
-        const res = await fetch(`${MAX_API_BASE}/messages`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': MAX_BOT_TOKEN,
-            },
-            body: JSON.stringify({
-                chat_id: chatId,
-                text,
-            }),
+    const postData = JSON.stringify(body);
+
+    const options = {
+        hostname: MAX_API_BASE,
+        port: 443,
+        path: path,
+        method: method,
+        rejectUnauthorized: false, // ВАЖНО: игнорируем отсутствие сертификата Минцифры в Node.js
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': MAX_BOT_TOKEN,
+            'Content-Length': Buffer.byteLength(postData),
+        },
+    };
+
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let responseBody = '';
+            res.on('data', (chunk) => (responseBody += chunk));
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(responseBody);
+                    resolve({ success: res.statusCode === 200, data: parsed });
+                } catch (e) {
+                    resolve({ success: false, error: 'Invalid JSON response' });
+                }
+            });
         });
 
-        if (!res.ok) {
-            const err = await res.text();
-            console.error('[MAX Bot] Ошибка отправки сообщения:', err);
-            return false;
-        }
+        req.on('error', (e) => {
+            console.error('[MAX API Request Error]:', e);
+            resolve({ success: false, error: e.message });
+        });
 
-        return true;
-    } catch (error) {
-        console.error('[MAX Bot] Исключение при отправке:', error);
-        return false;
-    }
+        req.write(postData);
+        req.end();
+    });
 }
 
 /**
- * Регистрирует Webhook URL в MAX API (POST /subscriptions)
+ * Отправляет текстовое сообщение
+ */
+export async function sendMaxMessage(chatId: string | number, text: string) {
+    const result: any = await maxApiRequest('POST', '/messages', {
+        chat_id: chatId,
+        text,
+    });
+    return result.success;
+}
+
+/**
+ * Регистрирует Webhook
  */
 export async function registerMaxWebhook(webhookUrl: string) {
-    if (!MAX_BOT_TOKEN) {
-        return { success: false, error: 'MAX_BOT_TOKEN отсутствует в ENV' };
-    }
-
-    try {
-        const res = await fetch(`${MAX_API_BASE}/subscriptions`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': MAX_BOT_TOKEN,
-            },
-            body: JSON.stringify({
-                url: webhookUrl,
-                update_types: ['message_created', 'bot_started'],
-            }),
-        });
-
-        const data = await res.json();
-        return { success: res.ok && data.success !== false, data };
-    } catch (error: any) {
-        return { success: false, error: error.message };
-    }
+    return await maxApiRequest('POST', '/subscriptions', {
+        url: webhookUrl,
+        update_types: ['message_created', 'bot_started'],
+    });
 }
