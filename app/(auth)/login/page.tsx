@@ -11,6 +11,7 @@ import {AuthFooter} from '@/components/auth-footer'
 import {useFormAction} from '@/shared/hooks/useFormAction'
 import {signIn} from '@/app/(auth)/actions'
 import {TelegramLoginButton} from "@/components/auth/telegram-login-button";
+import {MaxLoginButton} from "@/components/auth/max-login-button";
 
 export default function LoginPage() {
     const { isPending, handleSubmit, getFieldError, generalError } = useFormAction(signIn)
@@ -25,6 +26,7 @@ export default function LoginPage() {
                 {/* Быстрый вход через мессенджеры */}
                 <div className="space-y-2 flex justify-center">
                     <TelegramLoginButton />
+                    <MaxLoginButton/>
                 </div>
 
                 <div className="relative flex items-center justify-center my-2">
