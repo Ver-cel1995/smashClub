@@ -5,36 +5,58 @@ import { sendMaxMessage } from '@/shared/lib/max/bot-api';
 export async function POST(req: Request) {
     try {
         const textData = await req.text();
-        let body;
-
+        let body: any;
         try {
             body = JSON.parse(textData);
         } catch (e) {
-            console.error('[MAX Webhook] Failed to parse JSON:', textData);
-            return NextResponse.json({ ok: true, note: 'JSON parse fail' });
-        }
-
-        // Извлекаем текст сообщения и данные пользователя из webhook
-        const message = body?.message || body?.object || body;
-        const text: string = message?.text || message?.body || '';
-        const fromUser = message?.from || message?.user || body?.user;
-
-        if (!fromUser || !fromUser.id) {
-            return NextResponse.json({ ok: true, note: 'No user info' });
-        }
-
-        // Ищем 6-значный код из команды "/start 123456"
-        const match = text.match(/\b(\d{6})\b/);
-        if (!match) {
-            // Если это просто обычное сообщение боту
-            await sendMaxMessage(
-                fromUser.id,
-                '👋 Привет! Чтобы войти в SmashClub, нажмите кнопку «Войти через МАХ» на сайте приложения.'
-            );
             return NextResponse.json({ ok: true });
         }
 
-        const code = match[1];
+        console.log('[MAX Webhook Payload]:', JSON.stringify(body, null, 2));
+
+        // 1. Извлекаем данные пользователя из любых возможных структур МАХ Update
+        const message = body?.message || body?.object?.message || body?.object || body;
+        const fromUser =
+            message?.from ||
+            body?.user ||
+            body?.object?.user ||
+            message?.user;
+
+        if (!fromUser || !fromUser.id) {
+            return NextResponse.json({ ok: true, note: 'No user data' });
+        }
+
+        // 2. Ищем 6-значный код В ЛЮБОМ МЕСТЕ payload / текста
+        // МАХ передает deep-link код в payload, start_param или text ("/start 123456")
+        const possibleSources = [
+            body?.payload,
+            body?.object?.payload,
+            body?.start_param,
+            message?.text,
+            message?.body,
+            textData, // Поиск по всему исходному JSON на случай кастомной структуры
+        ];
+
+        let code: string | null = null;
+        for (const src of possibleSources) {
+            if (typeof src === 'string') {
+                const match = src.match(/\b(\d{6})\b/);
+                if (match) {
+                    code = match[1];
+                    break;
+                }
+            }
+        }
+
+        // Если код не найден — просто приветствуем пользователя
+        if (!code) {
+            await sendMaxMessage(
+                fromUser.id,
+                '👋 Чтобы зайти в SmashClub, нажмите кнопку «Войти через МАХ» на сайте приложения.'
+            );
+            return NextResponse.json({ ok: true, note: 'No auth code found' });
+        }
+
         const maxUserId = String(fromUser.id);
         const firstName = fromUser.first_name || 'Игрок';
         const lastName = fromUser.last_name || '';
@@ -44,7 +66,7 @@ export async function POST(req: Request) {
 
         const supabaseAdmin = createAdminClient();
 
-        // 1. Ищем активный код авторизации
+        // 3. Ищем активный код авторизации в базе
         const { data: authCode, error: codeErr } = await supabaseAdmin
             .from('auth_codes')
             .select('*')
@@ -57,14 +79,14 @@ export async function POST(req: Request) {
         if (codeErr || !authCode) {
             await sendMaxMessage(
                 fromUser.id,
-                'Код авторизации не найден или его срок действия (5 мин) истёк. Попробуйте снова на сайте.'
+                '❌ Код авторизации устарел. Попробуйте нажать «Войти через МАХ» ещё раз.'
             );
-            return NextResponse.json({ ok: true, note: 'Code not found or expired' });
+            return NextResponse.json({ ok: true, note: 'Invalid or expired code' });
         }
 
         let userId: string;
 
-        // 2. Ищем существующий привязанный аккаунт в oauth_accounts
+        // 4. Ищем или создаём профиль в единой системе аккаунтов SmashClub
         const { data: existingOauth } = await supabaseAdmin
             .from('oauth_accounts')
             .select('user_id')
@@ -75,17 +97,13 @@ export async function POST(req: Request) {
         if (existingOauth?.user_id) {
             userId = existingOauth.user_id;
         } else {
-            // 3. Если аккаунта нет — создаём новый через Supabase Admin API
             const syntheticEmail = `max_${maxUserId}@smashclub.pwa`;
-
-            // Проверяем, может user с таким email уже есть
-            const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
-            const matchedUser = existingUser?.users?.find((u) => u.email === syntheticEmail);
+            const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+            const matchedUser = existingUsers?.users?.find((u) => u.email === syntheticEmail);
 
             if (matchedUser) {
                 userId = matchedUser.id;
             } else {
-                // Создаём нового пользователя
                 const { data: newUser, error: createErr } = await supabaseAdmin.auth.admin.createUser({
                     email: syntheticEmail,
                     email_confirm: true,
@@ -93,14 +111,12 @@ export async function POST(req: Request) {
                 });
 
                 if (createErr || !newUser.user) {
-                    console.error('[MAX Webhook] Ошибка создания пользователя:', createErr);
-                    await sendMaxMessage(fromUser.id, 'Ошибка создания аккаунта. Обратитесь в поддержку.');
+                    await sendMaxMessage(fromUser.id, '❌ Ошибка создания профиля.');
                     return NextResponse.json({ error: 'User creation failed' }, { status: 500 });
                 }
 
                 userId = newUser.user.id;
 
-                // Создаём профиль
                 await supabaseAdmin.from('profiles').upsert({
                     id: userId,
                     full_name: fullName,
@@ -109,7 +125,6 @@ export async function POST(req: Request) {
                 });
             }
 
-            // Привязываем записи в oauth_accounts
             await supabaseAdmin.from('oauth_accounts').insert({
                 user_id: userId,
                 provider: 'max',
@@ -121,25 +136,21 @@ export async function POST(req: Request) {
             });
         }
 
-        // 4. Генерируем ссылку для автоматического входа
+        // 5. Генерируем ссылку беспарольного входа для браузера
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://smash-club-three.vercel.app';
         const syntheticEmail = `max_${maxUserId}@smashclub.pwa`;
 
         const { data: linkData, error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
             type: 'magiclink',
             email: syntheticEmail,
-            options: {
-                redirectTo: `${appUrl}/auth/callback?next=/home`,
-            },
+            options: { redirectTo: `${appUrl}/auth/callback?next=/home` },
         });
 
         if (linkErr || !linkData?.properties?.action_link) {
-            console.error('[MAX Webhook] Ошибка генерации ссылки входа:', linkErr);
-            await sendMaxMessage(fromUser.id, 'Ошибка авторизации. Попробуйте ещё раз.');
-            return NextResponse.json({ error: 'Magic link failed' }, { status: 500 });
+            return NextResponse.json({ error: 'Magic link generation failed' }, { status: 500 });
         }
 
-        // 5. Обновляем статус кода в БД на 'verified'
+        // 6. Подтверждаем код — браузер пользователя на сайте МГНОВЕННО залогинится!
         await supabaseAdmin
             .from('auth_codes')
             .update({
@@ -152,15 +163,15 @@ export async function POST(req: Request) {
             })
             .eq('id', authCode.id);
 
-        // 6. Уведомляем пользователя в мессенджере МАХ
+        // 7. Сообщаем пользователю в МАХ
         await sendMaxMessage(
             fromUser.id,
-            `Вы успешно вошли в SmashClub как ${fullName}!\n\nМожете вернуться в браузер — приложение открывается автоматически.`
+            `⚡ Вход выполнен! Добро пожаловать, ${firstName}.\n\nМожете вернуться в браузер — сайт уже открыт.`
         );
 
         return NextResponse.json({ ok: true, verified: true });
     } catch (err: any) {
-        console.error('[MAX Webhook] Exception:', err);
+        console.error('[MAX Webhook Exception]:', err);
         return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }

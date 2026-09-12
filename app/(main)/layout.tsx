@@ -8,6 +8,7 @@ import { RouteProgress } from '@/store/route-progress'
 import { GenderRequiredModal } from '@/components/onboarding/gender-required-modal'
 import { TourLauncher } from '@/components/onboarding/tour-launcher'
 import type { OnboardingProgress } from '@/shared/onboarding/types'
+import {MaxBridge} from "@/components/auth/max-bridge";
 
 export default async function MainLayout({ children }: { children: ReactNode }) {
     const user = await getCurrentUser()
@@ -48,6 +49,7 @@ export default async function MainLayout({ children }: { children: ReactNode }) 
                     userName={firstName}
                 />
             )}
+            <MaxBridge />
         </ConfirmProvider>
     )
 }

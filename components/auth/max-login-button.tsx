@@ -51,19 +51,15 @@ export function MaxLoginButton() {
         setLoading(true);
         try {
             const res = await createMaxAuthCode();
-
-            if (!res.success || !res.code || !res.deepLink) {
-                toast.error(res.error || 'Ошибка при генерации кода');
-                return;
-            }
+            if (!res.success || !res.code) return;
 
             setAuthCode(res.code);
-            setDeepLink(res.deepLink);
             setModalOpen(true);
 
-            window.open(res.deepLink, '_blank');
+            const botLink = `https://max.ru/se14302662_bot?start=${res.code}`;
+            window.open(botLink, '_blank');
         } catch (err) {
-            toast.error('Произошла ошибка входа');
+            toast.error('Ошибка входа');
         } finally {
             setLoading(false);
         }
