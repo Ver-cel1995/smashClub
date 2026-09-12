@@ -15,6 +15,8 @@ const PUBLIC_PREFIXES = [
     '/schedule',
     '/tournaments',
     '/offline',
+    '/privacy',
+    '/terms',
 ]
 
 // Маршруты строго только для залогиненных

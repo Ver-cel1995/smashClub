@@ -9,16 +9,19 @@ import {AuthFooter} from "@/components/auth-footer";
 import {LogoBadge} from "@/components/logo-badge";
 import {AuthTabs} from "@/components/auth-tabs";
 import {useFormAction} from "@/shared/hooks/useFormAction";
+import Link from 'next/link'
+import {useState} from "react";
 
 export default function RegisterPage() {
-    const { isPending, handleSubmit, getFieldError, generalError } = useFormAction(signUp)
+    const {isPending, handleSubmit, getFieldError, generalError} = useFormAction(signUp)
+    const [consentGiven, setConsentGiven] = useState(false);
 
     return (
         <div className="flex min-h-screen items-center justify-center px-4 py-10">
             <Card className="max-w-sm space-y-6">
-                <LogoBadge />
+                <LogoBadge/>
 
-                <AuthTabs active="register" />
+                <AuthTabs active="register"/>
 
                 {/* Форма */}
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -82,20 +85,41 @@ export default function RegisterPage() {
                         />
                     </div>
 
-                    {generalError && !Object.keys(getFieldError('_') ? { _: '' } : {}).length && (
+                    {generalError && !Object.keys(getFieldError('_') ? {_: ''} : {}).length && (
                         <p className="text-sm text-red-400 text-center">{generalError}</p>
                     )}
+
+
+                    <label className="flex items-start gap-3 text-sm text-main cursor-pointer">
+                        <input
+                            type="checkbox"
+                            checked={consentGiven}
+                            onChange={(e) => setConsentGiven(e.target.checked)}
+                            className="mt-0.5 w-4 h-4 rounded border-subtle text-accent focus:ring-accent"
+                            required
+                        />
+                        <span>
+                                Я даю согласие на обработку персональных данных в соответствии с{' '}
+                            <Link href="/privacy" className="text-accent underline" target="_blank">
+                                Политикой конфиденциальности
+                            </Link>{' '} и принимаю{' '}
+
+                            <Link href="/terms" className="text-accent underline" target="_blank">
+                                Пользовательское соглашение
+                            </Link>
+                        </span>
+                    </label>
 
                     <Button
                         type="submit"
                         variant="secondary"
-                        disabled={isPending}
+                        disabled={isPending || !consentGiven}
                         className="w-full font-semibold"
                     >
                         {isPending ? 'Регистрируем...' : 'Зарегистрироваться'}
                     </Button>
                 </form>
-                <AuthFooter />
+                <AuthFooter/>
             </Card>
         </div>
     )
