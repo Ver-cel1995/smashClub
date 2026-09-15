@@ -26,7 +26,7 @@ export default function LoginPage() {
                 {/* Быстрый вход через мессенджеры */}
                 <div className="space-y-2 flex justify-center">
                     <TelegramLoginButton />
-                    <MaxLoginButton/>
+                    {/*<MaxLoginButton/>*/}
                 </div>
 
                 <div className="relative flex items-center justify-center my-2">

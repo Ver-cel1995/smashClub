@@ -17,6 +17,7 @@ const PUBLIC_PREFIXES = [
     '/offline',
     '/privacy',
     '/terms',
+    '/forgot-password'
 ]
 
 // Маршруты строго только для залогиненных

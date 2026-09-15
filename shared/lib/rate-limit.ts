@@ -1,10 +1,5 @@
 import { createClient } from '@/shared/lib/supabase/server'
 
-/**
- * Проверяет и логирует rate limit для действия юзера.
- * Возвращает { allowed: true } если можно продолжить,
- * или { allowed: false, retryAfterSeconds } если превышен лимит.
- */
 export type RateLimitConfig = {
     action: string
     maxAttempts: number
@@ -32,13 +27,12 @@ export async function checkRateLimit(
         .gte('created_at', cutoff)
 
     if (error) {
-        // Если проверка упала — НЕ блокируем юзера, просто логируем и пропускаем
+        // Если проверка упала (например, нет RLS или юзера) — НЕ блокируем юзера
         console.error('[rate-limit] check failed:', error)
         return { allowed: true }
     }
 
     if (count !== null && count >= config.maxAttempts) {
-        // Находим самую старую запись в окне, чтобы вычислить retry_after
         const { data: oldestEntry } = await supabase
             .from('rate_limits')
             .select('created_at')
@@ -65,7 +59,7 @@ export async function checkRateLimit(
         }
     }
 
-    // Логируем текущую попытку
+    // Логируем попытку
     await supabase.from('rate_limits').insert({
         user_id: userId,
         action: config.action,
@@ -89,39 +83,41 @@ function formatDuration(seconds: number): string {
 // ============================================================
 
 export const RATE_LIMITS = {
-    // Тренер создаёт турниры: не больше 10/час
     CREATE_TOURNAMENT: {
         action: 'create_tournament',
         maxAttempts: 10,
-        windowMs: 60 * 60 * 1000, // 1 час
+        windowMs: 60 * 60 * 1000,
         errorMessage: 'Слишком много турниров создано за час. Подожди.',
     },
-    // Парсинг PDF: не больше 20/час
     PARSE_PDF: {
         action: 'parse_pdf',
         maxAttempts: 20,
         windowMs: 60 * 60 * 1000,
         errorMessage: 'Много PDF-парсингов подряд. Подожди немного.',
     },
-    // Регистрация на турнир: не больше 5/минуту
     REGISTER_TOURNAMENT: {
         action: 'register_tournament',
         maxAttempts: 5,
-        windowMs: 60 * 1000, // 1 минута
+        windowMs: 60 * 1000,
         errorMessage: 'Не так быстро. Подожди минуту.',
     },
-    // Ответ на приглашение: не больше 3/минуту
     RESPOND_INVITE: {
         action: 'respond_invite',
         maxAttempts: 3,
         windowMs: 60 * 1000,
         errorMessage: 'Слишком часто. Подожди минуту.',
     },
-    // Создание гостя: не больше 10 в сутки
     CREATE_GUEST: {
         action: 'create_guest',
         maxAttempts: 10,
-        windowMs: 24 * 60 * 60 * 1000, // 24 часа
+        windowMs: 24 * 60 * 60 * 1000,
         errorMessage: 'Достигнут лимит новых гостей в сутки.',
+    },
+    // Сброс пароля: максимум 3 попытки за 5 минут
+    PASSWORD_RESET: {
+        action: 'password_reset',
+        maxAttempts: 3,
+        windowMs: 5 * 60 * 1000,
+        errorMessage: 'Слишком много запросов. Подождите 5 минут.',
     },
 } as const

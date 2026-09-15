@@ -28,17 +28,27 @@ export async function GET(request: Request) {
         }
     )
 
+    // 1. Авторизация по коду (OAuth / Magic link)
     if (code) {
-        const { error } = await supabase.auth.exchangeCodeForSession(code)
-        if (!error) return NextResponse.redirect(`${origin}${next}`)
-        console.error('[auth/callback] code', error)
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (!error) {
+            return NextResponse.redirect(`${origin}${next}`);
+        }
+        console.error('[Auth Callback] Exchange code error:', error);
     }
 
+    // 2. Авторизация по token_hash (Восстановление пароля / Подтверждение email)
     if (token_hash && type) {
-        const { error } = await supabase.auth.verifyOtp({ type, token_hash })
-        if (!error) return NextResponse.redirect(`${origin}${next}`)
-        console.error('[auth/callback] otp', error)
+        const { error } = await supabase.auth.verifyOtp({
+            token_hash,
+            type,
+        });
+        if (!error) {
+            return NextResponse.redirect(`${origin}${next}`);
+        }
+        console.error('[Auth Callback] Verify OTP error:', error);
     }
 
-    return NextResponse.redirect(`${origin}/login?error=auth_failed`)
+    // При ошибке отправляем на страницу логина
+    return NextResponse.redirect(`${origin}/login?error=auth_failed`);
 }
