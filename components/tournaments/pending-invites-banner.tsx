@@ -11,7 +11,7 @@ import type {
     TournamentCategoryFull,
 } from '@/app/(main)/tournaments/[id]/queries'
 
-const CATEGORY_LABELS: Record<string, string> = {
+export const CATEGORY_LABELS: Record<string, string> = {
     MS: 'Мужская одиночка',
     WS: 'Женская одиночка',
     MD: 'Мужская пара',

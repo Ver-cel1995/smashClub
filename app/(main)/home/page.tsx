@@ -1,15 +1,11 @@
-import { Suspense } from 'react'
-import { redirect } from 'next/navigation'
-import { getCurrentUser } from '@/shared/lib/auth'
-import { ScheduleNoteBlock } from '@/components/home/blocks/schedule-note-block'
-import { NextTrainingBlock } from '@/components/home/blocks/next-training-block'
-import { NextTripBlock } from '@/components/home/blocks/next-trip-block'
-import { RepairBlock } from '@/components/home/blocks/repair-block'
-import { PinnedPostBlock } from '@/components/home/blocks/pinned-post-block'
-import {
-    TrainingCardSkeleton,
-    PostCardSkeleton,
-} from '@/components/home/skeletons'
+import {Suspense} from 'react'
+import {getCurrentUser} from '@/shared/lib/auth'
+import {ScheduleNoteBlock} from '@/components/home/blocks/schedule-note-block'
+import {NextTrainingBlock} from '@/components/home/blocks/next-training-block'
+import {NextTripBlock} from '@/components/home/blocks/next-trip-block'
+import {RepairBlock} from '@/components/home/blocks/repair-block'
+import {PinnedPostBlock} from '@/components/home/blocks/pinned-post-block'
+import {PostCardSkeleton, TrainingCardSkeleton,} from '@/components/home/skeletons'
 import {NextTournamentBlock} from "@/components/home/blocks/next-tournament-block";
 import {GuestRestricted} from "@/components/shared/guest-restricted";
 

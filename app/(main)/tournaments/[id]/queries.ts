@@ -1,224 +1,211 @@
-import { cache } from 'react'
-import { createClient } from '@/shared/lib/supabase/server'
-import type { Database } from '@/types/database'
-
-type ParticipantRow = Database['public']['Tables']['tournament_participants']['Row']
-type ProfileRow = Database['public']['Tables']['profiles']['Row']
-type GuestRow = Database['public']['Tables']['guests']['Row']
+import { cache } from 'react';
+import { createClient } from '@/shared/lib/supabase/server';
 
 export type ParticipantPlayerInfo = {
-    kind: 'player'
-    id: string
-    full_name: string
-    avatar_url: string | null
-} | {
-    kind: 'guest'
-    id: string
-    full_name: string
-}
+    kind: 'player' | 'guest';
+    id: string;
+    full_name: string;
+    avatar_url?: string | null;
+    rating?: number | null;
+};
 
 export type ParticipantRecord = {
-    id: string
-    category_id: string
-    player1: ParticipantPlayerInfo | null
-    player2: ParticipantPlayerInfo | null
-    pair_status: 'pending' | 'confirmed' | 'declined' | null
-    registered_by: string
-    is_looking_for_partner: boolean  // computed: парная категория, но player2/guest2 не заполнены
-}
+    id: string;
+    category_id: string;
+    status: string;
+    pair_status: string | null;
+    player1: ParticipantPlayerInfo | null;
+    player2: ParticipantPlayerInfo | null;
+};
+
+export type RatingGroupCode = 'A' | 'B' | 'C' | 'D' | 'E' | 'OPEN';
 
 export type TournamentCategoryFull = {
-    id: string
-    category: 'MS' | 'WS' | 'MD' | 'WD' | 'XD'
-    age_group: string | null
-    is_pair_category: boolean  // computed: MD/WD/XD
-    participants: ParticipantRecord[]
-    seekers: ParticipantRecord[]  // те кто 'ищет партнёра' в этой категории
-}
+    id: string;
+    category: 'MS' | 'WS' | 'MD' | 'WD' | 'XD';
+    rating_group: RatingGroupCode;
+    age_group: string | null;
+    max_pairs: number | null;
+    is_pair_category: boolean;
+    bracket_status: string;
+    participants: ParticipantRecord[];
+    seekers: ParticipantRecord[];
+};
 
 export type MyParticipationInCategory = {
-    category_id: string
-    // Все мои записи в этой категории (может быть несколько если сложный сценарий)
-    records: Array<{
-        record_id: string
-        role: 'player1' | 'player2'
-        pair_status: 'pending' | 'confirmed' | 'declined' | null
-        partner: ParticipantPlayerInfo | null
-    }>
-}
+    record_id: string;
+    pair_status: string | null;
+    is_player1: boolean;
+    partner_name?: string | null;
+};
 
-export type TournamentFullData = {
-    tournament: Database['public']['Tables']['tournaments']['Row']
-    categories: TournamentCategoryFull[]
-    // Что уже есть у текущего пользователя (по категориям)
-    my_participation: Record<string, MyParticipationInCategory>
-    // Пары где я player2 и pair_status=pending — «приглашения ко мне»
-    my_pending_invites: ParticipantRecord[]
-}
+export type TournamentDetails = {
+    id: string;
+    title: string;
+    tournament_type: 'home' | 'away';
+    status: 'draft' | 'registration_open' | 'registration_closed' | 'in_progress' | 'completed';
+    location: string;
+    venue: string | null;
+    start_date: string;
+    end_date: string;
+    description: string | null;
+    registration_deadline: string | null;
+    has_entry_fee: boolean;
+    entry_fee_amount: number | null;
+    pdf_url: string | null;
+    created_by: string;
+    categories: TournamentCategoryFull[];
+    my_participation: Record<string, MyParticipationInCategory>;
+};
 
-// status
+export const getTournamentDetails = cache(async (
+    tournamentId: string,
+    userId?: string
+): Promise<TournamentDetails | null> => {
+    const supabase = await createClient();
 
-const PAIR_CATEGORIES: ReadonlySet<string> = new Set(['MD', 'WD', 'XD'])
+    // 1. Турнир
+    const { data: tournament, error: tourErr } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .maybeSingle();
 
-function buildPlayerInfo(
-    profile: Pick<ProfileRow, 'id' | 'full_name' | 'avatar_url'> | null,
-    guest: Pick<GuestRow, 'id' | 'full_name'> | null
-): ParticipantPlayerInfo | null {
-    if (profile) {
-        return {
-            kind: 'player',
-            id: profile.id,
-            full_name: profile.full_name,
-            avatar_url: profile.avatar_url,
-        }
+    if (tourErr || !tournament) {
+        console.error('[getTournamentDetails] Error:', tourErr);
+        return null;
     }
-    if (guest) {
-        return {
-            kind: 'guest',
-            id: guest.id,
-            full_name: guest.full_name,
-        }
-    }
-    return null
-}
 
-// ==== Основная query ====
+    // 2. Категории
+    const { data: categories } = await supabase
+        .from('tournament_categories')
+        .select('*')
+        .eq('tournament_id', tournamentId);
 
-export const getTournamentFullData = cache(
-    async (tournamentId: string, currentUserId: string): Promise<TournamentFullData | null> => {
-        const supabase = await createClient()
+    const categoryIds = (categories || []).map((c) => c.id);
 
-        // 1. Сам турнир
-        const { data: tournament, error: tournamentError } = await supabase
-            .from('tournaments')
-            .select('*')
-            .eq('id', tournamentId)
-            .single()
-
-        if (tournamentError || !tournament) {
-            return null
-        }
-
-        // 2. Категории
-        const { data: categoriesRaw } = await supabase
-            .from('tournament_categories')
-            .select('*')
-            .eq('tournament_id', tournamentId)
-            .order('category')
-
-        const categoriesList = categoriesRaw ?? []
-
-        // 3. Все участники этого турнира + связанные профили/гости
-        const { data: participantsRaw } = await supabase
+    // 3. Участники
+    const { data: rawParticipants } = categoryIds.length
+        ? await supabase
             .from('tournament_participants')
-            .select(
-                `
-                id,
-                category_id,
-                player1_id,
-                player2_id,
-                guest1_id,
-                guest2_id,
-                pair_status,
-                registered_by,
-                player1:profiles!tournament_participants_player1_id_fkey(id, full_name, avatar_url),
-                player2:profiles!tournament_participants_player2_id_fkey(id, full_name, avatar_url),
-                guest1:guests!tournament_participants_guest1_id_fkey(id, full_name),
-                guest2:guests!tournament_participants_guest2_id_fkey(id, full_name)
-                `
-            )
-            .eq('tournament_id', tournamentId)
+            .select(`
+          id,
+          category_id,
+          status,
+          pair_status,
+          player1:profiles!player1_id(id, full_name, avatar_url, rating_singles, rating_doubles),
+          player2:profiles!player2_id(id, full_name, avatar_url, rating_singles, rating_doubles),
+          guest1:guests!guest1_id(id, full_name),
+          guest2:guests!guest2_id(id, full_name)
+        `)
+            .in('category_id', categoryIds)
+            .neq('status', 'withdrawn')
+        : { data: [] };
 
-        const participants = (participantsRaw ?? []) as unknown as Array<
-            ParticipantRow & {
-            player1: Pick<ProfileRow, 'id' | 'full_name' | 'avatar_url'> | null
-            player2: Pick<ProfileRow, 'id' | 'full_name' | 'avatar_url'> | null
-            guest1: Pick<GuestRow, 'id' | 'full_name'> | null
-            guest2: Pick<GuestRow, 'id' | 'full_name'> | null
-        }
-        >
+    const myParticipation: Record<string, MyParticipationInCategory> = {};
 
-        // 4. Сборка структуры категорий
-        const categories: TournamentCategoryFull[] = categoriesList.map((c) => {
-            const isPair = PAIR_CATEGORIES.has(c.category)
+    const mappedCategories: TournamentCategoryFull[] = (categories || []).map((cat) => {
+        const isPair = ['MD', 'WD', 'XD'].includes(cat.category);
+        const catParticipants = (rawParticipants || []).filter((p) => p.category_id === cat.id);
 
-            const records: ParticipantRecord[] = participants
-                .filter((p) => p.category_id === c.id)
-                .map((p) => {
-                    const player1 = buildPlayerInfo(p.player1, p.guest1)
-                    const player2 = buildPlayerInfo(p.player2, p.guest2)
-                    const isSeeker =
-                        isPair &&
-                        player1 !== null &&
-                        player2 === null &&
-                        p.pair_status !== 'declined'
+        const participants: ParticipantRecord[] = [];
+        const seekers: ParticipantRecord[] = [];
 
-                    return {
-                        id: p.id,
-                        category_id: p.category_id,
-                        player1,
-                        player2,
-                        pair_status: p.pair_status as ParticipantRecord['pair_status'],
-                        registered_by: p.registered_by ?? '',
-                        is_looking_for_partner: isSeeker,
-                    }
-                })
+        catParticipants.forEach((p: any) => {
+            const p1: ParticipantPlayerInfo | null = p.player1
+                ? {
+                    kind: 'player',
+                    id: p.player1.id,
+                    full_name: p.player1.full_name,
+                    avatar_url: p.player1.avatar_url,
+                    rating: isPair ? p.player1.rating_doubles : p.player1.rating_singles,
+                }
+                : p.guest1
+                    ? { kind: 'guest', id: p.guest1.id, full_name: p.guest1.full_name }
+                    : null;
 
-            return {
-                id: c.id,
-                category: c.category,
-                age_group: c.age_group ?? null,
-                is_pair_category: isPair,
-                participants: records.filter((r) => !r.is_looking_for_partner),
-                seekers: records.filter((r) => r.is_looking_for_partner),
-            }
-        })
+            const p2: ParticipantPlayerInfo | null = p.player2
+                ? {
+                    kind: 'player',
+                    id: p.player2.id,
+                    full_name: p.player2.full_name,
+                    avatar_url: p.player2.avatar_url,
+                    rating: isPair ? p.player2.rating_doubles : p.player2.rating_singles,
+                }
+                : p.guest2
+                    ? { kind: 'guest', id: p.guest2.id, full_name: p.guest2.full_name }
+                    : null;
 
-        // 5. Мои записи (по категориям)
-        const myParticipation: Record<string, MyParticipationInCategory> = {}
-        const myPendingInvites: ParticipantRecord[] = []
+            const record: ParticipantRecord = {
+                id: p.id,
+                category_id: p.category_id,
+                status: p.status,
+                pair_status: p.pair_status,
+                player1: p1,
+                player2: p2,
+            };
 
-        for (const category of categories) {
-            const myRecordsInCategory: MyParticipationInCategory['records'] = []
-            const allRecords = [...category.participants, ...category.seekers]
-
-            for (const rec of allRecords) {
-                const iAmPlayer1 = rec.player1?.kind === 'player' && rec.player1.id === currentUserId
-                const iAmPlayer2 = rec.player2?.kind === 'player' && rec.player2.id === currentUserId
-
-                if (iAmPlayer1) {
-                    myRecordsInCategory.push({
-                        record_id: rec.id,
-                        role: 'player1',
-                        pair_status: rec.pair_status,
-                        partner: rec.player2,
-                    })
-                } else if (iAmPlayer2) {
-                    myRecordsInCategory.push({
-                        record_id: rec.id,
-                        role: 'player2',
-                        pair_status: rec.pair_status,
-                        partner: rec.player1,
-                    })
-                    if (rec.pair_status === 'pending') {
-                        myPendingInvites.push(rec)
-                    }
+            if (userId) {
+                if (p1?.kind === 'player' && p1.id === userId) {
+                    myParticipation[cat.id] = {
+                        record_id: p.id,
+                        pair_status: p.pair_status,
+                        is_player1: true,
+                        partner_name: p2?.full_name,
+                    };
+                } else if (p2?.kind === 'player' && p2.id === userId) {
+                    myParticipation[cat.id] = {
+                        record_id: p.id,
+                        pair_status: p.pair_status,
+                        is_player1: false,
+                        partner_name: p1?.full_name,
+                    };
                 }
             }
 
-            if (myRecordsInCategory.length > 0) {
-                myParticipation[category.id] = {
-                    category_id: category.id,
-                    records: myRecordsInCategory,
-                }
+            if (isPair && !p2) {
+                seekers.push(record);
+            } else {
+                participants.push(record);
             }
-        }
+        });
+
+        // Извлечение рейтинг-группы A, B, C, D, E из age_group
+        const rawGroup = cat.age_group ? cat.age_group.replace(/^Группа\s+/i, '').trim().toUpperCase() : 'C';
+        const validGroups: RatingGroupCode[] = ['A', 'B', 'C', 'D', 'E', 'OPEN'];
+        const ratingGroup: RatingGroupCode = validGroups.includes(rawGroup as any) ? (rawGroup as RatingGroupCode) : 'C';
 
         return {
-            tournament,
-            categories,
-            my_participation: myParticipation,
-            my_pending_invites: myPendingInvites,
-        }
-    }
-)
+            id: cat.id,
+            category: cat.category as 'MS' | 'WS' | 'MD' | 'WD' | 'XD',
+            rating_group: ratingGroup,
+            age_group: cat.age_group,
+            max_pairs: cat.max_pairs,
+            is_pair_category: isPair,
+            bracket_status: (cat as any).bracket_status || (cat.bracket_generated ? 'ready' : 'pending'),
+            participants,
+            seekers,
+        };
+    });
+
+    return {
+        id: tournament.id,
+        title: tournament.title,
+        tournament_type: tournament.tournament_type as 'home' | 'away',
+        status: tournament.status as TournamentDetails['status'],
+        location: tournament.location,
+        venue: tournament.venue,
+        start_date: tournament.start_date,
+        end_date: tournament.end_date || tournament.start_date,
+        description: tournament.description,
+        registration_deadline: tournament.registration_deadline,
+        has_entry_fee: Boolean(tournament.has_entry_fee),
+        entry_fee_amount: tournament.entry_fee_amount,
+        pdf_url: tournament.pdf_url,
+        created_by: tournament.created_by || '',
+        categories: mappedCategories,
+        my_participation: myParticipation,
+    };
+});
+
+export const getTournamentFull = getTournamentDetails;

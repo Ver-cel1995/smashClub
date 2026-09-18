@@ -23,8 +23,8 @@ export function canPlayerJoinCategory(
     if (!gender) return false  // без пола не пускаем в категории с полом
     if (category === 'MS' || category === 'MD') return gender === 'male'
     if (category === 'WS' || category === 'WD') return gender === 'female'
-    if (category === 'XD') return true
-    return false
+    return category === 'XD';
+
 }
 
 /**

@@ -22,7 +22,6 @@ export function EditTournamentClient({ tournament }: Props) {
     const [replacedData, setReplacedData] = useState<ParsedTournament | null>(null)
 
     // Разбираем location обратно на city/venue_name/venue_address
-    // (простая эвристика: делим по запятым)
     const locationParts = (tournament.location ?? '').split(',').map(s => s.trim())
     const city = locationParts[0] ?? ''
     const venueName = tournament.venue ?? locationParts[1] ?? ''

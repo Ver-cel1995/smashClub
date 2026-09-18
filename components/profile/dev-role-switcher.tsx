@@ -39,10 +39,10 @@ export function DevRoleSwitcher({ currentRole }: Props) {
             <div className="mb-1 flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-warning">
                 Переключатель роли
             </div>
-            <p className="mb-3 text-xs text-muted flex items-center gap-1">
+            <div className="mb-3 text-xs text-muted flex items-center gap-1">
                 <span>Только для нас с тобой</span>
                 <LottieEmoji emojiId="laugh" size={22} className="inline-block align-middle" />
-            </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-2 rounded-xl bg-subtle p-1 border border-subtle">
                 <button

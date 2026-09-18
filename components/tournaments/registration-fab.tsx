@@ -1,13 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import {useState} from 'react'
 import dynamic from 'next/dynamic'
-import { Trophy } from 'lucide-react'
-import type {
-    TournamentCategoryFull,
-    MyParticipationInCategory,
-} from '@/app/(main)/tournaments/[id]/queries'
+import {Trophy} from 'lucide-react'
 import {Gender} from "@/shared/lib/gender";
+import {MyParticipationInCategory, TournamentCategoryFull} from '@/app/(main)/tournaments/[id]/queries';
 
 const RegistrationDialog = dynamic(
     () => import('./registration-form').then((m) => m.RegistrationDialog),
@@ -19,7 +16,7 @@ type Props = {
     categories: TournamentCategoryFull[]
     myParticipation: Record<string, MyParticipationInCategory>
     currentUserId: string
-    currentUserGender: Gender | null  // ← НОВОЕ
+    currentUserGender: Gender | null
     entryFee: number | null
     hasEntryFee: boolean
 }
@@ -42,7 +39,13 @@ export function RegistrationFab(props: Props) {
                 <RegistrationDialog
                     open={open}
                     onOpenChange={setOpen}
-                    {...props}
+                    tournamentId={props.tournamentId}
+                    categories={props.categories}
+                    myParticipation={props.myParticipation}
+                    currentUserId={props.currentUserId}
+                    currentUserGender={props.currentUserGender}
+                    entryFee={props.entryFee}
+                    hasEntryFee={props.hasEntryFee}
                 />
             )}
         </>

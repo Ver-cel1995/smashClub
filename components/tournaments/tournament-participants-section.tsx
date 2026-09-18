@@ -1,23 +1,21 @@
 'use client'
 
-import {toast} from 'sonner'
-import {UserAvatar} from '@/components/user-avatar'
-import {cn} from '@/shared/lib/utils'
-import {useProgressAction} from '@/shared/hooks/use-progress-action'
-import {useConfirm} from '@/shared/lib/confirm/confirm-context'
+import { useState, useMemo } from 'react'
+import { toast } from 'sonner'
+import { UserAvatar } from '@/components/user-avatar'
+import { cn } from '@/shared/lib/utils'
+import { useProgressAction } from '@/shared/hooks/use-progress-action'
+import { useConfirm } from '@/shared/lib/confirm/confirm-context'
+import {cancelRegistration, leavePairAsPartner, registerForTournament, removePartner} from '@/app/(main)/tournaments/actions'
 import {
-    cancelRegistration,
-    leavePairAsPartner,
-    registerForTournament,
-    removePartner,
-} from '@/app/(main)/tournaments/actions'
-import type {
-    MyParticipationInCategory,
-    ParticipantPlayerInfo,
+    Trash2, UserPlus, Users, Clock, Loader2, UserX, LogOut,
+    Trophy, CheckCircle2, Info, Filter
+} from 'lucide-react'
+import {
+    MyParticipationInCategory, ParticipantPlayerInfo,
     ParticipantRecord,
-    TournamentCategoryFull,
-} from '@/app/(main)/tournaments/[id]/queries'
-import {Trash2, UserPlus, Users, Clock, Loader2, UserX, LogOut} from 'lucide-react'
+    TournamentCategoryFull
+} from "@/app/(main)/tournaments/[id]/queries";
 
 const CATEGORY_LABELS: Record<string, string> = {
     MS: 'Мужская одиночка',
@@ -48,37 +46,133 @@ export function TournamentParticipantsSection({
                                                   entryFee,
                                                   hasEntryFee,
                                               }: Props) {
+    // Состояния фильтров
+    const [selectedDiscipline, setSelectedDiscipline] = useState<string>('ALL')
+    const [selectedGroup, setSelectedGroup] = useState<string>('ALL')
+
+    // Доступные группы в этом турнире для второй строки фильтра
+    const availableGroups = useMemo(() => {
+        const groups = new Set<string>()
+        categories.forEach(c => {
+            if (c.rating_group) groups.add(c.rating_group)
+        })
+        return Array.from(groups).sort()
+    }, [categories])
+
+    // Фильтрация категорий по выбору
+    const filteredCategories = useMemo(() => {
+        return categories.filter(c => {
+            const matchesDiscipline = selectedDiscipline === 'ALL' || c.category === selectedDiscipline
+            const matchesGroup = selectedGroup === 'ALL' || c.rating_group === selectedGroup
+            return matchesDiscipline && matchesGroup
+        })
+    }, [categories, selectedDiscipline, selectedGroup])
+
     if (categories.length === 0) {
         return (
-            <div className="rounded-2xl border border-card bg-card p-6 text-center">
+            <div className="rounded-2xl border border-dashed border-subtle bg-subtle/10 p-8 text-center flex flex-col items-center">
+                <Info className="w-8 h-8 text-muted mb-2 opacity-50" />
                 <p className="text-sm text-muted">Категории пока не добавлены</p>
             </div>
         )
     }
 
     return (
-        <div className="space-y-3">
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-muted px-1">
-                Категории и участники
-            </h2>
-            {categories.map((category) => (
-                <CategoryBlock
-                    key={category.id}
-                    tournamentId={tournamentId}
-                    category={category}
-                    myParticipation={myParticipation[category.id]}
-                    currentUserId={currentUserId}
-                    isCoach={isCoach}
-                    isRegistrationOpen={isRegistrationOpen}
-                />
-            ))}
+        <div className="space-y-4">
+            <div className="bg-card border border-card rounded-2xl p-3 space-y-2.5 shadow-sm">
+
+                {/* СТРОКА 1: ДИСЦИПЛИНА */}
+                <div className="flex justify-center items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
+                    {[
+                        { code: 'ALL', label: 'Все' },
+                        { code: 'MS', label: 'MS' },
+                        { code: 'WS', label: 'WS' },
+                        { code: 'MD', label: 'MD' },
+                        { code: 'WD', label: 'WD' },
+                        { code: 'XD', label: 'XD' },
+                    ].map(d => (
+                        <button
+                            key={d.code}
+                            onClick={() => setSelectedDiscipline(d.code)}
+                            className={cn(
+                                'px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0',
+                                selectedDiscipline === d.code
+                                    ? 'bg-accent text-accent-foreground shadow-sm'
+                                    : 'bg-subtle/50 text-muted hover:text-main'
+                            )}
+                        >
+                            {d.label}
+                        </button>
+                    ))}
+                </div>
+
+                {/* СТРОКА 2: КАТЕГОРИЯ РЕЙТИНГА (A / B / C / D / E) */}
+                <div className="flex justify-center items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-subtle/50 pt-2">
+                    <button
+                        onClick={() => setSelectedGroup('ALL')}
+                        className={cn(
+                            'px-2.5 py-1 rounded-lg text-xs font-bold transition-all shrink-0',
+                            selectedGroup === 'ALL'
+                                ? 'bg-accent/20 text-accent border border-accent/30'
+                                : 'bg-subtle/30 text-muted hover:text-main'
+                        )}
+                    >
+                        Все группы
+                    </button>
+
+                    {['A', 'B', 'C', 'D', 'E'].map(g => {
+                        const exists = availableGroups.includes(g)
+                        return (
+                            <button
+                                key={g}
+                                disabled={!exists}
+                                onClick={() => setSelectedGroup(g)}
+                                className={cn(
+                                    'px-2.5 py-1 rounded-lg text-xs font-black transition-all shrink-0',
+                                    selectedGroup === g
+                                        ? 'bg-accent text-accent-foreground shadow-sm'
+                                        : exists
+                                            ? 'bg-subtle/50 text-strong hover:bg-subtle'
+                                            : 'bg-subtle/10 text-dim/30 cursor-not-allowed border border-transparent'
+                                )}
+                            >
+                                {g}
+                            </button>
+                        )
+                    })}
+                </div>
+
+            </div>
+
+            {/* СПИСОК КАТЕГОРИЙ */}
+            {filteredCategories.length === 0 ? (
+                <div className="text-center py-8 text-xs text-muted">
+                    Нет категорий, соответствующих выбранному фильтру
+                </div>
+            ) : (
+                <div className="space-y-3">
+                    {filteredCategories.map((category) => (
+                        <CategoryBlock
+                            key={category.id}
+                            tournamentId={tournamentId}
+                            category={category}
+                            myParticipation={myParticipation[category.id]}
+                            currentUserId={currentUserId}
+                            isCoach={isCoach}
+                            isRegistrationOpen={isRegistrationOpen}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* РАСЧЁТ ОПЛАТЫ */}
             {hasEntryFee && entryFee && Object.keys(myParticipation).length > 0 && (
-                <div className="rounded-2xl border border-accent bg-accent-muted p-4">
+                <div className="rounded-2xl border border-accent bg-accent/10 p-4 mt-4">
                     <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-accent">
+                        <span className="text-sm font-bold text-accent">
                             К оплате за {Object.keys(myParticipation).length} {categoryWord(Object.keys(myParticipation).length)}
                         </span>
-                        <span className="text-lg font-bold text-accent">
+                        <span className="text-xl font-black text-accent">
                             {Object.keys(myParticipation).length * entryFee} ₽
                         </span>
                     </div>
@@ -89,7 +183,7 @@ export function TournamentParticipantsSection({
 }
 
 // ============================================================
-// Один блок категории
+// Один блок категории с отображением Дисциплины и Группы
 // ============================================================
 
 function CategoryBlock({
@@ -108,29 +202,52 @@ function CategoryBlock({
     isRegistrationOpen: boolean
 }) {
     const totalCount = category.participants.length + category.seekers.length
+    const isBracketReady = !isRegistrationOpen && totalCount > 0
 
     return (
-        <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h3 className="text-sm font-semibold text-strong">
-                        {CATEGORY_LABELS[category.category] ?? category.category}
-                    </h3>
-                    {category.age_group && (
-                        <p className="text-xs text-muted mt-0.5">{category.age_group}</p>
+        <div className="space-y-3 rounded-2xl border border-card bg-card p-4 shadow-sm transition-colors hover:border-subtle">
+            <div className="flex flex-col gap-2 border-b border-subtle pb-3">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                        <Trophy className="w-4 h-4 text-accent" />
+                        <h3 className="text-sm font-bold text-strong">
+                            {CATEGORY_LABELS[category.category] ?? category.category}
+                        </h3>
+                        {/* 🏆 ПЛАШКА ГРУППЫ (A / B / C / D / E) */}
+                        {category.rating_group && (
+                            <span className="text-[10px] font-black bg-accent/15 text-accent border border-accent/30 px-2 py-0.5 rounded-md">
+                                Группа {category.rating_group}
+                            </span>
+                        )}
+                    </div>
+                    <span className="flex items-center gap-1.5 text-[11px] font-mono font-bold bg-subtle text-main px-2 py-1 rounded-md">
+                        <Users className="w-3 h-3" />
+                        {totalCount} уч.
+                    </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    {isBracketReady ? (
+                        <span className="text-[10px] bg-success/10 text-success px-2 py-0.5 rounded border border-success/20 flex items-center gap-1 font-semibold uppercase tracking-wider">
+                            <CheckCircle2 className="w-3 h-3" /> Сетка готова
+                        </span>
+                    ) : !isRegistrationOpen ? (
+                        <span className="text-[10px] bg-subtle text-muted px-2 py-0.5 rounded border border-subtle font-semibold uppercase tracking-wider">
+                            Регистрация закрыта
+                        </span>
+                    ) : (
+                        <span className="text-[10px] bg-info/10 text-info px-2 py-0.5 rounded border border-info/20 font-semibold uppercase tracking-wider">
+                            Регистрация открыта
+                        </span>
                     )}
                 </div>
-                <span className="flex items-center gap-1 text-xs text-muted">
-                    <Users className="h-3.5 w-3.5" />
-                    {totalCount}
-                </span>
             </div>
 
-            {/* «Ищут партнёра» */}
+            {/* Ищут партнёра */}
             {category.is_pair_category && category.seekers.length > 0 && (
-                <div className="space-y-2 rounded-xl bg-warning-muted p-3">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-warning">
-                        <Clock className="h-3 w-3" />
+                <div className="space-y-2 rounded-xl bg-warning/5 border border-warning/10 p-3">
+                    <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-warning mb-1">
+                        <Clock className="h-3.5 w-3.5" />
                         Ищут партнёра ({category.seekers.length})
                     </div>
                     {category.seekers.map((seeker) => (
@@ -148,7 +265,7 @@ function CategoryBlock({
 
             {/* Участники */}
             {category.participants.length > 0 && (
-                <div className="space-y-1.5 pt-1">
+                <div className="space-y-2 pt-1">
                     {category.participants.map((record) => (
                         <ParticipantRow
                             key={record.id}
@@ -163,19 +280,16 @@ function CategoryBlock({
             )}
 
             {totalCount === 0 && (
-                <p className="text-xs text-muted italic py-2">Пока никого нет</p>
+                <div className="flex flex-col items-center justify-center py-4 opacity-50">
+                    <p className="text-xs font-medium text-dim">Пока никого нет</p>
+                </div>
             )}
         </div>
     )
 }
 
-// ============================================================
-// Строка участника (пара или одиночка)
-// ============================================================
-
 function ParticipantRow({
                             record,
-                            categoryId,
                             currentUserId,
                             isCoach,
                             isRegistrationOpen,
@@ -189,29 +303,13 @@ function ParticipantRow({
     const confirm = useConfirm()
     const [runAction, isPending] = useProgressAction()
 
-    // Кто я в этой записи
-    const iAmPlayer1 =
-        record.player1?.kind === 'player' && record.player1.id === currentUserId
-    const iAmPlayer2 =
-        record.player2?.kind === 'player' && record.player2.id === currentUserId
+    const iAmPlayer1 = record.player1?.kind === 'player' && record.player1.id === currentUserId
+    const iAmPlayer2 = record.player2?.kind === 'player' && record.player2.id === currentUserId
     const iAmInvolved = iAmPlayer1 || iAmPlayer2
 
-    // Кнопка "Отменить участие" (удаляет всю запись)
-    // Доступна: player1 до дедлайна, тренер всегда
-    const canCancelFully =
-        isCoach ||
-        (iAmPlayer1 && isRegistrationOpen)
-
-    // Кнопка "Освободить пару" — для player2 (уходит из пары, запись остаётся)
-    // Доступна: player2 всегда (без дедлайна — освободить свою часть можно всегда)
-    const canLeavePair =
-        iAmPlayer2 && !iAmPlayer1  // если я оба (что невозможно) — идёт cancel
-
-    // Кнопка "Убрать партнёра" — для player1 или тренера
-    // Доступна: если есть партнёр (player2 или guest2) + я player1 или тренер
-    const canRemovePartner =
-        record.player2 !== null &&
-        (isCoach || iAmPlayer1)
+    const canCancelFully = isCoach || (iAmPlayer1 && isRegistrationOpen)
+    const canLeavePair = iAmPlayer2 && !iAmPlayer1
+    const canRemovePartner = record.player2 !== null && (isCoach || iAmPlayer1)
 
     const handleCancel = async () => {
         const ok = await confirm({
@@ -225,19 +323,15 @@ function ParticipantRow({
 
         runAction(async () => {
             const result = await cancelRegistration(record.id)
-            if (result.success) {
-                toast.success('Регистрация отменена')
-            } else {
-                toast.error(result.error || 'Ошибка')
-            }
+            if (result.success) toast.success('Регистрация отменена')
+            else toast.error(result.error || 'Ошибка')
         })
     }
 
     const handleLeavePair = async () => {
         const ok = await confirm({
             title: 'Освободить пару?',
-            description:
-                'Ты выйдешь из пары, а игрок останется искать нового партнёра.',
+            description: 'Ты выйдешь из пары, а игрок останется искать нового партнёра.',
             confirmText: 'Освободить',
             cancelText: 'Остаться',
             variant: 'danger',
@@ -246,11 +340,8 @@ function ParticipantRow({
 
         runAction(async () => {
             const result = await leavePairAsPartner(record.id)
-            if (result.success) {
-                toast.success('Ты вышел из пары')
-            } else {
-                toast.error(result.error || 'Ошибка')
-            }
+            if (result.success) toast.success('Ты вышел из пары')
+            else toast.error(result.error || 'Ошибка')
         })
     }
 
@@ -266,105 +357,54 @@ function ParticipantRow({
 
         runAction(async () => {
             const result = await removePartner(record.id)
-            if (result.success) {
-                toast.success('Партнёр убран')
-            } else {
-                toast.error(result.error || 'Ошибка')
-            }
+            if (result.success) toast.success('Партнёр убран')
+            else toast.error(result.error || 'Ошибка')
         })
     }
 
     return (
-        <div
-            className={cn(
-                'flex items-center gap-2 rounded-xl p-2 transition-opacity',
-                iAmInvolved ? 'bg-accent-muted' : 'bg-subtle',
-                isPending && 'opacity-50'
-            )}
-        >
-            {/* Player 1 */}
-            <PlayerBadge player={record.player1} currentUserId={currentUserId} />
+        <div className={cn(
+            'flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 rounded-xl p-2.5 transition-all',
+            iAmInvolved ? 'bg-accent/5 border border-accent/20' : 'bg-subtle/30 border border-transparent hover:border-subtle',
+            isPending && 'opacity-50'
+        )}>
+            <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap sm:flex-nowrap">
+                <PlayerBadge player={record.player1} currentUserId={currentUserId} />
 
-            {/* Разделитель + Player 2 */}
-            {record.player2 && (
-                <>
-                    <span className="text-xs text-muted">/</span>
-                    <PlayerBadge player={record.player2} currentUserId={currentUserId} />
-                </>
-            )}
+                {record.player2 && (
+                    <>
+                        <span className="text-xs text-dim shrink-0">/</span>
+                        <PlayerBadge player={record.player2} currentUserId={currentUserId} />
+                    </>
+                )}
+            </div>
 
-            {/* Статус пары */}
-            {record.pair_status === 'pending' && (
-                <span className="ml-auto text-[10px] font-semibold uppercase text-warning shrink-0">
-                    ждёт подтв.
-                </span>
-            )}
-            {record.pair_status === 'confirmed' && (
-                <span className="ml-auto text-[10px] font-semibold uppercase text-success shrink-0">
-                    ✓ подтв.
-                </span>
-            )}
+            <div className="flex items-center gap-2 shrink-0 ml-auto">
+                {record.pair_status === 'pending' && (
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-warning bg-warning/10 px-2 py-0.5 rounded border border-warning/20">
+                        Ждёт подтв.
+                    </span>
+                )}
 
-            {/* Кнопка "Убрать партнёра" — только для player1 или тренера */}
-            {canRemovePartner && (
-                <button
-                    type="button"
-                    onClick={handleRemovePartner}
-                    disabled={isPending}
-                    className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-warning-muted hover:text-warning transition-colors"
-                    aria-label="Убрать партнёра"
-                    title="Убрать партнёра"
-                >
-                    {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                        <UserX className="h-3.5 w-3.5" />
-                    )}
-                </button>
-            )}
-
-            {/* Кнопка "Освободить пару" — только для player2 (для тех кто застрял) */}
-            {canLeavePair && (
-                <button
-                    type="button"
-                    onClick={handleLeavePair}
-                    disabled={isPending}
-                    className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-warning-muted hover:text-warning transition-colors"
-                    aria-label="Освободить пару"
-                    title="Выйти из пары"
-                >
-                    {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                        <LogOut className="h-3.5 w-3.5" />
-                    )}
-                </button>
-            )}
-
-            {/* Кнопка "Отменить" (удалить всю запись) — только для player1 или тренера */}
-            {canCancelFully && (
-                <button
-                    type="button"
-                    onClick={handleCancel}
-                    disabled={isPending}
-                    className="shrink-0 rounded-lg p-1.5 text-muted hover:bg-danger-muted hover:text-danger transition-colors"
-                    aria-label="Отменить участие"
-                    title="Отменить участие"
-                >
-                    {isPending ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                    )}
-                </button>
-            )}
+                {canRemovePartner && (
+                    <button onClick={handleRemovePartner} disabled={isPending} className="rounded-lg p-1.5 text-muted hover:bg-warning/20 hover:text-warning transition-colors" title="Убрать партнёра">
+                        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserX className="h-4 w-4" />}
+                    </button>
+                )}
+                {canLeavePair && (
+                    <button onClick={handleLeavePair} disabled={isPending} className="rounded-lg p-1.5 text-muted hover:bg-warning/20 hover:text-warning transition-colors" title="Выйти из пары">
+                        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+                    </button>
+                )}
+                {canCancelFully && (
+                    <button onClick={handleCancel} disabled={isPending} className="rounded-lg p-1.5 text-muted hover:bg-danger/20 hover:text-danger transition-colors" title="Отменить">
+                        {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    </button>
+                )}
+            </div>
         </div>
     )
 }
-
-// ============================================================
-// «Ищет партнёра» — с кнопкой «Стать партнёром»
-// ============================================================
 
 function SeekerRow({
                        seeker,
@@ -381,107 +421,69 @@ function SeekerRow({
 }) {
     const [runAction, isPending] = useProgressAction()
 
-    const iAmSeeker =
-        seeker.player1?.kind === 'player' && seeker.player1.id === currentUserId
+    const iAmSeeker = seeker.player1?.kind === 'player' && seeker.player1.id === currentUserId
 
     const handleJoin = () => {
         runAction(async () => {
             const result = await registerForTournament({
                 tournament_id: tournamentId,
-                slots: [
-                    {
-                        category_id: categoryId,
-                        partner: { kind: 'join', record_id: seeker.id },
-                    },
-                ],
+                slots: [{ category_id: categoryId, partner: { kind: 'join', record_id: seeker.id } }],
             })
-            if (result.success) {
-                toast.success('Ты стал партнёром')
-            } else {
-                toast.error(result.error || 'Ошибка')
-            }
+            if (result.success) toast.success('Ты стал партнёром')
+            else toast.error(result.error || 'Ошибка')
         })
     }
 
     return (
-        <div
-            className={cn(
-                'flex items-center gap-2 rounded-lg bg-card p-2',
-                isPending && 'opacity-50'
-            )}
-        >
+        <div className={cn('flex items-center gap-2 rounded-lg bg-card border border-warning/10 p-2.5 shadow-sm', isPending && 'opacity-50')}>
             <PlayerBadge player={seeker.player1} currentUserId={currentUserId} />
 
             {iAmSeeker ? (
-                <span className="ml-auto text-[10px] font-semibold uppercase text-warning">
-                    ты ищешь пару
+                <span className="ml-auto text-[10px] font-bold uppercase tracking-widest text-warning">
+                    Ваша заявка
                 </span>
             ) : canJoin ? (
                 <button
-                    type="button"
                     onClick={handleJoin}
                     disabled={isPending}
-                    className="ml-auto flex items-center gap-1 rounded-lg bg-accent px-2 py-1 text-[11px] font-semibold text-[var(--accent-foreground)] hover:opacity-90 disabled:opacity-50"
+                    className="ml-auto flex items-center gap-1.5 rounded-lg bg-warning/20 px-3 py-1.5 text-xs font-bold text-warning hover:bg-warning/30 transition-colors disabled:opacity-50"
                 >
-                    {isPending ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                        <UserPlus className="h-3 w-3" />
-                    )}
-                    Стать партнёром
+                    {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserPlus className="h-3.5 w-3.5" />}
+                    Предложить пару
                 </button>
             ) : null}
         </div>
     )
 }
 
-// ============================================================
-// Аватарка + имя игрока (или гостя)
-// ============================================================
-
-function PlayerBadge({
-                         player,
-                         currentUserId,
-                     }: {
-    player: ParticipantPlayerInfo | null
-    currentUserId: string
-}) {
-    if (!player) {
-        return <span className="text-xs text-dim italic">—</span>
-    }
+function PlayerBadge({ player, currentUserId }: { player: ParticipantPlayerInfo | null, currentUserId: string }) {
+    if (!player) return <span className="text-xs text-dim italic">—</span>
 
     const isMe = player.kind === 'player' && player.id === currentUserId
+    const rating = (player as any).rating;
 
     return (
-        <div className="flex items-center gap-1.5 min-w-0">
+        <div className="flex items-center gap-2 min-w-0">
             {player.kind === 'player' ? (
-                <UserAvatar
-                    name={player.full_name}
-                    avatarUrl={player.avatar_url}
-                    size="sm"
-                />
+                <UserAvatar name={player.full_name} avatarUrl={player.avatar_url} size="sm" />
             ) : (
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-subtle text-[10px] text-muted shrink-0">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full bg-subtle text-[10px] text-muted shrink-0 font-bold">
                     Г
                 </div>
             )}
-            <span className="truncate text-xs font-medium text-main">
-                {shortName(player.full_name)}
-                {isMe && <span className="ml-1 text-accent">(ты)</span>}
-                {player.kind === 'guest' && (
-                    <span className="ml-1 text-dim">· гость</span>
-                )}
-            </span>
+            <div className="flex flex-col">
+                <span className="truncate text-[13px] font-semibold text-strong leading-tight">
+                    {shortName(player.full_name)}
+                    {rating ? <span className="text-dim font-normal font-mono ml-1">· {rating}</span> : ''}
+                    {isMe && <span className="ml-1 text-accent font-bold text-[10px] uppercase">(Ты)</span>}
+                </span>
+                {player.kind === 'guest' && <span className="text-[9px] text-dim font-bold uppercase tracking-widest">Гость</span>}
+            </div>
         </div>
     )
 }
 
-// ============================================================
-// Helpers
-// ============================================================
-
 function shortName(fullName: string): string {
-    // "Иванов Иван" → "Иван И."
     const parts = fullName.trim().split(/\s+/)
     if (parts.length === 1) return parts[0]
     return `${parts[0]} ${parts[1][0]}.`

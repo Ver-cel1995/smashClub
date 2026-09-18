@@ -16,6 +16,11 @@ type Props = {
 }
 
 export function ProfileTournamentsCard({ tournaments }: Props) {
+    const uniqueTournaments = Array.from(
+        new Map(tournaments.map((t) => [t.id, t])).values()
+    );
+
+
     return (
         <div className="rounded-2xl bg-card p-4">
             <div className="mb-3 flex items-center gap-2 text-xs font-medium uppercase text-neutral-500">
@@ -24,7 +29,7 @@ export function ProfileTournamentsCard({ tournaments }: Props) {
             </div>
 
             <ul className="space-y-2">
-                {tournaments.map((t) => (
+                {uniqueTournaments.map((t) => (
                     <li key={t.id}>
                         <Link
                             href={`/tournaments/${t.id}`}
