@@ -1,13 +1,11 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getCurrentUser } from '@/shared/lib/auth'
-import { redirect } from 'next/navigation'
 import { getTraining, getTrainingComments, getAllClubPlayers } from '../queries'
 import { TrainingPageHeader } from '@/components/schedule/training-page-header'
 import { TrainingAttendanceButtons } from '@/components/schedule/training-attendance-buttons'
 import { TrainingAttendanceLists } from '@/components/schedule/training-attendance-lists'
 import { TrainingCommentsSection } from '@/components/schedule/training-comments-section'
-import {buildTrainingShareData} from "@/shared/lib/share";
-import {ShareButton} from "@/components/shared/share-button";
+import { TrainingShareButton } from '@/components/schedule/training-share-button'
 
 export default async function TrainingPage({
                                                params,
@@ -16,7 +14,6 @@ export default async function TrainingPage({
 }) {
     const { trainingId } = await params
 
-    // Виртуальные турниры (id формата virtual-...) — не поддерживаем
     if (trainingId.startsWith('virtual-')) {
         notFound()
     }
@@ -36,15 +33,12 @@ export default async function TrainingPage({
 
     return (
         <div className="space-y-4 p-4 pb-8">
+            <div className="flex justify-end">
+                <TrainingShareButton training={training} />
+            </div>
 
-            {typeof window !== 'undefined' && (
-                <ShareButton
-                    data={buildTrainingShareData(training, window.location.origin)}
-                />
-            )}
             <TrainingPageHeader training={training} />
 
-            {/* Кнопки "Приду / Не приду" — только для игроков */}
             {!isCoach && (
                 <TrainingAttendanceButtons
                     trainingId={training.id}

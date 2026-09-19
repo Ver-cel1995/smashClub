@@ -1,39 +1,87 @@
+import { Suspense } from 'react'
 import { getCurrentUser } from '@/shared/lib/auth'
-import { getPosts, getReactionsForPosts, getVotesForPosts } from './queries'
-import { FeedTabs } from '@/components/feed/feed-tabs'
+import { getFeedPage, getReactionsForPosts, getVotesForPosts } from './queries'
+import { FeedTabsNav } from '@/components/feed/feed-tabs-nav'
+import { PostCard } from '@/components/feed/post-card'
+import { CreatePostFab } from '@/components/feed/create-post-fab'
+import { EmptyState } from '@/components/shared/empty-state'
+import { FeedLoadMore } from '@/components/feed/feed-load-more'
+import { GalleryTab } from '@/components/feed/gallery-tab'
+import { PostCardSkeleton } from '@/components/home/skeletons'
 
-export default async function FeedPage() {
+type Props = {
+    searchParams: Promise<{ tab?: string }>
+}
+
+export default async function FeedPage({ searchParams }: Props) {
+    const { tab } = await searchParams
+    const activeTab = tab === 'gallery' ? 'gallery' : 'feed'
+
     const user = await getCurrentUser()
-
-    // Для гостя user === null, поэтому задаём безопасные значения:
     const userId = user?.id ?? null
     const isCoach = user?.profile?.role === 'coach' || user?.profile?.role === 'development'
 
-    // Загружаем посты (они видны всем)
-    const posts = await getPosts()
+    return (
+        <div className="flex flex-col">
+            <FeedTabsNav active={activeTab} />
+
+            <div className="p-4" data-tour="feed-list">
+                {activeTab === 'gallery' ? (
+                    <Suspense fallback={<PostCardSkeleton />}>
+                        <GalleryTab />
+                    </Suspense>
+                ) : (
+                    <Suspense fallback={<PostCardSkeleton />}>
+                        <FeedList userId={userId} isCoach={isCoach} />
+                    </Suspense>
+                )}
+            </div>
+        </div>
+    )
+}
+
+async function FeedList({ userId, isCoach }: { userId: string | null; isCoach: boolean }) {
+    const { posts, nextCursor } = await getFeedPage({ limit: 20 })
+
+    if (posts.length === 0) {
+        return (
+            <EmptyState
+                icon="📰"
+                title="Пока пусто"
+                description={
+                    isCoach
+                        ? 'Напиши первый пост — расскажи о ближайших планах'
+                        : 'Скоро здесь появятся новости от тренера'
+                }
+            />
+        )
+    }
 
     const postIds = posts.map((p) => p.id)
     const pollPostIds = posts.filter((p) => p.post_type === 'poll').map((p) => p.id)
 
-    // Загружаем реакции и голоса (для гостя userId === null)
     const [reactionsMap, votesMap] = await Promise.all([
         getReactionsForPosts(postIds, userId),
         getVotesForPosts(pollPostIds, userId),
     ])
 
-    const reactionsObj: Record<string, any[]> = {}
-    reactionsMap.forEach((v, k) => { reactionsObj[k] = v })
-
-    const votesObj: Record<string, string[]> = {}
-    votesMap.forEach((v, k) => { votesObj[k] = v })
-
     return (
-        <FeedTabs
-            posts={posts}
-            reactionsMap={reactionsObj}
-            votesMap={votesObj}
-            isCoach={isCoach}
-            galleryMonths={[]}
-        />
+        <>
+            <div className="space-y-3 cv-auto">
+                {posts.map((post) => (
+                    <PostCard
+                        key={post.id}
+                        post={post}
+                        isCoach={isCoach}
+                        reactions={reactionsMap[post.id] ?? []}
+                        votedFor={votesMap[post.id] ?? []}
+                    />
+                ))}
+            </div>
+
+            {nextCursor && <FeedLoadMore initialCursor={nextCursor} isCoach={isCoach} />}
+
+            {isCoach && <CreatePostFab />}
+        </>
     )
 }

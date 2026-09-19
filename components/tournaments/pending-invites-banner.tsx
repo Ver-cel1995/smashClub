@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { Check, X, UserPlus, Loader2 } from 'lucide-react'
 import { UserAvatar } from '@/components/user-avatar'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
-import { respondToPairInvite } from '@/app/(main)/tournaments/actions'
+import { respondToPairInvite } from '@/app/(main)/tournaments/registration-actions'
 import type {
     ParticipantRecord,
     TournamentCategoryFull,

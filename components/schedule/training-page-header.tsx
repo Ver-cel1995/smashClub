@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { ArrowLeft, Calendar, Clock, StickyNote } from 'lucide-react'
 import { format } from 'date-fns'

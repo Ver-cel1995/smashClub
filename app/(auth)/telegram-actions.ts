@@ -19,7 +19,7 @@ export async function verifyTelegramLogin(code: string, tgUser: TgUser) {
 
     const { data: authCode } = await supabaseAdmin
         .from('auth_codes')
-        .select('*')
+        .select('id, full_name, avatar_url, role, gender, onboarding, rating_singles, rating_doubles')
         .eq('code', code)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())

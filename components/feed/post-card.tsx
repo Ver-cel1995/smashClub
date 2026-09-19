@@ -18,8 +18,8 @@ import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
-    DropdownMenuTrigger
-} from "@/components/tournaments/tournament-actions-menu";
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu-lazy'
 
 type PostCardProps = {
     post: PostWithAuthor

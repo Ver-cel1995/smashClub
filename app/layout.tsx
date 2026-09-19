@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/shared/lib/theme/theme-provider'
 export const metadata: Metadata = {
     title: 'SmashClub',
     description: 'Клуб бадминтона Кущёвская',
-    manifest: '/manifest.json',
+    manifest: '/manifest.webmanifest',
     icons: {
         icon: [
             { url: '/favicon.ico', sizes: 'any' },

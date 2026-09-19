@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { ChevronLeft, ChevronRight, X, Download } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
+import Image from 'next/image'
 
 type PostMediaProps = {
     urls: string[]
@@ -78,12 +79,12 @@ export function PostMedia({ urls }: PostMediaProps) {
                                 images.length >= 4 && 'aspect-square'
                             )}
                         >
-                            <img
+                            <Image
                                 src={url}
-                                alt={`Фото ${index + 1}`}
-                                className="h-full w-full object-cover hover:scale-105 transition-transform duration-300"
-                                loading="lazy"
-                            />
+                                fill
+                                sizes="(max-width: 768px) 50vw, 400px"
+                                className="object-cover transition-transform duration-300 hover:scale-105" alt={''}/>
+
                             {index === 3 && images.length > 4 && (
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/50">
                   <span className="text-2xl font-bold text-white">

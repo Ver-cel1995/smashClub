@@ -45,8 +45,8 @@ export async function updateSession(request: NextRequest) {
     }
 
     // 2. Если это публичный роут и НЕ строго защищённый — пропускаем МГНОВЕННО
-    const isStrictProtected = STRICT_PROTECTED_PREFIXES.some((p) => pathname.startsWith(prefix(p)))
-    const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(prefix(p)))
+    const isStrictProtected = STRICT_PROTECTED_PREFIXES.some((p) => pathname.startsWith(p))
+    const isPublic = PUBLIC_PREFIXES.some((p) => pathname.startsWith(p))
 
     if (isPublic && !isStrictProtected) {
         return NextResponse.next()
@@ -97,8 +97,6 @@ export async function updateSession(request: NextRequest) {
 
     return supabaseResponse
 }
-
-function prefix(p: string) { return p }
 
 export const config = {
     matcher: [

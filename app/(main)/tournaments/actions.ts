@@ -5,6 +5,7 @@ import {ActionResult} from '@/shared/lib/actions/types';
 import {revalidatePath} from 'next/cache';
 import {z} from 'zod';
 import {mapPgError} from '@/shared/lib/actions/pg-errors';
+import {getCurrentUser} from "@/shared/lib/auth";
 
 // Гибкая дата: пустая строка "" превращается в null
 const optionalDateSchema = z
@@ -116,8 +117,8 @@ export async function createTournament(
             registration_deadline: data.registration_deadline
                 ? new Date(data.registration_deadline).toISOString()
                 : null,
-            has_entry_fee: data.entry_fee !== null && data.entry_fee > 0,
-            entry_fee_amount: data.entry_fee,
+            has_entry_fee: typeof data.entry_fee === 'number' && data.entry_fee > 0,
+            entry_fee_amount: data.entry_fee ?? null,
             pdf_url: data.pdf_url,
             pdf_storage_path: data.pdf_storage_path,
             created_by: user.id,
@@ -183,8 +184,8 @@ export async function updateTournament(
             registration_deadline: data.registration_deadline
                 ? new Date(data.registration_deadline).toISOString()
                 : null,
-            has_entry_fee: data.entry_fee !== null && data.entry_fee > 0,
-            entry_fee_amount: data.entry_fee,
+            has_entry_fee: typeof data.entry_fee === 'number' && data.entry_fee > 0,
+            entry_fee_amount: data.entry_fee ?? null,
             pdf_url: data.pdf_url,
             pdf_storage_path: data.pdf_storage_path,
             updated_at: new Date().toISOString(),
@@ -241,4 +242,36 @@ export async function updateTournament(
     revalidatePath(`/tournaments/${id}/edit`);
 
     return { success: true, data: { id } };
+}
+
+export async function deleteTournament(tournamentId: string): Promise<ActionResult> {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Нужно войти в аккаунт' }
+
+    const supabase = await createClient()
+
+    const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('id, created_by')
+        .eq('id', tournamentId)
+        .maybeSingle()
+
+    if (!tournament) return { success: false, error: 'Турнир не найден' }
+
+    const isCoach = user.profile.role === 'coach' || user.profile.role === 'development'
+    const isOwner = tournament.created_by === user.id
+    if (!isCoach && !isOwner) {
+        return { success: false, error: 'Нет прав на удаление турнира' }
+    }
+
+    const { error } = await supabase.from('tournaments').delete().eq('id', tournamentId)
+
+    if (error) {
+        console.error('[deleteTournament]', error)
+        return { success: false, error: 'Не удалось удалить турнир' }
+    }
+
+    revalidatePath('/tournaments')
+    revalidatePath('/home')
+    return { success: true }
 }

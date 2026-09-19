@@ -64,49 +64,64 @@ export const getTournamentDetails = cache(async (
 ): Promise<TournamentDetails | null> => {
     const supabase = await createClient();
 
-    // 1. Турнир
-    const { data: tournament, error: tourErr } = await supabase
-        .from('tournaments')
-        .select('*')
-        .eq('id', tournamentId)
-        .maybeSingle();
+    const [tournamentRes, categoriesRes] = await Promise.all([
+        supabase
+            .from('tournaments')
+            .select(`
+                id, title, tournament_type, status, location, venue,
+                start_date, end_date, description, registration_deadline,
+                has_entry_fee, entry_fee_amount, pdf_url, created_by
+            `)
+            .eq('id', tournamentId)
+            .maybeSingle(),
+        supabase
+            .from('tournament_categories')
+            .select(`
+                id, category, age_group, rating_group, max_pairs,
+                bracket_status, bracket_generated
+            `)
+            .eq('tournament_id', tournamentId),
+    ]);
 
-    if (tourErr || !tournament) {
-        console.error('[getTournamentDetails] Error:', tourErr);
+    if (tournamentRes.error || !tournamentRes.data) {
+        console.error('[getTournamentDetails] Error:', tournamentRes.error);
         return null;
     }
 
-    // 2. Категории
-    const { data: categories } = await supabase
-        .from('tournament_categories')
-        .select('*')
-        .eq('tournament_id', tournamentId);
+    const tournament = tournamentRes.data;
+    const categories = categoriesRes.data ?? [];
+    const categoryIds = categories.map((c) => c.id);
 
-    const categoryIds = (categories || []).map((c) => c.id);
-
-    // 3. Участники
-    const { data: rawParticipants } = categoryIds.length
+    const participantsRes = categoryIds.length
         ? await supabase
             .from('tournament_participants')
             .select(`
-          id,
-          category_id,
-          status,
-          pair_status,
-          player1:profiles!player1_id(id, full_name, avatar_url, rating_singles, rating_doubles),
-          player2:profiles!player2_id(id, full_name, avatar_url, rating_singles, rating_doubles),
-          guest1:guests!guest1_id(id, full_name),
-          guest2:guests!guest2_id(id, full_name)
-        `)
+                id,
+                category_id,
+                status,
+                pair_status,
+                player1:profiles!player1_id(id, full_name, avatar_url, rating_singles, rating_doubles),
+                player2:profiles!player2_id(id, full_name, avatar_url, rating_singles, rating_doubles),
+                guest1:guests!guest1_id(id, full_name),
+                guest2:guests!guest2_id(id, full_name)
+            `)
             .in('category_id', categoryIds)
             .neq('status', 'withdrawn')
-        : { data: [] };
+        : null;
+
+    const rawParticipants = (participantsRes?.data ?? []) as unknown as any[];
 
     const myParticipation: Record<string, MyParticipationInCategory> = {};
 
-    const mappedCategories: TournamentCategoryFull[] = (categories || []).map((cat) => {
-        const isPair = ['MD', 'WD', 'XD'].includes(cat.category);
-        const catParticipants = (rawParticipants || []).filter((p) => p.category_id === cat.id);
+    const participantsByCategory: Record<string, any[]> = {};
+    for (const p of rawParticipants) {
+        (participantsByCategory[p.category_id] ??= []).push(p);
+    }
+
+    const mappedCategories: TournamentCategoryFull[] = categories.map((cat) => {
+        const isPair = cat.category === 'MD' || cat.category === 'WD' || cat.category === 'XD';
+        const catParticipants = participantsByCategory[cat.id] ?? [];
+        // ...дальше тело без изменений...
 
         const participants: ParticipantRecord[] = [];
         const seekers: ParticipantRecord[] = [];
@@ -171,7 +186,9 @@ export const getTournamentDetails = cache(async (
         });
 
         // Извлечение рейтинг-группы A, B, C, D, E из age_group
-        const rawGroup = cat.age_group ? cat.age_group.replace(/^Группа\s+/i, '').trim().toUpperCase() : 'C';
+        const rawGroup = (cat.rating_group ?? cat.age_group?.replace(/^Группа\s+/i, '') ?? 'C')
+            .trim()
+            .toUpperCase();
         const validGroups: RatingGroupCode[] = ['A', 'B', 'C', 'D', 'E', 'OPEN'];
         const ratingGroup: RatingGroupCode = validGroups.includes(rawGroup as any) ? (rawGroup as RatingGroupCode) : 'C';
 
@@ -182,7 +199,7 @@ export const getTournamentDetails = cache(async (
             age_group: cat.age_group,
             max_pairs: cat.max_pairs,
             is_pair_category: isPair,
-            bracket_status: (cat as any).bracket_status || (cat.bracket_generated ? 'ready' : 'pending'),
+            bracket_status: cat.bracket_status ?? (cat.bracket_generated ? 'ready' : 'pending'),
             participants,
             seekers,
         };
@@ -207,5 +224,3 @@ export const getTournamentDetails = cache(async (
         my_participation: myParticipation,
     };
 });
-
-export const getTournamentFull = getTournamentDetails;

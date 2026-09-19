@@ -49,7 +49,7 @@ export const getUpcomingAffectedTraining = cache(
 
         const { data, error } = await supabase
             .from('trainings')
-            .select('*')
+            .select('id, full_name, avatar_url, role, gender, onboarding, rating_singles, rating_doubles')
             .gte('date', today)
             .lte('date', in3days)
             .in('status', ['cancelled', 'holiday', 'no_coach_open', 'substitute', 'tournament_trip'])
@@ -62,7 +62,7 @@ export const getUpcomingAffectedTraining = cache(
             console.error('[getUpcomingAffectedTraining]', error)
             return null
         }
-        return data
+        return (data as Training | null) ?? null
     }
 )
 

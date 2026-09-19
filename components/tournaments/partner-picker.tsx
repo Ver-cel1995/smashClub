@@ -3,7 +3,7 @@
 import {useEffect, useRef, useState} from 'react'
 import {Loader2, Search, User, UserPlus, X} from 'lucide-react'
 import {UserAvatar} from '@/components/user-avatar'
-import {type PlayerSearchResult, searchPlayers,} from '@/app/(main)/tournaments/actions'
+import { type PlayerSearchResult, searchPlayers} from '@/app/(main)/tournaments/registration-actions'
 import {Gender} from "@/shared/lib/gender";
 
 type PartnerChoice =

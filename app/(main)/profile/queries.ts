@@ -11,6 +11,16 @@ export type ProfilePayments = {
     total: number
 }
 
+export type UpcomingTournament = {
+    id: string
+    title: string
+    start_date: string
+    end_date: string | null
+    tournament_type: string
+    location: string | null
+    venue: string | null
+}
+
 /**
  * Информация о суммах "к оплате" — только для отображения (никаких платежей).
  */
@@ -101,36 +111,40 @@ export const getUserRackets= cache(
  * Ближайшие турниры, в которых пользователь участвует
  */
 export const getUserUpcomingTournaments = cache(
-    async (userId: string)=> {
+    async (userId: string): Promise<UpcomingTournament[]> => {
         const supabase = await createClient()
-        const today = new Date().toISOString().split('T')[0]
+        const today = new Date().toISOString().slice(0, 10)
 
         const { data, error } = await supabase
             .from('tournament_participants')
             .select(
                 `
-            id,
-            tournament:tournaments!tournament_participants_tournament_id_fkey(
+            tournament:tournaments!inner!tournament_participants_tournament_id_fkey(
                 id, title, start_date, end_date, tournament_type, location, venue
             )
             `
             )
             .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+            .gte('tournaments.start_date', today)
+            .order('start_date', { referencedTable: 'tournaments', ascending: true })
+            .limit(3)
 
         if (error) {
-            console.error('[getUserUpcomingTournaments]', {
-                message: error.message,
-                details: error.details,
-                code: error.code,
-            })
+            console.error('[getUserUpcomingTournaments]', error.message, error.code)
             return []
         }
 
-        return (data ?? [])
-            .map((r: any) => r.tournament)
-            .filter((t: any) => t && t.start_date >= today)
-            .sort((a: any, b: any) => a.start_date.localeCompare(b.start_date))
-            .slice(0, 3)
+        const seen = new Set<string>()
+        const result: UpcomingTournament[] = []
+
+        for (const row of (data ?? []) as unknown as { tournament: UpcomingTournament | null }[]) {
+            const t = row.tournament
+            if (!t || seen.has(t.id)) continue
+            seen.add(t.id)
+            result.push(t)
+        }
+
+        return result
     }
 )
 

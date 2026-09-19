@@ -56,32 +56,30 @@ export async function createPost(formData: FormData): Promise<ActionResult> {
 
     const { title, content, is_pinned } = parsed.data
 
-    // Загрузка фото
+    // Загрузка фото — параллельно, с сохранением порядка
     const files = formData.getAll('photos') as File[]
     const validFiles = files.filter((f) => f.size > 0 && f.size <= 20 * 1024 * 1024)
-    const mediaUrls: string[] = []
 
-    for (const file of validFiles) {
-        const ext = file.name.split('.').pop() || 'jpg'
-        const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    const uploaded = await Promise.all(
+        validFiles.map(async (file) => {
+            const ext = file.name.split('.').pop() || 'jpg'
+            const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-        const { error: uploadError } = await supabase.storage
-            .from('post-media')
-            .upload(path, file, { contentType: file.type })
+            const { error: uploadError } = await supabase.storage
+                .from('post-media')
+                .upload(path, file, { contentType: file.type })
 
-        if (uploadError) {
-            console.error('Upload error:', uploadError)
-            continue
-        }
+            if (uploadError) {
+                console.error('Upload error:', uploadError)
+                return null
+            }
 
-        const { data: urlData } = supabase.storage
-            .from('post-media')
-            .getPublicUrl(path)
+            const { data: urlData } = supabase.storage.from('post-media').getPublicUrl(path)
+            return urlData?.publicUrl ?? null
+        })
+    )
 
-        if (urlData?.publicUrl) {
-            mediaUrls.push(urlData.publicUrl)
-        }
-    }
+    const mediaUrls = uploaded.filter((url): url is string => Boolean(url))
 
     const hasMedia = mediaUrls.length > 0
     const postType = hasMedia ? 'media' : 'text'

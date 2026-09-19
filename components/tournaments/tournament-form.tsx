@@ -1,16 +1,13 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { toast } from 'sonner'
-import { Trash2, Plus, FileText, Check } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/shared/lib/utils'
-import { useProgressRouter } from '@/shared/hooks/use-progress-router'
-import {
-    createTournament,
-    updateTournament,
-} from '@/app/(main)/tournaments/actions'
-import type { ParsedTournament } from '@/shared/lib/ai/parse-tournament-pdf'
+import {useState, useTransition} from 'react'
+import {toast} from 'sonner'
+import {Check, FileText} from 'lucide-react'
+import {Button} from '@/components/ui/button'
+import {cn} from '@/shared/lib/utils'
+import {useProgressRouter} from '@/shared/hooks/use-progress-router'
+import {createTournament, updateTournament,} from '@/app/(main)/tournaments/actions'
+import type {ParsedTournament} from '@/shared/lib/ai/parse-tournament-pdf'
 
 type Props = {
     mode?: 'create' | 'edit'

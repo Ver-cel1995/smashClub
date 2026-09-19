@@ -66,18 +66,6 @@ export function RouteProgress() {
         return () => document.removeEventListener('click', onClick)
     }, [])
 
-    // Плавный рост "жди-жди-жди"
-    useEffect(() => {
-        if (!active) return
-        const t = setInterval(() => {
-            useProgressStore.setState((s) => {
-                if (!s.active || s.progress >= 85) return s
-                return { ...s, progress: s.progress + Math.random() * 8 }
-            })
-        }, 200)
-        return () => clearInterval(t)
-    }, [active])
-
     // Закрытие при смене URL
     useEffect(() => {
         if (!active) return
@@ -88,10 +76,10 @@ export function RouteProgress() {
     if (!active) return null
 
     return (
-        <div className="pointer-events-none fixed left-0 right-0 top-0 z-[9999] h-0.5 bg-transparent">
+        <div className="pointer-events-none fixed left-0 right-0 top-0 z-[9999] h-0.5 overflow-hidden bg-transparent">
             <div
-                className="h-full bg-[var(--accent-color,#a3e635)] shadow-[0_0_10px_var(--accent-glow,rgba(163,230,53,0.8))] transition-[width] duration-200 ease-out"
-                style={{ width: `${progress}%` }}
+                className="h-full origin-left bg-[var(--accent-color,#a3e635)] shadow-[0_0_10px_var(--accent-glow,rgba(163,230,53,0.8))]"
+                style={{ animation: 'route-progress 8s cubic-bezier(0.1,0.7,0.3,1) forwards' }}
             />
         </div>
     )

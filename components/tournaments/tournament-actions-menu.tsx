@@ -1,30 +1,18 @@
 'use client'
 
-import { useState } from 'react'
-import { MoreVertical, Pencil, Trash2, Loader2 } from 'lucide-react'
-import { toast } from 'sonner'
-import dynamic from 'next/dynamic'
-import { useProgressRouter } from '@/shared/hooks/use-progress-router'
-import { useProgressAction } from '@/shared/hooks/use-progress-action'
-import { useConfirm } from '@/shared/lib/confirm/confirm-context'
+import {useState} from 'react'
+import {Loader2, MoreVertical, Pencil, Trash2} from 'lucide-react'
+import {toast} from 'sonner'
+import {useProgressRouter} from '@/shared/hooks/use-progress-router'
+import {useProgressAction} from '@/shared/hooks/use-progress-action'
+import {useConfirm} from '@/shared/lib/confirm/confirm-context'
 import { deleteTournament } from '@/app/(main)/tournaments/actions'
-
-export const DropdownMenu = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenu),
-    { ssr: false }
-)
-export const DropdownMenuContent = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuContent),
-    { ssr: false }
-)
-export const DropdownMenuItem = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuItem),
-    { ssr: false }
-)
-export const DropdownMenuTrigger = dynamic(
-    () => import('@/components/ui/dropdown-menu').then((m) => m.DropdownMenuTrigger),
-    { ssr: false }
-)
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu-lazy'
 
 type Props = {
     tournamentId: string

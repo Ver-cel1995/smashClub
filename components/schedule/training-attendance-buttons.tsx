@@ -1,12 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useOptimistic, useState, useTransition } from 'react'
 import { Check, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/shared/lib/utils'
 import { setAttendance } from '@/app/(main)/schedule/actions'
-import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import type { AttendanceStatus } from '@/types'
 
 type Props = {
@@ -16,25 +15,29 @@ type Props = {
 
 export function TrainingAttendanceButtons({ trainingId, initialStatus }: Props) {
     const [status, setStatus] = useState<AttendanceStatus | null>(
-        (initialStatus as AttendanceStatus) || null
+        (initialStatus as AttendanceStatus) ?? null
     )
-    const [runAction, isPending] = useProgressAction()
+    const [optimisticStatus, setOptimisticStatus] = useOptimistic(
+        status,
+        (_prev, next: AttendanceStatus | null) => next
+    )
+    const [isPending, startTransition] = useTransition()
 
     const handleClick = (newStatus: AttendanceStatus) => {
-        const prev = status
-        setStatus(newStatus)
+        startTransition(async () => {
+            setOptimisticStatus(newStatus)
 
-        runAction(async () => {
             const result = await setAttendance(trainingId, newStatus)
-            if (!result.success) {
-                setStatus(prev)
+            if (result.success) {
+                setStatus(newStatus)
+            } else {
                 toast.error(result.error || 'Ошибка')
             }
         })
     }
 
-    const isGoing = status === 'going'
-    const isNotGoing = status === 'not_going'
+    const isGoing = optimisticStatus === 'going'
+    const isNotGoing = optimisticStatus === 'not_going'
 
     return (
         <div className="space-y-2 rounded-2xl border border-card bg-card p-4">

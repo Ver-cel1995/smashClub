@@ -6,7 +6,12 @@ import { UserAvatar } from '@/components/user-avatar'
 import { cn } from '@/shared/lib/utils'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import { useConfirm } from '@/shared/lib/confirm/confirm-context'
-import {cancelRegistration, leavePairAsPartner, registerForTournament, removePartner} from '@/app/(main)/tournaments/actions'
+import {
+    cancelRegistration,
+    leavePairAsPartner,
+    registerForTournament,
+    removePartner,
+} from '@/app/(main)/tournaments/registration-actions'
 import {
     Trash2, UserPlus, Users, Clock, Loader2, UserX, LogOut,
     Trophy, CheckCircle2, Info, Filter
@@ -150,7 +155,7 @@ export function TournamentParticipantsSection({
                     Нет категорий, соответствующих выбранному фильтру
                 </div>
             ) : (
-                <div className="space-y-3">
+                <div className="space-y-3 cv-auto">
                     {filteredCategories.map((category) => (
                         <CategoryBlock
                             key={category.id}
@@ -205,7 +210,7 @@ function CategoryBlock({
     const isBracketReady = !isRegistrationOpen && totalCount > 0
 
     return (
-        <div className="space-y-3 rounded-2xl border border-card bg-card p-4 shadow-sm transition-colors hover:border-subtle">
+        <div className="space-y-3 cv-auto rounded-2xl border border-card bg-card p-4 shadow-sm transition-colors hover:border-subtle">
             <div className="flex flex-col gap-2 border-b border-subtle pb-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">

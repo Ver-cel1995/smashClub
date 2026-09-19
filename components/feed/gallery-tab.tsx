@@ -21,11 +21,7 @@ const MONTHS_SHORT = [
     'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек',
 ]
 
-type Props = {
-    initialMonths: string[] // не используем, оставлен для совместимости
-}
-
-export function GalleryTab(_props: Props) {
+export function GalleryTab() {
     const [groups, setGroups] = useState<GalleryPostGroup[]>([])
     const [month, setMonth] = useState<number | null>(null) // null = все
     const [runAction, isPending] = useProgressAction()

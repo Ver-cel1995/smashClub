@@ -1,6 +1,7 @@
-import { createClient } from '@/shared/lib/supabase/server'
-import type { Training, Profile } from '@/types'
-import { cache } from 'react'
+import {createClient} from '@/shared/lib/supabase/server'
+import type {Profile, Training} from '@/types'
+import {cache} from 'react'
+import {unstable_cache} from "next/cache";
 
 export type TrainingAttendee = {
     id: string
@@ -22,6 +23,13 @@ export type TrainingDetailed = Training & {
     going_count: number
     not_going_count: number
     my_status: string | null
+}
+
+export type ClubPlayer = {
+    id: string
+    full_name: string
+    avatar_url: string | null
+    role: string
 }
 
 /**
@@ -225,23 +233,22 @@ export const getTrainingComments = cache(async (trainingId: string): Promise<Tra
     return (data ?? []) as unknown as TrainingComment[]
 })
 
-export const getAllClubPlayers = cache(async (): Promise<Array<{
-    id: string
-    full_name: string
-    avatar_url: string | null
-    role: string
-}>> => {
-    const supabase = await createClient()
+export const getAllClubPlayers = unstable_cache(
+    async (): Promise<ClubPlayer[]> => {
+        const supabase = await createClient()
 
-    const { data, error } = await supabase
-        .from('profiles')
-        .select('id, full_name, avatar_url, role')
-        .order('full_name', { ascending: true })
+        const { data, error } = await supabase
+            .from('profiles')
+            .select('id, full_name, avatar_url, role')
+            .order('full_name', { ascending: true })
 
-    if (error) {
-        console.error('[getAllClubPlayers]', error)
-        return []
-    }
+        if (error) {
+            console.error('[getAllClubPlayers]', error)
+            return []
+        }
 
-    return data ?? []
-})
+        return data ?? []
+    },
+    ['club-players'],
+    { revalidate: 600, tags: ['profiles'] }
+)

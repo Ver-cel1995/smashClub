@@ -9,7 +9,7 @@ import {
     uploadTournamentPdf,
     parseTournamentPdfAction,
     deleteTournamentPdf,
-} from '@/app/(main)/tournaments/actions'
+} from '@/app/(main)/tournaments/pdf-actions'
 import type { ParsedTournament } from '@/shared/lib/ai/parse-tournament-pdf'
 
 type Props = {

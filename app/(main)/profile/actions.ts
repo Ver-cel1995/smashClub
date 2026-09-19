@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import {revalidatePath, revalidateTag} from 'next/cache'
 import { z } from 'zod'
 import { createClient } from '@/shared/lib/supabase/server'
 import { getCurrentUser } from '@/shared/lib/auth'
@@ -331,12 +331,15 @@ export async function switchDevRole(
         }
     }
 
-    revalidatePath('/', 'layout')
+    // revalidatePath('/', 'layout')
+    // revalidatePath('/profile')
+    // revalidatePath('/home')
+    // revalidatePath('/feed')
+    // revalidatePath('/schedule')
+    // revalidatePath('/tournaments')
+
+    revalidateTag('profiles', 'max')
     revalidatePath('/profile')
-    revalidatePath('/home')
-    revalidatePath('/feed')
-    revalidatePath('/schedule')
-    revalidatePath('/tournaments')
 
     return { success: true }
 }

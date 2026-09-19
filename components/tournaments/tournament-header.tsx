@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { ChevronLeft, MapPin, Calendar, Clock, Edit3 } from 'lucide-react';
 import type { TournamentDetails } from '@/app/(main)/tournaments/[id]/queries';

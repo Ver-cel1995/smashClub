@@ -16,25 +16,63 @@ export type ReactionGroup = {
     reacted: boolean
 }
 
+export type FeedPage = {
+    posts: PostWithAuthor[]
+    nextCursor: string | null
+}
+
 const POST_SELECT = '*, author:author_id(id, full_name, avatar_url, role)'
 
-export const getPosts = cache(async (): Promise<PostWithAuthor[]> => {
+export async function getFeedPage({cursor,limit = 20 }: {cursor?: string | null
+    limit?: number } = {}): Promise<FeedPage> {
     const supabase = await createClient()
     const nowIso = new Date().toISOString()
+    const visibility = `auto_expires_at.gt.${nowIso},and(post_type.neq.auto,auto_expires_at.is.null)`
 
-    const { data, error } = await supabase
+    let query = supabase
         .from('posts')
         .select(POST_SELECT)
-        .or(`auto_expires_at.gt.${nowIso},and(post_type.neq.auto,auto_expires_at.is.null)`)
-        .order('is_pinned', { ascending: false })
+        .or(visibility)
+        .eq('is_pinned', false)
         .order('created_at', { ascending: false })
+        .limit(limit + 1)
 
-    if (error) {
-        console.error('Failed to load posts:', error)
-        return []
+    if (cursor) {
+        query = query.lt('created_at', cursor)
     }
 
-    return (data as unknown as PostWithAuthor[]) || []
+    const [regularRes, pinnedRes] = await Promise.all([
+        query,
+        cursor
+            ? Promise.resolve({ data: [] as unknown[], error: null })
+            : supabase
+                .from('posts')
+                .select(POST_SELECT)
+                .or(visibility)
+                .eq('is_pinned', true)
+                .order('created_at', { ascending: false }),
+    ])
+
+    if (regularRes.error) {
+        console.error('Failed to load posts:', regularRes.error)
+        return { posts: [], nextCursor: null }
+    }
+
+    const rows = (regularRes.data ?? []) as unknown as PostWithAuthor[]
+    const hasMore = rows.length > limit
+    const page = hasMore ? rows.slice(0, limit) : rows
+    const pinned = (pinnedRes.data ?? []) as unknown as PostWithAuthor[]
+
+    return {
+        posts: [...pinned, ...page],
+        nextCursor: hasMore ? page[page.length - 1]?.created_at ?? null : null,
+    }
+}
+
+/** Совместимость: первая страница без курсора. */
+export const getPosts = cache(async (): Promise<PostWithAuthor[]> => {
+    const { posts } = await getFeedPage({ limit: 20 })
+    return posts
 })
 
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
@@ -61,9 +99,11 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
 export const getReactionsForPosts = cache(async (
     postIds: string[],
     currentUserId?: string | null
-): Promise<Map<string, ReactionGroup[]>> => {
-    const result = new Map<string, ReactionGroup[]>()
+): Promise<Record<string, ReactionGroup[]>> => {
+    const result: Record<string, ReactionGroup[]> = {}
     if (postIds.length === 0) return result
+
+    for (const id of postIds) result[id] = []
 
     const supabase = await createClient()
 
@@ -72,47 +112,26 @@ export const getReactionsForPosts = cache(async (
         .select('post_id, emoji, user_id')
         .in('post_id', postIds)
 
-    if (error || !data) {
-        postIds.forEach((id) => result.set(id, []))
-        return result
-    }
+    if (error || !data) return result
 
-    // Группируем по post_id → emoji
-    const grouped = new Map<string, Map<string, { count: number; reacted: boolean }>>()
+    const grouped: Record<string, Record<string, ReactionGroup>> = {}
 
     for (const r of data) {
-        if (!grouped.has(r.post_id)) {
-            grouped.set(r.post_id, new Map())
-        }
-        const postMap = grouped.get(r.post_id)!
-        const existing = postMap.get(r.emoji)
-
-        const isMyReaction = Boolean(currentUserId && r.user_id === currentUserId)
+        const byEmoji = (grouped[r.post_id] ??= {})
+        const isMine = Boolean(currentUserId && r.user_id === currentUserId)
+        const existing = byEmoji[r.emoji]
 
         if (existing) {
-            existing.count++
-            if (isMyReaction) existing.reacted = true
+            existing.count += 1
+            if (isMine) existing.reacted = true
         } else {
-            postMap.set(r.emoji, {
-                count: 1,
-                reacted: isMyReaction,
-            })
+            byEmoji[r.emoji] = { emoji: r.emoji, count: 1, reacted: isMine }
         }
     }
 
     for (const postId of postIds) {
-        const postMap = grouped.get(postId)
-        if (!postMap) {
-            result.set(postId, [])
-            continue
-        }
-        result.set(
-            postId,
-            Array.from(postMap.entries()).map(([emoji, info]) => ({
-                emoji,
-                ...info,
-            }))
-        )
+        const byEmoji = grouped[postId]
+        result[postId] = byEmoji ? Object.values(byEmoji) : []
     }
 
     return result
@@ -123,7 +142,38 @@ export const getPostReactions = cache(async (
     currentUserId?: string | null
 ): Promise<ReactionGroup[]> => {
     const map = await getReactionsForPosts([postId], currentUserId)
-    return map.get(postId) || []
+    return map[postId] ?? []
+})
+
+/**
+ * Загружает голоса для массива постов-опросов одним запросом.
+ * Для гостя (userId == null) сразу возвращает пустую карту без запроса в БД.
+ */
+
+export const getVotesForPosts = cache(async (
+    postIds: string[],
+    userId?: string | null
+): Promise<Record<string, string[]>> => {
+    const result: Record<string, string[]> = {}
+    for (const id of postIds) result[id] = []
+
+    if (postIds.length === 0 || !userId) return result
+
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('poll_votes')
+        .select('post_id, option_id')
+        .in('post_id', postIds)
+        .eq('user_id', userId)
+
+    if (error || !data) return result
+
+    for (const v of data) {
+        (result[v.post_id] ??= []).push(v.option_id)
+    }
+
+    return result
 })
 
 export const getPostComments = cache(async (
@@ -162,40 +212,4 @@ export const getUserVotes = cache(async (
     if (error || !data) return []
 
     return data.map((v) => v.option_id)
-})
-
-/**
- * Загружает голоса для массива постов-опросов одним запросом.
- * Для гостя (userId == null) сразу возвращает пустую карту без запроса в БД.
- */
-export const getVotesForPosts = cache(async (
-    postIds: string[],
-    userId?: string | null
-): Promise<Map<string, string[]>> => {
-    const result = new Map<string, string[]>()
-    if (postIds.length === 0 || !userId) {
-        postIds.forEach((id) => result.set(id, []))
-        return result
-    }
-
-    const supabase = await createClient()
-
-    const { data, error } = await supabase
-        .from('poll_votes')
-        .select('post_id, option_id')
-        .in('post_id', postIds)
-        .eq('user_id', userId)
-
-    if (error || !data) {
-        postIds.forEach((id) => result.set(id, []))
-        return result
-    }
-
-    for (const v of data) {
-        const existing = result.get(v.post_id) || []
-        existing.push(v.option_id)
-        result.set(v.post_id, existing)
-    }
-
-    return result
 })

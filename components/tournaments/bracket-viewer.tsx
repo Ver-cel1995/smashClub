@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 import { Settings2, Trophy } from 'lucide-react';
 

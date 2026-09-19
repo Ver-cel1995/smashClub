@@ -10,14 +10,5 @@ type Props = {
 }
 
 export function TrainingShareButton({ training, variant = 'default' }: Props) {
-    // window доступен на клиенте
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-
-    // Пока не смонтировались — рендерим просто кнопку без данных (или скелетон)
-    if (!baseUrl) {
-        return null
-    }
-
-    const data = buildTrainingShareData(training, baseUrl)
-    return <ShareButton data={data} variant={variant} />
+    return <ShareButton data={buildTrainingShareData(training)} variant={variant} />
 }

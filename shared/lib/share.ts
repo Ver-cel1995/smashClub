@@ -1,16 +1,9 @@
 import type { Training } from '@/types'
 
-/**
- * Формирует данные для шаринга тренировки.
- */
 export function buildTrainingShareData(
     training: Pick<Training, 'id' | 'date' | 'start_time' | 'end_time' | 'status' | 'status_note'>,
-    baseUrl: string  // например window.location.origin
-): {
-    title: string
-    text: string
-    url: string
-} {
+    baseUrl = ''
+): { title: string; text: string; url: string } {
     const dateStr = new Date(training.date).toLocaleDateString('ru-RU', {
         day: 'numeric',
         month: 'long',
@@ -32,7 +25,5 @@ export function buildTrainingShareData(
         ? `${startTime}–${endTime}\n${training.status_note}`
         : `${startTime}–${endTime}`
 
-    const url = `${baseUrl}/schedule/${training.id}`
-
-    return { title, text, url }
+    return { title, text, url: `${baseUrl}/schedule/${training.id}` }
 }

@@ -47,7 +47,7 @@ export function TrainingAttendanceLists({ attendance, allPlayers, currentUserId 
                 : noResponse
 
     return (
-        <div className="space-y-3 rounded-2xl border border-card bg-card p-4">
+        <div className="space-y-3 cv-auto rounded-2xl border border-card bg-card p-4">
             {/* Табы */}
             <div className="flex gap-1 rounded-xl bg-subtle p-1">
                 {tabs.map((t) => (

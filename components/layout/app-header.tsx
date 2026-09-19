@@ -1,28 +1,20 @@
-'use client'
-
 import Link from 'next/link'
-import { Bell, Users } from 'lucide-react'
+import { Users } from 'lucide-react'
 import { UserAvatar } from '@/components/user-avatar'
 import { getFirstName } from '@/shared/lib/formatName'
-import { toast } from 'sonner'
+import { NotificationBell } from './notification-bell'
 import type { UserRole } from '@/types'
 
 type AppHeaderProps = {
     userName: string
     userAvatarUrl?: string | null
     role?: UserRole | 'guest'
-    unreadCount?: number
 }
 
-export function AppHeader({
-                              userName,
-                              userAvatarUrl,
-                              role = 'guest',
-                              unreadCount = 0,
-                          }: AppHeaderProps) {
+export function AppHeader({ userName, userAvatarUrl, role = 'guest' }: AppHeaderProps) {
     const isCoach = role === 'coach' || role === 'development'
     const isPlayer = role === 'player'
-    const isGuest = role === 'guest' || !role
+    const isGuest = role === 'guest'
 
     return (
         <header
@@ -31,8 +23,7 @@ export function AppHeader({
             style={{ paddingTop: 'env(safe-area-inset-top)' }}
         >
             <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
-                {/* Левая часть — аватар, приветствие и бейдж роли */}
-                <Link href="/profile" className="flex items-center gap-3 group">
+                <Link href="/profile" prefetch className="flex items-center gap-3 group">
                     <UserAvatar name={userName || 'Гость'} avatarUrl={userAvatarUrl} size="md" />
                     <div>
                         <p className="text-xs text-muted">Привет,</p>
@@ -43,26 +34,25 @@ export function AppHeader({
 
                             {isCoach && (
                                 <span className="rounded-full border border-accent bg-accent-muted px-2 py-0.5 text-[10px] font-bold uppercase text-accent">
-                  Тренер
-                </span>
+                                    Тренер
+                                </span>
                             )}
 
                             {isPlayer && (
                                 <span className="rounded-full border border-info-border bg-info-muted px-2 py-0.5 text-[10px] font-bold uppercase text-info">
-                  Игрок
-                </span>
+                                    Игрок
+                                </span>
                             )}
 
                             {isGuest && (
                                 <span className="rounded-full border border-subtle bg-subtle px-2 py-0.5 text-[10px] font-bold uppercase text-muted">
-                  Гость
-                </span>
+                                    Гость
+                                </span>
                             )}
                         </div>
                     </div>
                 </Link>
 
-                {/* Правая часть — иконки */}
                 <div className="flex items-center gap-1">
                     <Link
                         href="/people"
@@ -72,14 +62,7 @@ export function AppHeader({
                         <Users className="h-5 w-5" />
                     </Link>
 
-                    <button
-                        type="button"
-                        onClick={() => toast.info('Уведомления скоро появятся', { duration: 2000 })}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl text-muted transition hover:bg-hover hover:text-strong"
-                        aria-label="Уведомления"
-                    >
-                        <Bell className="h-5 w-5" />
-                    </button>
+                    <NotificationBell />
                 </div>
             </div>
         </header>

@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useRef } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import type { LottieRefCurrentProps } from 'lottie-react'
 import { cn } from '@/shared/lib/utils'
 import { getEmoji, type EmojiId } from '@/shared/emojis/registry'
@@ -8,15 +8,10 @@ import dynamic from 'next/dynamic'
 
 const Lottie = dynamic(() => import('lottie-react'), {
     ssr: false,
-    loading: () => <span className="inline-block h-full w-full bg-subtle/50 rounded-full animate-pulse" />,
+    loading: () => <span className="inline-block h-full w-full rounded-full bg-subtle/50 animate-pulse" />,
 })
 
-const EMOJI_FALLBACKS: Record<string, string> = {
-    poop: '💩',
-    easy: '👀',
-    rofl: '🤣',
-    laugh: '😂',
-}
+const animationCache = new Map<string, object>()
 
 type Props = {
     emojiId: EmojiId | string
@@ -39,25 +34,39 @@ export const LottieEmoji = memo(function LottieEmoji({
                                                      }: Props) {
     const ref = useRef<LottieRefCurrentProps>(null)
     const emoji = getEmoji(emojiId)
+    const [animationData, setAnimationData] = useState<object | null>(
+        emoji ? animationCache.get(emoji.src) ?? null : null
+    )
 
-    if (!emoji || !emoji.animationData) {
-        // Текстовый фоллбек, если Lottie JSON ещё не добавлен
-        const symbol = EMOJI_FALLBACKS[emojiId] || '👍'
+    useEffect(() => {
+        if (!emoji || animationData) return
+
+        let cancelled = false
+        fetch(emoji.src)
+            .then((r) => r.json())
+            .then((json: object) => {
+                animationCache.set(emoji.src, json)
+                if (!cancelled) setAnimationData(json)
+            })
+            .catch(() => {})
+
+        return () => {
+            cancelled = true
+        }
+    }, [emoji, animationData])
+
+    if (!emoji || !animationData) {
         return (
             <span
-                className={cn('inline-flex items-center justify-center shrink-0 select-none', className)}
+                className={cn('inline-flex shrink-0 select-none items-center justify-center', className)}
                 style={{ width: size, height: size, fontSize: size * 0.7 }}
             >
-                {symbol}
+                {emoji?.fallback ?? '👍'}
             </span>
         )
     }
 
-    const play = () => {
-        ref.current?.goToAndPlay(0, true)
-    }
-
-    const shouldAutoplay = autoplay && !playOnHover
+    const play = () => ref.current?.goToAndPlay(0, true)
 
     return (
         <div
@@ -68,9 +77,9 @@ export const LottieEmoji = memo(function LottieEmoji({
         >
             <Lottie
                 lottieRef={ref}
-                animationData={emoji.animationData}
+                animationData={animationData}
                 loop={playOnce ? false : loop}
-                autoplay={shouldAutoplay}
+                autoplay={autoplay && !playOnHover}
             />
         </div>
     )

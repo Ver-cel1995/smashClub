@@ -9,14 +9,9 @@ type Props = {
 }
 
 export function CalendarShareButton({ training }: Props) {
-    const baseUrl = typeof window !== 'undefined' ? window.location.origin : ''
-    if (!baseUrl) return null
-
-    const data = buildTrainingShareData(training, baseUrl)
-
     return (
         <ShareButton
-            data={data}
+            data={buildTrainingShareData(training)}
             variant="default"
             label="Поделиться"
             className="shrink-0 !py-3"

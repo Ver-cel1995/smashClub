@@ -32,30 +32,23 @@ export function ShareButton({
     const handleClick = async () => {
         setLoading(true)
         try {
-            // Web Share API — работает на мобильных
+            const absoluteUrl = data.url.startsWith('http')
+                ? data.url
+                : `${window.location.origin}${data.url}`
+
             if (typeof navigator !== 'undefined' && navigator.share) {
                 try {
-                    await navigator.share({
-                        title: data.title,
-                        text: data.text,
-                        url: data.url,
-                    })
-                    // Не показываем toast — юзер сам увидит нативный UI
+                    await navigator.share({ title: data.title, text: data.text, url: absoluteUrl })
                     return
                 } catch (err) {
-                    // Если юзер отменил share — просто выходим тихо
-                    if (err instanceof Error && err.name === 'AbortError') {
-                        return
-                    }
-                    // Иначе fallback на копирование
+                    if (err instanceof Error && err.name === 'AbortError') return
                     console.warn('Share failed, falling back to clipboard:', err)
                 }
             }
 
-            // Fallback: копируем в буфер
             const textToCopy = data.text
-                ? `${data.title}\n${data.text}\n${data.url}`
-                : `${data.title}\n${data.url}`
+                ? `${data.title}\n${data.text}\n${absoluteUrl}`
+                : `${data.title}\n${absoluteUrl}`
 
             await copyToClipboard(textToCopy)
             setCopied(true)

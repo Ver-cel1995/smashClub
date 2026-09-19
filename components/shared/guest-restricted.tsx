@@ -1,5 +1,3 @@
-'use client'
-
 import Link from 'next/link'
 import { Lock, LogIn, UserPlus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
