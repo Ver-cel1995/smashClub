@@ -9,16 +9,24 @@ import {useProgressRouter} from '@/shared/hooks/use-progress-router'
 import {createTournament, updateTournament,} from '@/app/(main)/tournaments/actions'
 import type {ParsedTournament} from '@/shared/lib/ai/parse-tournament-pdf'
 
+type Discipline = 'MS' | 'WS' | 'MD' | 'WD' | 'XD'
+type RatingGroup = 'A' | 'B' | 'C' | 'D' | 'E'
+
+/** Категории, уже сохранённые в БД (режим редактирования). */
+export type InitialCategory = {
+    category: Discipline
+    rating_group: RatingGroup
+}
+
 type Props = {
     mode?: 'create' | 'edit'
     tournamentId?: string
     initialData: ParsedTournament | null
+    /** Приоритетнее, чем initialData.categories: точные данные из БД. */
+    initialCategories?: InitialCategory[]
     pdfInfo: { url: string; path: string } | null
     onCancel?: () => void
 }
-
-type Discipline = 'MS' | 'WS' | 'MD' | 'WD' | 'XD'
-type RatingGroup = 'A' | 'B' | 'C' | 'D' | 'E'
 
 const ALL_DISCIPLINES: { code: Discipline; label: string }[] = [
     { code: 'MS', label: 'Мужская одиночка (MS)' },
@@ -44,31 +52,57 @@ function stripAwardsFromDescription(desc: string | null | undefined): string {
         .trim()
 }
 
+const GROUP_CODES: RatingGroup[] = ['A', 'B', 'C', 'D', 'E']
+
+function normalizeGroup(raw: string | null | undefined): RatingGroup {
+    const g = raw?.replace(/^Группа\s+/i, '').trim().toUpperCase() ?? ''
+    return (GROUP_CODES as string[]).includes(g) ? (g as RatingGroup) : 'C'
+}
+
+/** Собирает карту «дисциплина → группы» из уже сохранённых категорий. */
+function buildInitialMatrix(
+    initialCategories: InitialCategory[] | undefined,
+    parsed: ParsedTournament | null
+): Record<string, RatingGroup[]> {
+    const matrix: Record<string, RatingGroup[]> = {}
+
+    const source: Array<{ category: string; group: RatingGroup }> =
+        initialCategories?.length
+            ? initialCategories.map((c) => ({ category: c.category, group: normalizeGroup(c.rating_group) }))
+            : (parsed?.categories ?? []).map((c) => ({
+                category: c.category,
+                group: normalizeGroup(c.age_group),
+            }))
+
+    for (const { category, group } of source) {
+        const list = (matrix[category] ??= [])
+        if (!list.includes(group)) list.push(group)
+    }
+
+    return matrix
+}
+
 export function TournamentForm({
                                    mode = 'create',
                                    tournamentId,
                                    initialData,
+                                   initialCategories,
                                    pdfInfo,
                                    onCancel,
                                }: Props) {
     const router = useProgressRouter()
     const [isPending, startTransition] = useTransition()
 
-    // ПРОСТАЯ инициализация, без коллбеков () => ...
-    const defaultDisciplines: Discipline[] = initialData?.categories?.length
-        ? Array.from(new Set(initialData.categories.map((c) => c.category as Discipline)))
+    const initialMatrix = buildInitialMatrix(initialCategories, initialData)
+    const hasInitialCategories = Object.keys(initialMatrix).length > 0
+
+    const defaultDisciplines: Discipline[] = hasInitialCategories
+        ? (Object.keys(initialMatrix) as Discipline[])
         : ['MS', 'MD', 'XD']
 
-    const defaultGroups: RatingGroup[] = initialData?.categories?.length
-        ? Array.from(
-            new Set(
-                initialData.categories.map((c) => {
-                    const g = c.age_group?.replace(/^Группа\s+/i, '').trim().toUpperCase() || 'C'
-                    return ['A', 'B', 'C', 'D', 'E'].includes(g) ? (g as RatingGroup) : 'C'
-                })
-            )
-        )
-        : ['C']
+    const defaultMatrix: Record<string, RatingGroup[]> = hasInitialCategories
+        ? initialMatrix
+        : { MS: ['C'], MD: ['C'], XD: ['C'] }
 
     const [title, setTitle] = useState(initialData?.title ?? '')
     const [organizer, setOrganizer] = useState(initialData?.organizer ?? '')
@@ -92,9 +126,10 @@ export function TournamentForm({
         MS: '500', WS: '500', MD: '800', WD: '800', XD: '800',
     })
 
-    // Независимые стейты Дисциплин и Групп
+    // Дисциплины и группы, выбранные отдельно для каждой дисциплины
     const [selectedDisciplines, setSelectedDisciplines] = useState<Discipline[]>(defaultDisciplines)
-    const [selectedGroups, setSelectedGroups] = useState<RatingGroup[]>(defaultGroups)
+    const [groupsByDiscipline, setGroupsByDiscipline] =
+        useState<Record<string, RatingGroup[]>>(defaultMatrix)
 
     const [description, setDescription] = useState(
         stripAwardsFromDescription(initialData?.description)
@@ -103,15 +138,35 @@ export function TournamentForm({
     const [errors, setErrors] = useState<Record<string, string>>({})
 
     const toggleDiscipline = (code: Discipline) => {
-        setSelectedDisciplines((prev) =>
-            prev.includes(code) ? prev.filter((d) => d !== code) : [...prev, code]
-        )
+        setSelectedDisciplines((prev) => {
+            if (prev.includes(code)) return prev.filter((d) => d !== code)
+            // Новая дисциплина получает группу C по умолчанию, если её ещё нет
+            setGroupsByDiscipline((matrix) =>
+                matrix[code]?.length ? matrix : { ...matrix, [code]: ['C'] }
+            )
+            return [...prev, code]
+        })
     }
 
-    const toggleGroup = (code: RatingGroup) => {
-        setSelectedGroups((prev) =>
-            prev.includes(code) ? prev.filter((g) => g !== code) : [...prev, code]
-        )
+    const toggleGroup = (discipline: Discipline, code: RatingGroup) => {
+        setGroupsByDiscipline((prev) => {
+            const current = prev[discipline] ?? []
+            const next = current.includes(code)
+                ? current.filter((g) => g !== code)
+                : [...current, code]
+            return { ...prev, [discipline]: next }
+        })
+    }
+
+    /** Применить один и тот же набор групп ко всем выбранным дисциплинам. */
+    const applyGroupsToAll = (source: Discipline) => {
+        const groups = groupsByDiscipline[source] ?? []
+        setGroupsByDiscipline((prev) => {
+            const next = { ...prev }
+            for (const d of selectedDisciplines) next[d] = [...groups]
+            return next
+        })
+        toast.success('Группы применены ко всем дисциплинам')
     }
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -142,22 +197,24 @@ export function TournamentForm({
             toast.error('Выберите хотя бы одну дисциплину')
             return
         }
-        if (selectedGroups.length === 0) {
-            toast.error('Выберите хотя бы одну категорию рейтинга (A-E)')
+
+        const withoutGroups = selectedDisciplines.filter(
+            (d) => (groupsByDiscipline[d] ?? []).length === 0
+        )
+        if (withoutGroups.length > 0) {
+            toast.error(`Выберите группы для: ${withoutGroups.join(', ')}`)
             return
         }
 
         startTransition(async () => {
-            // Кросс-джоин: MS+C, MD+C, XD+C, MS+D...
-            const finalCategories = []
-            for (const disc of selectedDisciplines) {
-                for (const grp of selectedGroups) {
-                    finalCategories.push({
-                        category: disc,
-                        age_group: `Группа ${grp}`,
-                    })
-                }
-            }
+            // Каждая дисциплина со своим набором групп → отдельная категория
+            const finalCategories = selectedDisciplines.flatMap((disc) =>
+                (groupsByDiscipline[disc] ?? []).map((grp) => ({
+                    category: disc,
+                    rating_group: grp,
+                    max_pairs: null,
+                }))
+            )
 
             const feeNote =
                 feeMode === 'per_discipline'
@@ -166,8 +223,9 @@ export function TournamentForm({
                         .join('; ')
                     : null
 
-            // ИСПРАВЛЕН entry_fee
-            const parsedEntryFee = uniformFee ? parseInt(uniformFee, 10) : null
+            // Взнос: пустая строка и мусорный ввод дают null, а не NaN
+            const rawFee = Number.parseInt(uniformFee, 10)
+            const parsedEntryFee = Number.isFinite(rawFee) ? rawFee : null
 
             const payload = {
                 title: title.trim(),
@@ -182,7 +240,7 @@ export function TournamentForm({
                 start_time: startTime.trim() || null,
                 awards: awards.trim() || null,
                 registration_deadline: registrationDeadline || null,
-                entry_fee: Number.isNaN(parsedEntryFee) ? null : parsedEntryFee, // Безопасный каст
+                entry_fee: parsedEntryFee,
                 entry_fee_note: feeNote,
                 description: stripAwardsFromDescription(description) || null,
                 contact_info: contactInfo.trim() || null,
@@ -358,33 +416,78 @@ export function TournamentForm({
                 </div>
             </div>
 
-            {/* ГРУППЫ */}
-            <div className="space-y-2 rounded-2xl border border-card bg-card p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">
-                    Категории по рейтингу (Группы) *
-                </h3>
-                <p className="text-[11px] text-dim mb-3">Выберите допустимые уровни мастерства игроков</p>
-                <div className="grid grid-cols-5 gap-2">
-                    {ALL_RATING_GROUPS.map((g) => {
-                        const isSelected = selectedGroups.includes(g.code)
-                        return (
-                            <button
-                                key={g.code}
-                                type="button"
-                                onClick={() => toggleGroup(g.code)}
-                                className={cn(
-                                    'flex flex-col items-center justify-center p-3 rounded-xl border transition-all text-center',
-                                    isSelected
-                                        ? 'border-accent bg-accent/10 text-accent font-black shadow-[0_0_10px_rgba(198,244,50,0.1)]'
-                                        : 'border-subtle bg-subtle/50 text-muted hover:border-strong'
-                                )}
-                            >
-                                <span className="text-base font-black">{g.code}</span>
-                                <span className="text-[9px] opacity-70 mt-0.5">{g.hint}</span>
-                            </button>
-                        )
-                    })}
+            {/* ГРУППЫ — отдельно для каждой выбранной дисциплины */}
+            <div className="space-y-3 rounded-2xl border border-card bg-card p-4">
+                <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted mb-1">
+                        Категории по рейтингу (Группы) *
+                    </h3>
+                    <p className="text-[11px] text-dim">
+                        Для каждой дисциплины отметьте группы, которые в ней разыгрываются
+                    </p>
                 </div>
+
+                {selectedDisciplines.length === 0 ? (
+                    <p className="text-xs text-dim italic py-2">Сначала выберите дисциплины выше</p>
+                ) : (
+                    selectedDisciplines.map((disc) => {
+                        const groups = groupsByDiscipline[disc] ?? []
+                        const label = ALL_DISCIPLINES.find((d) => d.code === disc)?.label ?? disc
+
+                        return (
+                            <div key={disc} className="rounded-xl border border-subtle bg-subtle/30 p-3 space-y-2">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs font-bold text-strong">{label}</span>
+                                    {selectedDisciplines.length > 1 && groups.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => applyGroupsToAll(disc)}
+                                            className="text-[10px] font-semibold text-accent hover:underline shrink-0"
+                                        >
+                                            Применить ко всем
+                                        </button>
+                                    )}
+                                </div>
+
+                                <div className="grid grid-cols-5 gap-1.5">
+                                    {ALL_RATING_GROUPS.map((g) => {
+                                        const isSelected = groups.includes(g.code)
+                                        return (
+                                            <button
+                                                key={g.code}
+                                                type="button"
+                                                onClick={() => toggleGroup(disc, g.code)}
+                                                className={cn(
+                                                    'flex flex-col items-center justify-center py-2 rounded-lg border transition-all text-center',
+                                                    isSelected
+                                                        ? 'border-accent bg-accent/10 text-accent font-black'
+                                                        : 'border-subtle bg-card text-muted hover:border-strong'
+                                                )}
+                                            >
+                                                <span className="text-sm font-black">{g.code}</span>
+                                                <span className="text-[9px] opacity-70">{g.hint}</span>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+
+                                {groups.length === 0 && (
+                                    <p className="text-[10px] text-danger">Выберите хотя бы одну группу</p>
+                                )}
+                            </div>
+                        )
+                    })
+                )}
+
+                <p className="text-[11px] text-dim border-t border-subtle pt-2">
+                    Будет создано категорий:{' '}
+                    <span className="font-bold text-accent">
+                        {selectedDisciplines.reduce(
+                            (sum, d) => sum + (groupsByDiscipline[d]?.length ?? 0),
+                            0
+                        )}
+                    </span>
+                </p>
             </div>
 
             {/* ВЗНОС */}

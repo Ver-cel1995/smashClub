@@ -46,16 +46,25 @@ export type TournamentDetails = {
     status: 'draft' | 'registration_open' | 'registration_closed' | 'in_progress' | 'completed';
     location: string;
     venue: string | null;
+    venue_address: string | null;
+    organizer: string | null;
     start_date: string;
     end_date: string;
+    registration_time: string | null;
+    start_time: string | null;
     description: string | null;
+    contact_info: string | null;
+    awards: string | null;
     registration_deadline: string | null;
     has_entry_fee: boolean;
     entry_fee_amount: number | null;
+    entry_fee_note: string | null;
     pdf_url: string | null;
     created_by: string;
     categories: TournamentCategoryFull[];
     my_participation: Record<string, MyParticipationInCategory>;
+    /** Заявки, где я указан вторым игроком и ещё не подтвердил пару. */
+    my_pending_invites: ParticipantRecord[];
 };
 
 export const getTournamentDetails = cache(async (
@@ -68,9 +77,10 @@ export const getTournamentDetails = cache(async (
         supabase
             .from('tournaments')
             .select(`
-                id, title, tournament_type, status, location, venue,
-                start_date, end_date, description, registration_deadline,
-                has_entry_fee, entry_fee_amount, pdf_url, created_by
+                id, title, tournament_type, status, location, venue, venue_address,
+                organizer, start_date, end_date, registration_time, start_time,
+                description, contact_info, awards, registration_deadline,
+                has_entry_fee, entry_fee_amount, entry_fee_note, pdf_url, created_by
             `)
             .eq('id', tournamentId)
             .maybeSingle(),
@@ -112,6 +122,7 @@ export const getTournamentDetails = cache(async (
     const rawParticipants = (participantsRes?.data ?? []) as unknown as any[];
 
     const myParticipation: Record<string, MyParticipationInCategory> = {};
+    const myPendingInvites: ParticipantRecord[] = [];
 
     const participantsByCategory: Record<string, any[]> = {};
     for (const p of rawParticipants) {
@@ -175,6 +186,10 @@ export const getTournamentDetails = cache(async (
                         is_player1: false,
                         partner_name: p1?.full_name,
                     };
+                    // Меня позвали в пару, но я ещё не ответил
+                    if (p.pair_status === 'pending') {
+                        myPendingInvites.push(record);
+                    }
                 }
             }
 
@@ -212,15 +227,23 @@ export const getTournamentDetails = cache(async (
         status: tournament.status as TournamentDetails['status'],
         location: tournament.location,
         venue: tournament.venue,
+        venue_address: tournament.venue_address,
+        organizer: tournament.organizer,
         start_date: tournament.start_date,
         end_date: tournament.end_date || tournament.start_date,
+        registration_time: tournament.registration_time,
+        start_time: tournament.start_time,
         description: tournament.description,
+        contact_info: tournament.contact_info,
+        awards: tournament.awards,
         registration_deadline: tournament.registration_deadline,
         has_entry_fee: Boolean(tournament.has_entry_fee),
         entry_fee_amount: tournament.entry_fee_amount,
+        entry_fee_note: tournament.entry_fee_note,
         pdf_url: tournament.pdf_url,
         created_by: tournament.created_by || '',
         categories: mappedCategories,
         my_participation: myParticipation,
+        my_pending_invites: myPendingInvites,
     };
 });

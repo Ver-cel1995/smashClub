@@ -8,6 +8,7 @@ import { TournamentParticipantsSection } from '@/components/tournaments/tourname
 import { TournamentHeader } from '@/components/tournaments/tournament-header'
 import { getTournamentDetails } from '@/app/(main)/tournaments/[id]/queries'
 import { RegistrationFab } from '@/components/tournaments/registration-fab'
+import { PendingInvitesBanner } from '@/components/tournaments/pending-invites-banner'
 
 type Props = {
     params: Promise<{ id: string }>
@@ -17,6 +18,29 @@ type Props = {
 function resolveTab(raw: string | undefined): TournamentTabId {
     if (raw === 'participants' || raw === 'brackets') return raw
     return 'overview'
+}
+
+/** Поля обзора, которые реально заполнены. */
+function infoRows(data: {
+    organizer: string | null
+    venue: string | null
+    venue_address: string | null
+    registration_time: string | null
+    start_time: string | null
+    entry_fee_note: string | null
+    contact_info: string | null
+}): Array<{ label: string; value: string }> {
+    const rows: Array<{ label: string; value: string | null }> = [
+        { label: 'Организатор', value: data.organizer },
+        { label: 'Зал', value: data.venue },
+        { label: 'Адрес', value: data.venue_address },
+        { label: 'Мандатная комиссия', value: data.registration_time },
+        { label: 'Начало игр', value: data.start_time },
+        { label: 'Взнос', value: data.entry_fee_note },
+        { label: 'Контакты', value: data.contact_info },
+    ]
+
+    return rows.filter((r): r is { label: string; value: string } => Boolean(r.value))
 }
 
 export default async function TournamentPage({ params, searchParams }: Props) {
@@ -44,11 +68,39 @@ export default async function TournamentPage({ params, searchParams }: Props) {
             </div>
 
             <main className="flex-1 p-4 max-w-3xl mx-auto w-full space-y-6 mt-4">
+                {data.my_pending_invites.length > 0 && (
+                    <PendingInvitesBanner
+                        invites={data.my_pending_invites}
+                        categories={data.categories}
+                    />
+                )}
+
                 {activeTab === 'overview' && (
                     <div className="bg-card border border-subtle rounded-2xl p-5 shadow-sm space-y-4">
                         <h2 className="text-sm font-bold text-strong uppercase tracking-widest border-b border-subtle pb-2">
                             Информация о турнире
                         </h2>
+
+                        <dl className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
+                            {infoRows(data).map((row) => (
+                                <div key={row.label} className="flex flex-col">
+                                    <dt className="text-[10px] font-bold uppercase tracking-wider text-dim">
+                                        {row.label}
+                                    </dt>
+                                    <dd className="text-sm text-main">{row.value}</dd>
+                                </div>
+                            ))}
+                        </dl>
+
+                        {data.awards && (
+                            <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-accent mb-1">
+                                    🏆 Награды
+                                </p>
+                                <p className="whitespace-pre-wrap text-sm text-main">{data.awards}</p>
+                            </div>
+                        )}
+
                         {data.description ? (
                             <p className="whitespace-pre-wrap text-sm text-main leading-relaxed">
                                 {data.description}

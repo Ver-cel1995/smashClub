@@ -1130,67 +1130,88 @@ export type Database = {
       }
       tournaments: {
         Row: {
+          awards: string | null
+          contact_info: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
           end_date: string | null
           entry_fee_amount: number | null
+          entry_fee_note: string | null
           has_entry_fee: boolean | null
           id: string
           location: string
           max_participants: number | null
+          organizer: string | null
           participants_count: number | null
           pdf_storage_path: string | null
           pdf_url: string | null
           registration_deadline: string | null
+          registration_time: string | null
           start_date: string
+          start_time: string | null
           status: Database["public"]["Enums"]["tournament_status"]
           title: string
           tournament_type: Database["public"]["Enums"]["tournament_type"]
           updated_at: string | null
           venue: string | null
+          venue_address: string | null
         }
         Insert: {
+          awards?: string | null
+          contact_info?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           end_date?: string | null
           entry_fee_amount?: number | null
+          entry_fee_note?: string | null
           has_entry_fee?: boolean | null
           id?: string
           location: string
           max_participants?: number | null
+          organizer?: string | null
           participants_count?: number | null
           pdf_storage_path?: string | null
           pdf_url?: string | null
           registration_deadline?: string | null
+          registration_time?: string | null
           start_date: string
+          start_time?: string | null
           status?: Database["public"]["Enums"]["tournament_status"]
           title: string
           tournament_type: Database["public"]["Enums"]["tournament_type"]
           updated_at?: string | null
           venue?: string | null
+          venue_address?: string | null
         }
         Update: {
+          awards?: string | null
+          contact_info?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
           end_date?: string | null
           entry_fee_amount?: number | null
+          entry_fee_note?: string | null
           has_entry_fee?: boolean | null
           id?: string
           location?: string
           max_participants?: number | null
+          organizer?: string | null
           participants_count?: number | null
           pdf_storage_path?: string | null
           pdf_url?: string | null
           registration_deadline?: string | null
+          registration_time?: string | null
           start_date?: string
+          start_time?: string | null
           status?: Database["public"]["Enums"]["tournament_status"]
           title?: string
           tournament_type?: Database["public"]["Enums"]["tournament_type"]
           updated_at?: string | null
           venue?: string | null
+          venue_address?: string | null
         }
         Relationships: [
           {

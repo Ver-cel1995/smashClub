@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { ChevronLeft, MapPin, Calendar, Clock, Edit3 } from 'lucide-react';
+import { ChevronLeft, MapPin, Calendar, Clock, Edit3, Wallet } from 'lucide-react';
 import type { TournamentDetails } from '@/app/(main)/tournaments/[id]/queries';
+import { TournamentActionsMenu } from './tournament-actions-menu';
 
 export function TournamentHeader({
                                      tournament,
@@ -48,13 +49,19 @@ export function TournamentHeader({
                     )}
 
                     {canManage && (
-                        <Link
-                            href={`/tournaments/${tournament.id}/edit`}
-                            className="p-1.5 rounded-lg bg-subtle hover:bg-hover text-muted hover:text-strong transition-colors"
-                            title="Редактировать турнир"
-                        >
-                            <Edit3 className="w-4 h-4" />
-                        </Link>
+                        <>
+                            <Link
+                                href={`/tournaments/${tournament.id}/edit`}
+                                className="p-1.5 rounded-lg bg-subtle hover:bg-hover text-muted hover:text-strong transition-colors"
+                                title="Редактировать турнир"
+                            >
+                                <Edit3 className="w-4 h-4" />
+                            </Link>
+                            <TournamentActionsMenu
+                                tournamentId={tournament.id}
+                                title={tournament.title}
+                            />
+                        </>
                     )}
                 </div>
             </div>
@@ -90,6 +97,13 @@ export function TournamentHeader({
                         <span>До {formatDate(tournament.registration_deadline)}</span>
                     </div>
                 )}
+
+                {tournament.has_entry_fee && tournament.entry_fee_amount ? (
+                    <div className="flex items-center gap-1.5">
+                        <Wallet className="w-3.5 h-3.5 text-accent shrink-0" />
+                        <span>{tournament.entry_fee_amount} ₽ за категорию</span>
+                    </div>
+                ) : null}
             </div>
         </div>
     );

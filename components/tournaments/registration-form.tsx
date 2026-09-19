@@ -1,17 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { X, Loader2, Trophy, AlertTriangle } from 'lucide-react'
+import { X, Loader2, Trophy, AlertTriangle, Users } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { useProgressAction } from '@/shared/hooks/use-progress-action'
 import { registerForTournament } from '@/app/(main)/tournaments/registration-actions'
 import { PartnerPicker } from './partner-picker'
 import { canPlayerJoinCategory, Gender, getRequiredPartnerGender } from '@/shared/lib/gender'
 import Link from 'next/link'
-import {MyParticipationInCategory, TournamentCategoryFull} from "@/app/(main)/tournaments/[id]/queries";
+import { MyParticipationInCategory, TournamentCategoryFull } from '@/app/(main)/tournaments/[id]/queries'
 
 const CATEGORY_LABELS: Record<string, string> = {
     MS: 'Мужская одиночка',
@@ -21,6 +21,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     XD: 'Смешанная пара (Микст)',
 }
 
+const DISCIPLINE_ORDER = ['MS', 'WS', 'MD', 'WD', 'XD']
 const PAIR_CATEGORIES = new Set(['MD', 'WD', 'XD'])
 
 type PartnerChoice =
@@ -51,83 +52,103 @@ export function RegistrationDialog({
                                        tournamentId,
                                        categories,
                                        myParticipation,
-                                       currentUserId,
                                        entryFee,
                                        hasEntryFee,
                                        currentUserGender,
                                    }: Props) {
     const [runAction, isPending] = useProgressAction()
+    const [choices, setChoices] = useState<Record<string, CategoryChoice>>({})
 
-    // Жесткий фильтр: если у юзера есть пол, фильтруем несовместимые категории
-    const availableCategories = categories.filter((cat) => {
-        if (myParticipation[cat.id]) return false
+    // Разделяем причины недоступности, чтобы показать осмысленный текст,
+    // а не universal «записать некуда».
+    const { availableCategories, alreadyIn, blockedByGender } = useMemo(() => {
+        const available: TournamentCategoryFull[] = []
+        const already: TournamentCategoryFull[] = []
+        const blocked: TournamentCategoryFull[] = []
 
-        // Защита пола: М -> MS, MD, XD; Ж -> WS, WD, XD
-        if (currentUserGender) {
-            const allowed = canPlayerJoinCategory(currentUserGender, cat.category)
-            if (!allowed) return false
-        }
-
-        return true
-    })
-
-    const [choices, setChoices] = useState<Record<string, CategoryChoice>>(() => {
-        const initial: Record<string, CategoryChoice> = {}
         for (const cat of categories) {
-            initial[cat.id] = { selected: false, partner: null }
+            if (myParticipation[cat.id]) {
+                already.push(cat)
+                continue
+            }
+            if (currentUserGender && !canPlayerJoinCategory(currentUserGender, cat.category)) {
+                blocked.push(cat)
+                continue
+            }
+            available.push(cat)
         }
-        return initial
-    })
 
-    const selectedCount = Object.values(choices).filter((c) => c.selected).length
+        available.sort((a, b) => {
+            const d = DISCIPLINE_ORDER.indexOf(a.category) - DISCIPLINE_ORDER.indexOf(b.category)
+            return d !== 0 ? d : a.rating_group.localeCompare(b.rating_group)
+        })
+
+        return { availableCategories: available, alreadyIn: already, blockedByGender: blocked }
+    }, [categories, myParticipation, currentUserGender])
+
+    // Группируем по дисциплине: одна строка на дисциплину, группы — чипсами
+    const groupedByDiscipline = useMemo(() => {
+        const map = new Map<string, TournamentCategoryFull[]>()
+        for (const cat of availableCategories) {
+            const list = map.get(cat.category) ?? []
+            list.push(cat)
+            map.set(cat.category, list)
+        }
+        return [...map.entries()]
+    }, [availableCategories])
+
+    const selectedIds = useMemo(
+        () => availableCategories.filter((c) => choices[c.id]?.selected).map((c) => c.id),
+        [availableCategories, choices]
+    )
+    const selectedCount = selectedIds.length
     const totalFee = hasEntryFee && entryFee ? selectedCount * entryFee : null
 
     const updateChoice = (categoryId: string, patch: Partial<CategoryChoice>) => {
-        setChoices((prev) => ({
-            ...prev,
-            [categoryId]: { ...prev[categoryId], ...patch },
-        }))
+        setChoices((prev) => {
+            const current = prev[categoryId] ?? { selected: false, partner: null }
+            return { ...prev, [categoryId]: { ...current, ...patch } }
+        })
     }
 
     const toggleCategory = (categoryId: string) => {
-        setChoices((prev) => ({
-            ...prev,
-            [categoryId]: {
-                ...prev[categoryId],
-                selected: !prev[categoryId]?.selected,
-                partner: !prev[categoryId]?.selected ? prev[categoryId]?.partner : null,
-            },
-        }))
+        setChoices((prev) => {
+            const current = prev[categoryId] ?? { selected: false, partner: null }
+            const nextSelected = !current.selected
+            return {
+                ...prev,
+                [categoryId]: {
+                    selected: nextSelected,
+                    // Партнёр сохраняется при повторном включении той же группы
+                    partner: nextSelected ? current.partner : null,
+                },
+            }
+        })
     }
 
     const canSubmit = selectedCount > 0 && !isPending
 
     const handleSubmit = () => {
-        const slots = availableCategories
-            .filter((cat) => choices[cat.id]?.selected)
-            .map((cat) => {
-                const choice = choices[cat.id]
-                const isPair = PAIR_CATEGORIES.has(cat.category)
+        const chosen = availableCategories.filter((cat) => choices[cat.id]?.selected)
 
-                let partner: {
-                    kind: 'player' | 'guest'
-                    player_id?: string
-                    full_name?: string
-                } | null = null
+        const slots = chosen.map((cat) => {
+            const choice = choices[cat.id]
+            const isPair = PAIR_CATEGORIES.has(cat.category)
 
-                if (isPair && choice?.partner) {
-                    if (choice.partner.kind === 'player') {
-                        partner = { kind: 'player', player_id: choice.partner.player_id }
-                    } else if (choice.partner.kind === 'guest') {
-                        partner = { kind: 'guest', full_name: choice.partner.full_name }
-                    }
-                }
+            let partner: PartnerChoice = null
+            if (isPair && choice?.partner) {
+                partner =
+                    choice.partner.kind === 'player'
+                        ? {
+                            kind: 'player',
+                            player_id: choice.partner.player_id,
+                            full_name: choice.partner.full_name,
+                        }
+                        : { kind: 'guest', full_name: choice.partner.full_name }
+            }
 
-                return {
-                    category_id: cat.id,
-                    partner: partner as any,
-                }
-            })
+            return { category_id: cat.id, partner }
+        })
 
         runAction(async () => {
             const result = await registerForTournament({
@@ -135,7 +156,8 @@ export function RegistrationDialog({
                 slots,
             })
             if (result.success) {
-                toast.success(`Успешная регистрация в ${slots.length} ${categoryWord(slots.length)}`)
+                toast.success(`Заявка отправлена: ${slots.length} ${categoryWord(slots.length)}`)
+                setChoices({})
                 onOpenChange(false)
             } else {
                 toast.error(result.error || 'Ошибка регистрации')
@@ -143,7 +165,7 @@ export function RegistrationDialog({
         })
     }
 
-    // Если у пользователя не заполнен пол
+    // Пол не указан — без него нельзя определить допустимые дисциплины
     if (!currentUserGender) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
@@ -174,6 +196,15 @@ export function RegistrationDialog({
     }
 
     if (availableCategories.length === 0) {
+        const reason =
+            categories.length === 0
+                ? 'У этого турнира ещё не заведены категории. Попроси тренера добавить дисциплины и группы.'
+                : alreadyIn.length > 0 && blockedByGender.length === 0
+                    ? 'Вы уже записаны во все категории, доступные для вашего пола.'
+                    : alreadyIn.length === 0 && blockedByGender.length > 0
+                        ? 'В этом турнире нет категорий, доступных для вашего пола.'
+                        : 'Свободных категорий не осталось: часть уже занята вашими заявками, остальные — для другого пола.'
+
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="border-card bg-elevated max-w-sm text-center p-6">
@@ -181,11 +212,14 @@ export function RegistrationDialog({
                         <Trophy className="w-6 h-6" />
                     </div>
                     <DialogHeader>
-                        <DialogTitle className="text-strong text-lg font-bold">Уже задействованы</DialogTitle>
+                        <DialogTitle className="text-strong text-lg font-bold">Нет доступных категорий</DialogTitle>
                     </DialogHeader>
-                    <p className="text-sm text-muted mt-2">
-                        Вы уже записаны во все доступные категории данного турнира.
-                    </p>
+                    <p className="text-sm text-muted mt-2">{reason}</p>
+                    {alreadyIn.length > 0 && (
+                        <p className="text-xs text-dim mt-2">
+                            Ваши заявки: {alreadyIn.map((c) => `${c.category} ${c.rating_group}`).join(', ')}
+                        </p>
+                    )}
                     <Button onClick={() => onOpenChange(false)} variant="outline" className="mt-4">
                         Понятно
                     </Button>
@@ -214,88 +248,102 @@ export function RegistrationDialog({
                     </button>
                 </div>
 
-                <div className="overflow-y-auto px-4 py-3 space-y-2 max-h-[calc(90vh-180px)]">
-                    {availableCategories.map((cat) => {
-                        const isPair = PAIR_CATEGORIES.has(cat.category)
-                        const choice = choices[cat.id] || { selected: false, partner: null }
+                <div className="overflow-y-auto px-4 py-3 space-y-3 max-h-[calc(90vh-200px)]">
+                    <p className="text-[11px] text-dim">
+                        Можно выбрать несколько групп в каждой дисциплине — по одной заявке на группу.
+                    </p>
+
+                    {groupedByDiscipline.map(([discipline, cats]) => {
+                        const isPair = PAIR_CATEGORIES.has(discipline)
+                        const selectedInDiscipline = cats.filter((c) => choices[c.id]?.selected)
 
                         return (
                             <div
-                                key={cat.id}
+                                key={discipline}
                                 className={cn(
-                                    'rounded-xl border transition-all',
-                                    choice.selected
-                                        ? 'border-accent bg-accent/5 shadow-[0_0_10px_rgba(198,244,50,0.05)]'
-                                        : 'border-card bg-subtle/50 hover:border-subtle'
+                                    'rounded-xl border p-3 space-y-2.5 transition-all',
+                                    selectedInDiscipline.length > 0
+                                        ? 'border-accent bg-accent/5'
+                                        : 'border-card bg-subtle/40'
                                 )}
                             >
-                                <button
-                                    type="button"
-                                    onClick={() => toggleCategory(cat.id)}
-                                    disabled={isPending}
-                                    className="flex w-full items-center justify-between p-3.5 text-left gap-3"
-                                >
-                                    <div className="flex items-center gap-3 min-w-0">
-                                        <div
-                                            className={cn(
-                                                'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-all',
-                                                choice.selected
-                                                    ? 'border-accent bg-accent text-accent-foreground'
-                                                    : 'border-strong bg-transparent'
-                                            )}
-                                        >
-                                            {choice.selected && (
-                                                <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                                                    <path
-                                                        d="M2 6L5 9L10 3"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    />
-                                                </svg>
-                                            )}
-                                        </div>
-                                        <div className="min-w-0">
-                                            <p className="text-sm font-bold text-strong truncate">
-                                                {CATEGORY_LABELS[cat.category] ?? cat.category}
-                                            </p>
-                                            {cat.rating_group && (
-                                                <span className="inline-block mt-0.5 text-[10px] font-black bg-accent/15 text-accent px-2 py-0.5 rounded">
-                          Группа {cat.rating_group}
-                        </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {hasEntryFee && entryFee && (
-                                        <span className="text-xs font-mono font-bold text-accent shrink-0">
-                      {entryFee} ₽
-                    </span>
+                                <div className="flex items-center justify-between gap-2">
+                                    <p className="text-sm font-bold text-strong">
+                                        {CATEGORY_LABELS[discipline] ?? discipline}
+                                    </p>
+                                    {isPair && (
+                                        <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-muted shrink-0">
+                                            <Users className="h-3 w-3" /> Парная
+                                        </span>
                                     )}
-                                </button>
+                                </div>
 
-                                {choice.selected && isPair && (
-                                    <div className="border-t border-card/60 px-3 pb-3 pt-2 bg-card/40">
-                                        <PartnerPicker
-                                            value={choice.partner}
-                                            onChange={(partner) => updateChoice(cat.id, { partner })}
-                                            disabled={isPending}
-                                            requiredGender={getRequiredPartnerGender(currentUserGender, cat.category as any)}
-                                        />
-                                    </div>
-                                )}
+                                {/* Группы A–E: мультивыбор */}
+                                <div className="flex flex-wrap gap-1.5">
+                                    {cats.map((cat) => {
+                                        const isSelected = Boolean(choices[cat.id]?.selected)
+                                        return (
+                                            <button
+                                                key={cat.id}
+                                                type="button"
+                                                onClick={() => toggleCategory(cat.id)}
+                                                disabled={isPending}
+                                                className={cn(
+                                                    'px-3 py-1.5 rounded-lg border text-xs font-black transition-all',
+                                                    isSelected
+                                                        ? 'border-accent bg-accent text-accent-foreground'
+                                                        : 'border-subtle bg-card text-muted hover:border-strong hover:text-strong'
+                                                )}
+                                            >
+                                                {cat.rating_group === 'OPEN' ? 'OPEN' : `Группа ${cat.rating_group}`}
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+
+                                {/* Партнёр выбирается отдельно для каждой выбранной группы */}
+                                {isPair &&
+                                    selectedInDiscipline.map((cat) => (
+                                        <div
+                                            key={`partner-${cat.id}`}
+                                            className="rounded-lg border border-card/60 bg-card/50 p-2.5 space-y-1.5"
+                                        >
+                                            <p className="text-[10px] font-bold uppercase tracking-wider text-dim">
+                                                Партнёр · {cat.rating_group === 'OPEN' ? 'OPEN' : `группа ${cat.rating_group}`}
+                                            </p>
+                                            <PartnerPicker
+                                                value={choices[cat.id]?.partner ?? null}
+                                                onChange={(partner) => updateChoice(cat.id, { partner })}
+                                                disabled={isPending}
+                                                requiredGender={getRequiredPartnerGender(
+                                                    currentUserGender,
+                                                    cat.category
+                                                )}
+                                            />
+                                            {!choices[cat.id]?.partner && (
+                                                <p className="text-[10px] text-warning">
+                                                    Без партнёра заявка попадёт в «Ищут партнёра»
+                                                </p>
+                                            )}
+                                        </div>
+                                    ))}
                             </div>
                         )
                     })}
+
+                    {alreadyIn.length > 0 && (
+                        <p className="text-[11px] text-dim border-t border-card pt-2">
+                            Уже записаны: {alreadyIn.map((c) => `${c.category} ${c.rating_group}`).join(', ')}
+                        </p>
+                    )}
                 </div>
 
                 <div className="border-t border-card p-4 space-y-2 bg-card">
                     {totalFee !== null && selectedCount > 0 && (
                         <div className="flex items-center justify-between rounded-xl bg-accent/10 px-3.5 py-2.5">
-              <span className="text-xs text-accent font-medium">
-                Итого за {selectedCount} {categoryWord(selectedCount)}:
-              </span>
+                            <span className="text-xs text-accent font-medium">
+                                Итого за {selectedCount} {categoryWord(selectedCount)}:
+                            </span>
                             <span className="text-lg font-black text-accent">{totalFee} ₽</span>
                         </div>
                     )}

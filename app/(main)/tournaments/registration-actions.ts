@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient } from '@/shared/lib/supabase/server'
 import { getCurrentUser } from '@/shared/lib/auth'
 import type { ActionResult } from '@/shared/lib/actions/types'
-import type { Gender } from '@/shared/lib/gender'
+import { canPlayerJoinCategory, isPairCategory, type Gender } from '@/shared/lib/gender'
 
 export type PlayerSearchResult = {
     id: string
@@ -88,47 +88,116 @@ export async function registerForTournament(
         return { success: false, error: 'Не выбрана ни одна категория' }
     }
 
-    for (const slot of slots) {
+    // Одна и та же категория не должна попасть в запрос дважды
+    const uniqueSlots = slots.filter(
+        (slot, i) =>
+            slots.findIndex(
+                (s) =>
+                    s.category_id === slot.category_id &&
+                    s.partner?.kind === slot.partner?.kind
+            ) === i
+    )
+
+    const categoryIds = uniqueSlots.map((s) => s.category_id)
+
+    // Категории турнира: проверяем принадлежность и парность одним запросом
+    const { data: categories, error: categoriesError } = await supabase
+        .from('tournament_categories')
+        .select('id, category, tournament_id, max_pairs')
+        .in('id', categoryIds)
+
+    if (categoriesError) {
+        console.error('[registerForTournament:categories]', categoriesError)
+        return { success: false, error: 'Не удалось проверить категории' }
+    }
+
+    const categoryMap = new Map((categories ?? []).map((c) => [c.id, c]))
+
+    for (const slot of uniqueSlots) {
+        const category = categoryMap.get(slot.category_id)
+        if (!category || category.tournament_id !== tournament_id) {
+            return { success: false, error: 'Категория не относится к этому турниру' }
+        }
+        if (!canPlayerJoinCategory(user.profile.gender, category.category)) {
+            return {
+                success: false,
+                error: `Категория ${category.category} недоступна для вашего пола`,
+            }
+        }
+    }
+
+    // Существующие заявки игрока по всем выбранным категориям — одним запросом.
+    // maybeSingle() тут падал с ошибкой, если строк было больше одной.
+    const { data: existingRows } = await supabase
+        .from('tournament_participants')
+        .select('id, category_id')
+        .in('category_id', categoryIds)
+        .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
+        .neq('status', 'withdrawn')
+
+    const busyCategories = new Set((existingRows ?? []).map((r) => r.category_id))
+
+    const registered: string[] = []
+    const skipped: string[] = []
+
+    for (const slot of uniqueSlots) {
+        const category = categoryMap.get(slot.category_id)!
+        const label = category.category
+
         // Присоединение к чужой заявке «ищу пару»
         if (slot.partner?.kind === 'join') {
-            const { error } = await supabase
+            if (busyCategories.has(slot.category_id)) {
+                skipped.push(label)
+                continue
+            }
+
+            const { data: joined, error } = await supabase
                 .from('tournament_participants')
                 .update({ player2_id: user.id, pair_status: 'confirmed' })
                 .eq('id', slot.partner.record_id)
                 .is('player2_id', null)
                 .is('guest2_id', null)
+                .select('id')
 
             if (error) {
                 console.error('[registerForTournament:join]', error)
                 return { success: false, error: 'Не удалось присоединиться к паре' }
             }
+            if (!joined || joined.length === 0) {
+                return { success: false, error: 'Эту пару уже занял другой игрок' }
+            }
+
+            registered.push(label)
             continue
         }
 
-        // Проверка, что игрок ещё не записан в эту категорию
-        const { data: existing } = await supabase
-            .from('tournament_participants')
-            .select('id')
-            .eq('category_id', slot.category_id)
-            .or(`player1_id.eq.${user.id},player2_id.eq.${user.id}`)
-            .neq('status', 'withdrawn')
-            .maybeSingle()
-
-        if (existing) {
-            return { success: false, error: 'Ты уже записан в одну из этих категорий' }
+        if (busyCategories.has(slot.category_id)) {
+            skipped.push(label)
+            continue
         }
+
+        const isPair = isPairCategory(category.category)
 
         let guest2Id: string | null = null
         let player2Id: string | null = null
         let pairStatus: 'pending' | 'confirmed' | null = null
 
-        if (slot.partner?.kind === 'player') {
+        // Партнёр учитывается только в парных категориях
+        if (isPair && slot.partner?.kind === 'player') {
+            if (slot.partner.player_id === user.id) {
+                return { success: false, error: 'Нельзя выбрать себя партнёром' }
+            }
             player2Id = slot.partner.player_id
             pairStatus = 'pending'
-        } else if (slot.partner?.kind === 'guest') {
+        } else if (isPair && slot.partner?.kind === 'guest') {
+            const guestName = slot.partner.full_name.trim()
+            if (guestName.length < 2) {
+                return { success: false, error: 'Укажите имя гостя' }
+            }
+
             const { data: guest, error: guestError } = await supabase
                 .from('guests')
-                .insert({ full_name: slot.partner.full_name, created_by: user.id })
+                .insert({ full_name: guestName, created_by: user.id })
                 .select('id')
                 .single()
 
@@ -147,16 +216,31 @@ export async function registerForTournament(
             player2_id: player2Id,
             guest2_id: guest2Id,
             pair_status: pairStatus,
-            status: 'confirmed',
+            status: 'registered',
             registered_by: user.id,
         })
 
         if (error) {
             console.error('[registerForTournament:insert]', error)
+            // гостя, созданного под неудавшуюся заявку, не оставляем висеть
+            if (guest2Id) await supabase.from('guests').delete().eq('id', guest2Id)
+
             if (error.code === '23505') {
-                return { success: false, error: 'Такая заявка уже существует' }
+                skipped.push(label)
+                continue
             }
             return { success: false, error: 'Не удалось зарегистрироваться' }
+        }
+
+        registered.push(label)
+    }
+
+    if (registered.length === 0) {
+        return {
+            success: false,
+            error: skipped.length
+                ? `Вы уже записаны: ${[...new Set(skipped)].join(', ')}`
+                : 'Не удалось зарегистрироваться',
         }
     }
 
