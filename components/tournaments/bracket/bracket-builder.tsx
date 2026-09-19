@@ -38,12 +38,16 @@ export function BracketBuilder({
         id: string;
         category: Discipline;
         age_group?: string | null;
+        rating_group?: string | null;
         max_pairs?: number | null;
         bracket_status?: string;
+        bracket_format?: string | null;
         bracket_generated?: boolean | null;
     }): Category {
         const group =
-            (c.age_group?.replace(/^Группа\s+/i, '') as RatingGroup) || 'C';
+            (c.rating_group as RatingGroup) ||
+            (c.age_group?.replace(/^Группа\s+/i, '') as RatingGroup) ||
+            'C';
         const ready =
             c.bracket_status === 'ready' || c.bracket_generated === true;
 
@@ -54,9 +58,73 @@ export function BracketBuilder({
             ratingGroup: ['A', 'B', 'C', 'D', 'E'].includes(group) ? group : 'C',
             count: c.max_pairs ?? 8,
             status: ready ? 'ready' : 'draft',
+            format: c.bracket_format === 'round_robin' ? 'RR' : c.bracket_format === 'single_elim' ? 'SE' : undefined
         };
     }
 
+
+    // ранее сохранённые сетки из БД (initialMatches)
+    function buildInitialBrackets(): Record<string, BracketState> {
+        const result: Record<string, BracketState> = {};
+        const cats = (initialCategories ?? []) as Array<{
+            id: string;
+            bracket_format?: string | null;
+            max_pairs?: number | null;
+        }>;
+
+        const nameOf = (participantId: string | null): Participant => {
+            if (!participantId) return null;
+            const p = (initialParticipants ?? []).find((x: any) => x.id === participantId);
+            if (!p) return null;
+            if (p.player2 || p.guest2) {
+                const n1 = p.player1?.full_name || p.guest1?.full_name || 'Игрок 1';
+                const n2 = p.player2?.full_name || p.guest2?.full_name || 'Игрок 2';
+                const r1 = p.player1?.rating_doubles || 0;
+                const r2 = p.player2?.rating_doubles || 0;
+                const avg = r1 && r2 ? Math.round((r1 + r2) / 2) : r1 || r2 || 0;
+                return { id: p.id, name: `${n1.split(' ')[0]} / ${n2.split(' ')[0]}`, rating: avg };
+            }
+            const name = p.player1?.full_name || p.guest1?.full_name || 'Игрок';
+            return { id: p.id, name, rating: p.player1?.rating_singles || 0 };
+        };
+
+        for (const cat of cats) {
+            const catMatches = (initialMatches ?? [])
+                .filter((m: any) => m.category_id === cat.id)
+                .sort((a: any, b: any) => a.round - b.round || a.position - b.position);
+            if (catMatches.length === 0) continue;
+
+            if (cat.bracket_format === 'round_robin') {
+                const players: Participant[] = [];
+                const hasPlayer = (id: string) =>
+                    players.some((x): x is { id: string; name: string; rating: number } =>
+                        !!x && x !== 'BYE' && x.id === id
+                    );
+                catMatches.forEach((m: any) => {
+                    const p1 = nameOf(m.participant1_id);
+                    const p2 = nameOf(m.participant2_id);
+                    if (p1 && p1 !== 'BYE' && !hasPlayer(p1.id)) players.push(p1);
+                    if (p2 && p2 !== 'BYE' && !hasPlayer(p2.id)) players.push(p2);
+                });
+                result[cat.id] = { format: 'RR', startingMatches: [], rrPlayers: players };
+            } else {
+                const starting = catMatches
+                    .filter((m: any) => m.round === 1)
+                    .map((m: any, i: number) => ({
+                        id: `m${i}`,
+                        p1: m.placeholder_p1 === 'BYE' ? ('BYE' as const) : nameOf(m.participant1_id),
+                        p2: m.placeholder_p2 === 'BYE' ? ('BYE' as const) : nameOf(m.participant2_id),
+                    }));
+                result[cat.id] = {
+                    format: 'SE',
+                    startingMatches: starting,
+                    rrPlayers: [],
+                    seedingType: 'SNAKE',
+                };
+            }
+        }
+        return result;
+    }
 
 
     const [categories, setCategories] = useState<Category[]>(
@@ -67,7 +135,7 @@ export function BracketBuilder({
 
     const [isSaving, startSavingTransition] = useTransition();
 
-    const [brackets, setBrackets] = useState<Record<string, BracketState>>({});
+    const [brackets, setBrackets] = useState<Record<string, BracketState>>(buildInitialBrackets);
 
     // Модалки
     const [addCategoryOpen, setAddCategoryOpen] = useState(false);

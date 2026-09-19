@@ -36,10 +36,17 @@ const ALL_RATING_GROUPS: { code: RatingGroup; label: string; hint: string }[] = 
     { code: 'E', label: 'Группа E', hint: '380–480' },
 ]
 
+function extractAwardsFromDescription(desc: string | null | undefined): string {
+    if (!desc) return ''
+    const m = desc.match(/🏆\s*Награды\s*[:\n]\s*([\s\S]*?)(?=\n\n💰|\n\n🏆|$)/i)
+    return m ? m[1].trim() : ''
+}
+
 function stripAwardsFromDescription(desc: string | null | undefined): string {
     if (!desc) return ''
     return desc
-        .replace(/\n*\s*🏆\s*Награды\s*\n?[\s\S]*$/i, '')
+        .replace(/\n*\s*🏆\s*Награды\s*[:\n][\s\S]*?(?=\n\n💰|\n\n🏆|$)/i, '')
+        .replace(/\n*\s*💰\s*Взнос\s*[:\n][\s\S]*?(?=\n\n💰|\n\n🏆|$)/i, '')
         .replace(/\n*\s*Награды\s*:\s*[\s\S]*$/i, '')
         .trim()
 }
@@ -79,7 +86,7 @@ export function TournamentForm({
     const [endDate, setEndDate] = useState(initialData?.end_date ?? '')
     const [registrationTime, setRegistrationTime] = useState(initialData?.registration_time ?? '')
     const [startTime, setStartTime] = useState(initialData?.start_time ?? '')
-    const [awards, setAwards] = useState(initialData?.awards ?? '')
+    const [awards, setAwards] = useState(initialData?.awards ?? extractAwardsFromDescription(initialData?.description) ?? '')
     const [registrationDeadline, setRegistrationDeadline] = useState(
         initialData?.registration_deadline ?? ''
     )
@@ -166,8 +173,29 @@ export function TournamentForm({
                         .join('; ')
                     : null
 
-            // ИСПРАВЛЕН entry_fee
-            const parsedEntryFee = uniformFee ? parseInt(uniformFee, 10) : null
+            // режиме "по дисциплинам" базовый взнос = минимальный из введённых,
+            // иначе всегда сохранялся uniformFee и has_entry_fee считался неверно
+            let parsedEntryFee: number | null
+            if (feeMode === 'per_discipline') {
+                const nums = selectedDisciplines
+                    .map((d) => parseInt(customFees[d] || uniformFee, 10))
+                    .filter((n) => !Number.isNaN(n))
+                parsedEntryFee = nums.length ? Math.min(...nums) : null
+            } else {
+                const n = parseInt(uniformFee, 10)
+                parsedEntryFee = Number.isNaN(n) ? null : n
+            }
+
+            const cleanDescription = stripAwardsFromDescription(description).trim()
+            const awardsTrimmed = awards.trim()
+            const mergedDescription =
+                [
+                    cleanDescription,
+                    feeNote ? `💰 Взнос: ${feeNote}` : '',
+                    awardsTrimmed ? `🏆 Награды: ${awardsTrimmed}` : '',
+                ]
+                    .filter(Boolean)
+                    .join('\n\n') || null
 
             const payload = {
                 title: title.trim(),
@@ -180,11 +208,11 @@ export function TournamentForm({
                 end_date: endDate || null,
                 registration_time: registrationTime.trim() || null,
                 start_time: startTime.trim() || null,
-                awards: awards.trim() || null,
+                awards: awardsTrimmed || null,
                 registration_deadline: registrationDeadline || null,
-                entry_fee: Number.isNaN(parsedEntryFee) ? null : parsedEntryFee, // Безопасный каст
+                entry_fee: parsedEntryFee,
                 entry_fee_note: feeNote,
-                description: stripAwardsFromDescription(description) || null,
+                description: mergedDescription,
                 contact_info: contactInfo.trim() || null,
                 pdf_url: pdfInfo?.url ?? null,
                 pdf_storage_path: pdfInfo?.path ?? null,

@@ -1130,6 +1130,12 @@ export type Database = {
       }
       tournaments: {
         Row: {
+          awards: string | null
+          contact_info: string | null
+          entry_fee_note: string | null
+          organizer: string | null
+          registration_time: string | null
+          start_time: string | null
           created_at: string | null
           created_by: string | null
           description: string | null
@@ -1149,8 +1155,15 @@ export type Database = {
           tournament_type: Database["public"]["Enums"]["tournament_type"]
           updated_at: string | null
           venue: string | null
+          venue_address: string | null
         }
         Insert: {
+          awards?: string | null
+          contact_info?: string | null
+          entry_fee_note?: string | null
+          organizer?: string | null
+          registration_time?: string | null
+          start_time?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1170,8 +1183,15 @@ export type Database = {
           tournament_type: Database["public"]["Enums"]["tournament_type"]
           updated_at?: string | null
           venue?: string | null
+          venue_address?: string | null
         }
         Update: {
+          awards?: string | null
+          contact_info?: string | null
+          entry_fee_note?: string | null
+          organizer?: string | null
+          registration_time?: string | null
+          start_time?: string | null
           created_at?: string | null
           created_by?: string | null
           description?: string | null
@@ -1191,6 +1211,7 @@ export type Database = {
           tournament_type?: Database["public"]["Enums"]["tournament_type"]
           updated_at?: string | null
           venue?: string | null
+          venue_address?: string | null
         }
         Relationships: [
           {

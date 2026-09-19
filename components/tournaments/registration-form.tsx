@@ -1,15 +1,15 @@
 'use client'
 
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { X, Loader2, Trophy, AlertTriangle } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
-import { useProgressAction } from '@/shared/hooks/use-progress-action'
-import { registerForTournament } from '@/app/(main)/tournaments/registration-actions'
-import { PartnerPicker } from './partner-picker'
-import { canPlayerJoinCategory, Gender, getRequiredPartnerGender } from '@/shared/lib/gender'
+import {useMemo, useState} from 'react'
+import {toast} from 'sonner'
+import {Dialog, DialogContent, DialogHeader, DialogTitle} from '@/components/ui/dialog'
+import {Button} from '@/components/ui/button'
+import {X, Loader2, Trophy, AlertTriangle} from 'lucide-react'
+import {cn} from '@/shared/lib/utils'
+import {useProgressAction} from '@/shared/hooks/use-progress-action'
+import {registerForTournament} from '@/app/(main)/tournaments/registration-actions'
+import {PartnerPicker} from './partner-picker'
+import {canPlayerJoinCategory, Gender, getRequiredPartnerGender} from '@/shared/lib/gender'
 import Link from 'next/link'
 import {MyParticipationInCategory, TournamentCategoryFull} from "@/app/(main)/tournaments/[id]/queries";
 
@@ -22,6 +22,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const PAIR_CATEGORIES = new Set(['MD', 'WD', 'XD'])
+const ALL_GROUPS = ['A', 'B', 'C', 'D', 'E'] as const
 
 type PartnerChoice =
     | null
@@ -58,23 +59,50 @@ export function RegistrationDialog({
                                    }: Props) {
     const [runAction, isPending] = useProgressAction()
 
-    // Жесткий фильтр: если у юзера есть пол, фильтруем несовместимые категории
-    const availableCategories = categories.filter((cat) => {
-        if (myParticipation[cat.id]) return false
+    // категории, совместимые с полом и в которых пользователь ещё НЕ участвует.
+    const genderCompatible = useMemo(
+        () => categories.filter((cat) => !currentUserGender || canPlayerJoinCategory(currentUserGender, cat.category)),
+        [categories, currentUserGender]
+    )
 
-        // Защита пола: М -> MS, MD, XD; Ж -> WS, WD, XD
-        if (currentUserGender) {
-            const allowed = canPlayerJoinCategory(currentUserGender, cat.category)
-            if (!allowed) return false
-        }
+    // Какие группы вообще есть среди совместимых категорий
+    const groupsInTournament = useMemo(() => {
+        const set = new Set<string>()
+        genderCompatible.forEach((c) => c.rating_group && set.add(c.rating_group))
+        return ALL_GROUPS.filter((g) => set.has(g))
+    }, [genderCompatible])
 
-        return true
-    })
+    // Мультивыбор групп A–E. По умолчанию выбраны все доступные группы.
+    const [selectedGroups, setSelectedGroups] = useState<string[]>(groupsInTournament)
+
+    const toggleGroup = (g: string) =>
+        setSelectedGroups((prev) =>
+            prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
+        )
+
+    // итоговый список для показа: пол-совместимые, не занятые, входящие в выбранные группы.
+    const availableCategories = useMemo(
+        () =>
+            genderCompatible.filter((cat) => {
+                if (myParticipation[cat.id]) return false
+                if (selectedGroups.length > 0 && cat.rating_group) {
+                    return selectedGroups.includes(cat.rating_group)
+                }
+                return true
+            }),
+        [genderCompatible, myParticipation, selectedGroups]
+    )
+
+    // Есть ли в принципе куда записываться (без учёта фильтра групп)?
+    const hasAnyFreeSlot = useMemo(
+        () => genderCompatible.some((cat) => !myParticipation[cat.id]),
+        [genderCompatible, myParticipation]
+    )
 
     const [choices, setChoices] = useState<Record<string, CategoryChoice>>(() => {
         const initial: Record<string, CategoryChoice> = {}
         for (const cat of categories) {
-            initial[cat.id] = { selected: false, partner: null }
+            initial[cat.id] = {selected: false, partner: null}
         }
         return initial
     })
@@ -85,7 +113,7 @@ export function RegistrationDialog({
     const updateChoice = (categoryId: string, patch: Partial<CategoryChoice>) => {
         setChoices((prev) => ({
             ...prev,
-            [categoryId]: { ...prev[categoryId], ...patch },
+            [categoryId]: {...prev[categoryId], ...patch},
         }))
     }
 
@@ -117,9 +145,9 @@ export function RegistrationDialog({
 
                 if (isPair && choice?.partner) {
                     if (choice.partner.kind === 'player') {
-                        partner = { kind: 'player', player_id: choice.partner.player_id }
+                        partner = {kind: 'player', player_id: choice.partner.player_id}
                     } else if (choice.partner.kind === 'guest') {
-                        partner = { kind: 'guest', full_name: choice.partner.full_name }
+                        partner = {kind: 'guest', full_name: choice.partner.full_name}
                     }
                 }
 
@@ -148,8 +176,9 @@ export function RegistrationDialog({
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="border-card bg-elevated max-w-sm text-center p-6">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-warning/10 flex items-center justify-center text-warning mb-3">
-                        <AlertTriangle className="w-6 h-6" />
+                    <div
+                        className="w-12 h-12 mx-auto rounded-full bg-warning/10 flex items-center justify-center text-warning mb-3">
+                        <AlertTriangle className="w-6 h-6"/>
                     </div>
                     <DialogHeader>
                         <DialogTitle className="text-strong text-lg font-bold">Укажите ваш пол</DialogTitle>
@@ -173,12 +202,37 @@ export function RegistrationDialog({
         )
     }
 
-    if (availableCategories.length === 0) {
+    // Пол задан, но НИ ОДНОЙ подходящей по полу категории нет
+    if (genderCompatible.length === 0) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="border-card bg-elevated max-w-sm text-center p-6">
-                    <div className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center text-accent mb-3">
-                        <Trophy className="w-6 h-6" />
+                    <div
+                        className="w-12 h-12 mx-auto rounded-full bg-warning/10 flex items-center justify-center text-warning mb-3">
+                        <AlertTriangle className="w-6 h-6"/>
+                    </div>
+                    <DialogHeader>
+                        <DialogTitle className="text-strong text-lg font-bold">Нет подходящих категорий</DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted mt-2">
+                        В этом турнире нет дисциплин, доступных для вашего пола.
+                    </p>
+                    <Button onClick={() => onOpenChange(false)} variant="outline" className="mt-4">
+                        Понятно
+                    </Button>
+                </DialogContent>
+            </Dialog>
+        )
+    }
+
+    // уже записаны во все доступные категории
+    if (!hasAnyFreeSlot) {
+        return (
+            <Dialog open={open} onOpenChange={onOpenChange}>
+                <DialogContent className="border-card bg-elevated max-w-sm text-center p-6">
+                    <div
+                        className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center text-accent mb-3">
+                        <Trophy className="w-6 h-6"/>
                     </div>
                     <DialogHeader>
                         <DialogTitle className="text-strong text-lg font-bold">Уже задействованы</DialogTitle>
@@ -202,7 +256,7 @@ export function RegistrationDialog({
             >
                 <div className="flex items-center justify-between border-b border-card p-4 bg-subtle/30">
                     <DialogTitle className="text-base font-bold text-strong flex items-center gap-2">
-                        <Trophy className="w-4 h-4 text-accent" /> Выберите категории
+                        <Trophy className="w-4 h-4 text-accent"/> Выберите категории
                     </DialogTitle>
                     <button
                         type="button"
@@ -210,14 +264,44 @@ export function RegistrationDialog({
                         disabled={isPending}
                         className="rounded-lg p-1.5 text-muted hover:bg-hover hover:text-strong"
                     >
-                        <X className="h-4 w-4" />
+                        <X className="h-4 w-4"/>
                     </button>
                 </div>
 
-                <div className="overflow-y-auto px-4 py-3 space-y-2 max-h-[calc(90vh-180px)]">
-                    {availableCategories.map((cat) => {
+                {/* мультивыбор групп A–E */}
+                {groupsInTournament.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
+                        <span className="text-[11px] text-muted font-semibold mr-1">Группы:</span>
+                        {groupsInTournament.map((g) => {
+                            const active = selectedGroups.includes(g)
+                            return (
+                                <button
+                                    key={g}
+                                    type="button"
+                                    onClick={() => toggleGroup(g)}
+                                    disabled={isPending}
+                                    className={cn(
+                                        'px-3 py-1 rounded-lg text-xs font-black transition-all',
+                                        active
+                                            ? 'bg-accent text-accent-foreground shadow-sm'
+                                            : 'bg-subtle/50 text-muted hover:text-main'
+                                    )}
+                                >
+                                    {g}
+                                </button>
+                            )
+                        })}
+                    </div>
+                )}
+
+                <div className="overflow-y-auto px-4 py-3 space-y-2 max-h-[calc(90vh-220px)]">
+                    {availableCategories.length === 0 ? (
+                        <p className="text-center text-xs text-muted py-6">
+                            Нет категорий в выбранных группах — измените фильтр выше.
+                        </p>
+                    ) : availableCategories.map((cat) => {
                         const isPair = PAIR_CATEGORIES.has(cat.category)
-                        const choice = choices[cat.id] || { selected: false, partner: null }
+                        const choice = choices[cat.id] || {selected: false, partner: null}
 
                         return (
                             <div
@@ -261,17 +345,18 @@ export function RegistrationDialog({
                                                 {CATEGORY_LABELS[cat.category] ?? cat.category}
                                             </p>
                                             {cat.rating_group && (
-                                                <span className="inline-block mt-0.5 text-[10px] font-black bg-accent/15 text-accent px-2 py-0.5 rounded">
-                          Группа {cat.rating_group}
-                        </span>
+                                                <span
+                                                    className="inline-block mt-0.5 text-[10px] font-black bg-accent/15 text-accent px-2 py-0.5 rounded">
+                                                  Группа {cat.rating_group}
+                                                </span>
                                             )}
                                         </div>
                                     </div>
 
                                     {hasEntryFee && entryFee && (
                                         <span className="text-xs font-mono font-bold text-accent shrink-0">
-                      {entryFee} ₽
-                    </span>
+                                          {entryFee} ₽
+                                        </span>
                                     )}
                                 </button>
 
@@ -279,7 +364,7 @@ export function RegistrationDialog({
                                     <div className="border-t border-card/60 px-3 pb-3 pt-2 bg-card/40">
                                         <PartnerPicker
                                             value={choice.partner}
-                                            onChange={(partner) => updateChoice(cat.id, { partner })}
+                                            onChange={(partner) => updateChoice(cat.id, {partner})}
                                             disabled={isPending}
                                             requiredGender={getRequiredPartnerGender(currentUserGender, cat.category as any)}
                                         />
@@ -293,9 +378,9 @@ export function RegistrationDialog({
                 <div className="border-t border-card p-4 space-y-2 bg-card">
                     {totalFee !== null && selectedCount > 0 && (
                         <div className="flex items-center justify-between rounded-xl bg-accent/10 px-3.5 py-2.5">
-              <span className="text-xs text-accent font-medium">
-                Итого за {selectedCount} {categoryWord(selectedCount)}:
-              </span>
+                          <span className="text-xs text-accent font-medium">
+                            Итого за {selectedCount} {categoryWord(selectedCount)}:
+                          </span>
                             <span className="text-lg font-black text-accent">{totalFee} ₽</span>
                         </div>
                     )}
@@ -309,7 +394,7 @@ export function RegistrationDialog({
                     >
                         {isPending ? (
                             <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin"/>
                                 Регистрация…
                             </>
                         ) : selectedCount > 0 ? (

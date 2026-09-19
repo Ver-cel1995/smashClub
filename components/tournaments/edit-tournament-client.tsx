@@ -9,13 +9,14 @@ import type { ParsedTournament } from '@/shared/lib/ai/parse-tournament-pdf'
 import type { Database } from '@/types/database'
 
 type TournamentRow = Database['public']['Tables']['tournaments']['Row']
-type CategoryRow = Database['public']['Tables']['tournament_categories']['Row']
+type CategoryRow = Pick<Database['public']['Tables']['tournament_categories']['Row'],
+    'id' | 'category' | 'age_group' | 'rating_group'>
 
 type Props = {
     tournament: TournamentRow & { categories: CategoryRow[] }
 }
 
-export function EditTournamentClient({ tournament }: Props) {
+export function EditTournamentClient ({ tournament }: Props) {
     const router = useProgressRouter()
     const [showPdfReplace, setShowPdfReplace] = useState(false)
     const [replacedPdf, setReplacedPdf] = useState<{ url: string; path: string } | null>(null)
@@ -47,20 +48,24 @@ export function EditTournamentClient({ tournament }: Props) {
         entry_fee_note: null,
         categories: tournament.categories.map(c => ({
             category: c.category,
-            age_group: c.age_group ?? null,
+            age_group: c.age_group ?? (c.rating_group ? `Группа ${c.rating_group}` : null)
         })),
-        description: tournament.description,
+        description: cleanDescription,
         contact_info: null,
-        awards: parsedAwards,
+        awards: parsedAwards
     }
 
 
     function extractAwardsFromDescription(desc: string | null): { awards: string | null; cleanDescription: string | null } {
         if (!desc) return { awards: null, cleanDescription: null }
-        const match = desc.match(/🏆 Награды: (.+?)(?=\n\n|$)/)
-        if (!match) return { awards: null, cleanDescription: desc }
-        const awards = match[1].trim()
-        const cleanDescription = desc.replace(match[0], '').replace(/\n{3,}/g, '\n\n').trim() || null
+        const match = desc.match(/🏆\s*Награды\s*[:\n]\s*([\s\S]+?)(?=\n\n💰|\n\n🏆|$)/)
+        const awards = match ? match[1].trim() : null
+        const cleanDescription = desc
+                .replace(/\n*\s*🏆\s*Награды\s*[:\n][\s\S]*?(?=\n\n💰|\n\n🏆|$)/g, '')
+                .replace(/\n*\s*💰\s*Взнос\s*[:\n][\s\S]*?(?=\n\n💰|\n\n🏆|$)/g, '')
+                .replace(/\n{3,}/g, '\n\n')
+                .trim() || null
+
         return { awards, cleanDescription }
     }
 

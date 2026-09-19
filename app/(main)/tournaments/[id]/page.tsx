@@ -1,13 +1,17 @@
-import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { getCurrentUser } from '@/shared/lib/auth'
 import { TournamentTabs, type TournamentTabId } from './tournament-tabs'
-import { ShuttleLoader } from '@/components/shared/shuttle-loader'
 import { BracketViewer } from '@/components/tournaments/bracket-viewer'
 import { TournamentParticipantsSection } from '@/components/tournaments/tournament-participants-section'
 import { TournamentHeader } from '@/components/tournaments/tournament-header'
 import { getTournamentDetails } from '@/app/(main)/tournaments/[id]/queries'
 import { RegistrationFab } from '@/components/tournaments/registration-fab'
+import { PendingInvitesBanner } from '@/components/tournaments/pending-invites-banner'
+import type { Gender } from '@/shared/lib/gender'
+
+// страница персональная (участие, пол пользователя) — рендерим всегда свежей,
+// чтобы не показывать устаревший gender / myParticipation из кэша.
+export const dynamic = 'force-dynamic'
 
 type Props = {
     params: Promise<{ id: string }>
@@ -35,6 +39,20 @@ export default async function TournamentPage({ params, searchParams }: Props) {
     const isRegistrationOpen = data.status === 'registration_open' || data.status === 'draft'
     const showRegistrationFab = isRegistrationOpen && Boolean(user)
 
+    const currentUserGender = (user?.profile?.gender ?? null) as Gender | null
+
+    // собираем входящие приглашения в пару: я = player2 и статус ожидает подтверждения.
+    const pendingInvites = user
+        ? data.categories
+            .flatMap((cat) => [...cat.participants, ...cat.seekers])
+            .filter(
+                (rec) =>
+                    rec.player2?.kind === 'player' &&
+                    rec.player2.id === user.id &&
+                    rec.pair_status === 'pending'
+            )
+        : []
+
     return (
         <div className="flex flex-col min-h-screen bg-app pb-24">
             <TournamentHeader tournament={data} canManage={canManage} />
@@ -43,35 +61,14 @@ export default async function TournamentPage({ params, searchParams }: Props) {
                 <TournamentTabs tournamentId={data.id} active={activeTab} />
             </div>
 
-            <main className="flex-1 p-4 max-w-3xl mx-auto w-full space-y-6 mt-4">
-                {activeTab === 'overview' && (
-                    <div className="bg-card border border-subtle rounded-2xl p-5 shadow-sm space-y-4">
-                        <h2 className="text-sm font-bold text-strong uppercase tracking-widest border-b border-subtle pb-2">
-                            Информация о турнире
-                        </h2>
-                        {data.description ? (
-                            <p className="whitespace-pre-wrap text-sm text-main leading-relaxed">
-                                {data.description}
-                            </p>
-                        ) : (
-                            <p className="text-sm text-muted italic">Описание не добавлено</p>
-                        )}
 
-                        {data.pdf_url && (
-                            <a
-                                href={data.pdf_url}
-                                target="_blank"
-                                rel="noopener"
-                                className="flex items-center gap-2 text-accent text-sm font-semibold hover:underline bg-accent/5 p-3 rounded-xl border border-accent/20 w-fit"
-                            >
-                                📄 Скачать Положение (PDF)
-                            </a>
-                        )}
-                    </div>
+            <main className="flex-1 p-4 max-w-3xl mx-auto w-full space-y-6 mt-4">
+                {/* баннер приглашений в пару — виден на всех вкладках */}
+                {pendingInvites.length > 0 && (
+                    <PendingInvitesBanner invites={pendingInvites} categories={data.categories} />
                 )}
 
                 {activeTab === 'participants' && (
-                    <Suspense fallback={<div className="flex justify-center p-12"><ShuttleLoader /></div>}>
                         <TournamentParticipantsSection
                             tournamentId={data.id}
                             categories={data.categories}
@@ -82,16 +79,15 @@ export default async function TournamentPage({ params, searchParams }: Props) {
                             entryFee={data.entry_fee_amount}
                             hasEntryFee={data.has_entry_fee}
                         />
-                    </Suspense>
                 )}
 
                 {activeTab === 'brackets' && (
-                    <BracketViewer
-                        tournamentId={data.id}
-                        categories={data.categories}
-                        currentUserId={user?.id}
-                        canManage={canManage}
-                    />
+                        <BracketViewer
+                            tournamentId={data.id}
+                            categories={data.categories}
+                            currentUserId={user?.id}
+                            canManage={canManage}
+                        />
                 )}
             </main>
 
@@ -103,7 +99,7 @@ export default async function TournamentPage({ params, searchParams }: Props) {
                     hasEntryFee={data.has_entry_fee}
                     entryFee={data.entry_fee_amount}
                     currentUserId={user?.id ?? ''}
-                    currentUserGender={(user?.profile?.gender as never) ?? null}
+                    currentUserGender={currentUserGender}
                 />
             )}
         </div>
