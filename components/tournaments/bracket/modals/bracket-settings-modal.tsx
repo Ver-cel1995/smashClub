@@ -1,136 +1,157 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Settings2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Category, BracketFormat, SeedingType } from '@/shared/types/bracket';
+import { X, Sparkles, Trophy, GitBranch, Repeat, ShieldAlert } from 'lucide-react';
+import type { Category, SeedingType } from '@/shared/types/bracket';
+
+type ExtendedFormat = 'SE' | 'RR' | 'RR_THEN_SE' | 'APP12';
 
 interface Props {
     category: Category;
     onClose: () => void;
-    onGenerate: (format: BracketFormat, seeding: SeedingType) => void;
+    onGenerate: (format: ExtendedFormat, seeding: SeedingType, groupCount?: number, autoSeed?: boolean) => void;
 }
 
 export function BracketSettingsModal({ category, onClose, onGenerate }: Props) {
-    const [bracketFormat, setBracketFormat] = useState<BracketFormat>('SE');
-    const [seedingType, setSeedingType] = useState<SeedingType>('SNAKE');
-
-    const bracketSize = (() => {
-        let s = 1;
-        while (s < category.count) s *= 2;
-        return s;
-    })();
-    const byesCount = bracketSize - category.count;
+    const [format, setFormat] = useState<ExtendedFormat>('SE');
+    const [seeding, setSeeding] = useState<SeedingType>('SNAKE');
+    const [groupCount, setGroupCount] = useState<number>(4);
+    const [autoSeed, setAutoSeed] = useState<boolean>(true);
 
     return (
-        <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-[#0A0F1C] border border-subtle rounded-2xl w-full max-w-lg shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh]">
-                <div className="p-5 border-b border-subtle flex justify-between items-start flex-shrink-0">
+        <div className="fixed inset-0 z-[120] bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+            <div className="bg-card border border-card w-full max-w-md rounded-2xl p-6 shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 p-1 text-muted hover:text-strong rounded-lg hover:bg-hover transition-colors"
+                >
+                    <X className="w-5 h-5" />
+                </button>
+
+                <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2.5 bg-accent/10 border border-accent/20 rounded-xl text-accent">
+                        <Trophy className="w-5 h-5" />
+                    </div>
                     <div>
-                        <h3 className="text-xl font-bold text-strong flex items-center gap-2">
-                            <Settings2 className="w-5 h-5 text-accent" /> Настройки сетки
-                        </h3>
-                        <p className="text-sm text-accent mt-1">
-                            {category.desc} ({category.name}) · Группа {category.ratingGroup} · {category.count} уч.
+                        <h2 className="text-base font-bold text-strong">Настройка сетки</h2>
+                        <p className="text-xs text-muted">
+                            {category.name} · Группа {category.ratingGroup} ({category.count} уч.)
                         </p>
                     </div>
-                    <button onClick={onClose} className="text-muted hover:text-main bg-card p-2 rounded-lg border border-subtle">
-                        <X className="w-4 h-4" />
-                    </button>
                 </div>
 
-                <div className="p-6 space-y-6 overflow-y-auto">
-                    {/* Формат */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-bold tracking-widest text-dim uppercase">
+                <div className="space-y-5">
+                    {/* ФОРМАТ ТУРНИРА */}
+                    <div>
+                        <label className="text-xs font-bold text-dim uppercase tracking-wider block mb-2">
                             Формат турнира
                         </label>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button
-                                onClick={() => setBracketFormat('SE')}
-                                className={`p-3 border text-left rounded-xl text-sm font-bold transition-colors ${
-                                    bracketFormat === 'SE'
-                                        ? 'border-accent bg-accent/5 text-accent'
-                                        : 'border-subtle bg-card text-muted hover:border-main'
-                                }`}
-                            >
-                                🏆 Олимпийка
-                                <span className="block text-[10px] font-normal mt-1 opacity-80">На вылет</span>
-                            </button>
-                            <button
-                                onClick={() => setBracketFormat('RR')}
-                                className={`p-3 border text-left rounded-xl text-sm font-bold transition-colors ${
-                                    bracketFormat === 'RR'
-                                        ? 'border-accent bg-accent/5 text-accent'
-                                        : 'border-subtle bg-card text-muted hover:border-main'
-                                }`}
-                            >
-                                🔄 Круговая
-                                <span className="block text-[10px] font-normal mt-1 opacity-80">Каждый с каждым</span>
-                            </button>
+                        <div className="grid grid-cols-2 gap-2">
+                            {[
+                                { id: 'SE', label: 'Олимпийка', desc: 'Приложение 11', icon: GitBranch },
+                                { id: 'RR', label: 'Круговая', desc: 'Каждый с каждым', icon: Repeat },
+                                { id: 'RR_THEN_SE', label: 'Группы → Сетка', desc: 'Разминка в группах', icon: Trophy },
+                                { id: 'APP12', label: 'Длинная сетка', desc: 'Приложение 12 (3-е место)', icon: ShieldAlert },
+                            ].map((item) => {
+                                const Icon = item.icon;
+                                const active = format === item.id;
+                                return (
+                                    <button
+                                        key={item.id}
+                                        onClick={() => setFormat(item.id as ExtendedFormat)}
+                                        className={`flex flex-col p-3 rounded-xl border text-left transition-all ${
+                                            active
+                                                ? 'border-accent bg-accent/10 text-accent'
+                                                : 'border-subtle bg-subtle/30 text-muted hover:text-strong hover:bg-subtle'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Icon className="w-4 h-4 shrink-0" />
+                                            <span className="text-xs font-bold leading-tight">{item.label}</span>
+                                        </div>
+                                        <span className="text-[10px] text-dim">{item.desc}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
-                    {bracketFormat === 'SE' && (
-                        <div className="space-y-3">
-                            <label className="text-xs font-bold tracking-widest text-dim uppercase">
-                                Посев (Seeding)
-                            </label>
-                            <div className="flex gap-4">
-                                <label className="flex items-center gap-2 text-sm text-strong cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="seed"
-                                        checked={seedingType === 'SNAKE'}
-                                        onChange={() => setSeedingType('SNAKE')}
-                                        className="accent-accent"
-                                    />
-                                    Змейка (рейтинг)
-                                </label>
-                                <label className="flex items-center gap-2 text-sm text-muted cursor-pointer">
-                                    <input
-                                        type="radio"
-                                        name="seed"
-                                        checked={seedingType === 'RANDOM'}
-                                        onChange={() => setSeedingType('RANDOM')}
-                                        className="accent-accent"
-                                    />
-                                    Случайный
-                                </label>
-                            </div>
-                            <div className="bg-subtle/30 border border-subtle p-3 rounded-xl flex gap-3">
-                                <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                                <p className="text-[11px] text-muted leading-relaxed">
-                                    Сетка на {bracketSize} слотов.{' '}
-                                    {byesCount > 0
-                                        ? `Автоматически ${byesCount} пустых мест (BYE).`
-                                        : 'Все слоты заняты участниками.'}
-                                </p>
+                    {/* НАСТРОЙКИ ГРУПП (ЕСЛИ ВЫБРАН ФОРМАТ С ГРУППАМИ) */}
+                    {format === 'RR_THEN_SE' && (
+                        <div className="p-3.5 bg-subtle/30 border border-subtle rounded-xl space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-strong">Количество групп:</span>
+                                <div className="flex items-center gap-2">
+                                    {[2, 4, 8].map((num) => (
+                                        <button
+                                            key={num}
+                                            onClick={() => setGroupCount(num)}
+                                            className={`px-3 py-1 rounded-lg text-xs font-bold transition-all ${
+                                                groupCount === num
+                                                    ? 'bg-accent text-accent-foreground'
+                                                    : 'bg-subtle text-muted hover:text-strong'
+                                            }`}
+                                        >
+                                            {num}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
 
-                    {bracketFormat === 'RR' && (
-                        <div className="bg-subtle/30 border border-subtle p-3 rounded-xl flex gap-3">
-                            <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
-                            <p className="text-[11px] text-muted leading-relaxed">
-                                Круговая система: каждый играет с каждым. Всего матчей:{' '}
-                                <strong className="text-main">{(category.count * (category.count - 1)) / 2}</strong>.
-                                Идеально для 4–10 участников.
-                            </p>
+                    {/* МЕТОД ПОСЕВА */}
+                    <div>
+                        <label className="text-xs font-bold text-dim uppercase tracking-wider block mb-2">
+                            Метод посева (Seeding)
+                        </label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {[
+                                { id: 'SNAKE', label: 'Змейка', desc: 'Равный баланс' },
+                                { id: 'UNIFORM', label: 'Равномерный', desc: 'По слоям' },
+                                { id: 'RATING', label: 'По рейтингу', desc: 'BWF Сетка' },
+                            ].map((s) => (
+                                <button
+                                    key={s.id}
+                                    onClick={() => setSeeding(s.id as SeedingType)}
+                                    className={`p-2.5 rounded-xl border text-center transition-all ${
+                                        seeding === s.id
+                                            ? 'border-accent bg-accent/10 text-accent font-bold'
+                                            : 'border-subtle bg-subtle/20 text-muted hover:text-strong'
+                                    }`}
+                                >
+                                    <p className="text-xs">{s.label}</p>
+                                    <p className="text-[9px] text-dim">{s.desc}</p>
+                                </button>
+                            ))}
                         </div>
-                    )}
-                </div>
+                    </div>
 
-                <div className="p-5 border-t border-subtle bg-card flex justify-end gap-3 flex-shrink-0">
-                    <Button onClick={onClose} variant="ghost" className="text-muted">
-                        Отмена
-                    </Button>
+                    {/* ЧЕКБОКС АВТОПОСЕВА */}
+                    <label className="flex items-center gap-3 p-3 bg-subtle/20 border border-subtle rounded-xl cursor-pointer hover:bg-subtle/40 transition-colors">
+                        <input
+                            type="checkbox"
+                            checked={autoSeed}
+                            onChange={(e) => setAutoSeed(e.target.checked)}
+                            className="w-4 h-4 rounded border-subtle text-accent focus:ring-accent accent-accent"
+                        />
+                        <div className="flex flex-col">
+                            <span className="text-xs font-bold text-strong flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-accent" />
+                                Автоматически расставить участников
+                            </span>
+                            <span className="text-[10px] text-dim">
+                                Заполнить слоты игроками с высшим рейтингом и расставить BYE
+                            </span>
+                        </div>
+                    </label>
+
                     <Button
-                        onClick={() => onGenerate(bracketFormat, seedingType)}
-                        className="bg-accent text-accent-foreground font-bold"
+                        onClick={() => onGenerate(format, seeding, groupCount, autoSeed)}
+                        className="w-full h-11 bg-accent text-accent-foreground font-bold hover:opacity-90 shadow-lg"
                     >
-                        {bracketFormat === 'SE' ? 'Сгенерировать олимпийку' : 'Сгенерировать круговую'}
+                        Сгенерировать сетку
                     </Button>
                 </div>
             </div>

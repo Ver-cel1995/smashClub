@@ -1,16 +1,16 @@
 'use client';
 
-import {useMemo, useState, useTransition} from 'react';
-import {Plus, Settings2, Trophy} from 'lucide-react';
-import {Button} from '@/components/ui/button';
-import {BracketHeader} from './bracket-header';
-import {BracketSidebar} from './bracket-sidebar';
-import {BracketSingleElim} from './bracket-single-elim';
-import {BracketRoundRobin} from './bracket-round-robin';
-import {AddCategoryModal} from './modals/add-category-modal';
-import {BracketSettingsModal} from './modals/bracket-settings-modal';
-import {ParticipantSelectorModal} from './modals/participant-selector-modal';
-import {toast} from 'sonner';
+import { useMemo, useState, useTransition } from 'react';
+import { Plus, Settings2, Trophy } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { BracketHeader } from './bracket-header';
+import { BracketSidebar } from './bracket-sidebar';
+import { BracketSingleElim } from './bracket-single-elim';
+import { BracketRoundRobin } from './bracket-round-robin';
+import { AddCategoryModal } from './modals/add-category-modal';
+import { BracketSettingsModal } from './modals/bracket-settings-modal';
+import { ParticipantSelectorModal } from './modals/participant-selector-modal';
+import { toast } from 'sonner';
 import type {
     BracketState,
     Category,
@@ -20,8 +20,15 @@ import type {
     RatingGroup,
     SeedingType,
 } from '@/shared/types/bracket';
-import {createTournamentCategoryAction, saveCategoryBracketAction} from "@/app/(main)/tournaments/bracket-actions";
-import {DISCIPLINE_LABELS} from "@/shared/lib/tournament/labels";
+import { createTournamentCategoryAction, saveCategoryBracketAction } from "@/app/(main)/tournaments/bracket-actions";
+import { DISCIPLINE_LABELS } from "@/shared/lib/tournament/labels";
+import {
+    buildSingleEliminationBracket,
+    generateRoundRobinSchedule,
+    snakeSeeding,
+    uniformSeeding,
+    EnginePlayer
+} from '@/shared/lib/tournament/bracket-engine';
 
 export function BracketBuilder({
                                    tournamentId,
@@ -48,11 +55,10 @@ export function BracketBuilder({
             (c.rating_group as RatingGroup) ||
             (c.age_group?.replace(/^Группа\s+/i, '') as RatingGroup) ||
             'C';
-        const ready =
-            c.bracket_status === 'ready' || c.bracket_generated === true;
+        const ready = c.bracket_status === 'ready' || c.bracket_generated === true;
 
         return {
-            id: c.id, // UUID из БД
+            id: c.id,
             name: c.category,
             desc: DISCIPLINE_LABELS[c.category] ?? c.category,
             ratingGroup: ['A', 'B', 'C', 'D', 'E'].includes(group) ? group : 'C',
@@ -62,15 +68,10 @@ export function BracketBuilder({
         };
     }
 
-
-    // ранее сохранённые сетки из БД (initialMatches)
+    // Восстановление сеток из БД
     function buildInitialBrackets(): Record<string, BracketState> {
         const result: Record<string, BracketState> = {};
-        const cats = (initialCategories ?? []) as Array<{
-            id: string;
-            bracket_format?: string | null;
-            max_pairs?: number | null;
-        }>;
+        const cats = (initialCategories ?? []) as Array<{ id: string; bracket_format?: string | null }>;
 
         const nameOf = (participantId: string | null): Participant => {
             if (!participantId) return null;
@@ -126,15 +127,11 @@ export function BracketBuilder({
         return result;
     }
 
-
     const [categories, setCategories] = useState<Category[]>(
         (initialCategories ?? []).map(mapDbCategory)
     );
-
     const [activeCategory, setActiveCategory] = useState<string | null>(null);
-
     const [isSaving, startSavingTransition] = useTransition();
-
     const [brackets, setBrackets] = useState<Record<string, BracketState>>(buildInitialBrackets);
 
     // Модалки
@@ -151,7 +148,27 @@ export function BracketBuilder({
     const currentBracket = activeCategory ? brackets[activeCategory] : null;
     const hasBracket = !!currentBracket;
 
-    // Собираем занятые ID со ВСЕХ категорий (глобальная защита от дублей)
+    // Подготовка списка участников текущей категории
+    const availableParticipants = useMemo(() => {
+        if (!activeCategory || !initialParticipants) return [];
+
+        return initialParticipants
+            .filter(p => p.category_id === activeCategory && p.status === 'confirmed')
+            .map(p => {
+                if (p.player2 || p.guest2) {
+                    const name1 = p.player1?.full_name || p.guest1?.full_name || 'Игрок 1';
+                    const name2 = p.player2?.full_name || p.guest2?.full_name || 'Игрок 2';
+                    const r1 = p.player1?.rating_doubles || 0;
+                    const r2 = p.player2?.rating_doubles || 0;
+                    const avgRating = r1 && r2 ? Math.round((r1 + r2) / 2) : (r1 || r2 || 0);
+                    return { id: p.id, name: `${name1.split(' ')[0]} / ${name2.split(' ')[0]}`, rating: avgRating };
+                }
+                const name = p.player1?.full_name || p.guest1?.full_name || 'Игрок';
+                return { id: p.id, name: name, rating: p.player1?.rating_singles || 0 };
+            })
+            .sort((a, b) => b.rating - a.rating);
+    }, [activeCategory, initialParticipants]);
+
     const selectedParticipantIds = useMemo(() => {
         const ids = new Set<string>();
         Object.values(brackets).forEach((state) => {
@@ -166,98 +183,59 @@ export function BracketBuilder({
         return ids;
     }, [brackets]);
 
+    // === ГЕНЕРАЦИЯ СЕТКИ ПО АЛГОРИТМАМ BADMINTON4U / BWF ===
+    const handleGenerateBracket = (format: string, seeding: SeedingType, groupCount = 4, autoSeed = true) => {
+        if (!activeCategory || !currentCat) return;
 
+        // Если стоит автопосев — берем реальных участников, иначе генерируем пустой шаблон
+        const playersToUse: EnginePlayer[] = autoSeed ? availableParticipants : [];
 
-    const availableParticipants = useMemo(() => {
-        if (!activeCategory || !initialParticipants) return [];
+        // Сколько слотов мы ожидаем (по настройкам категории)
+        const targetCount = currentCat.count || 8;
 
-        return initialParticipants
-            .filter(p => p.category_id === activeCategory && p.status === 'confirmed')
-            .map(p => {
-                // Для парных
-                if (p.player2 || p.guest2) {
-                    const name1 = p.player1?.full_name || p.guest1?.full_name || 'Игрок 1';
-                    const name2 = p.player2?.full_name || p.guest2?.full_name || 'Игрок 2';
+        if (format === 'SE' || format === 'APP12') {
+            // Передаем targetCount в движок!
+            const engineMatches = buildSingleEliminationBracket(playersToUse, targetCount);
 
-                    const r1 = p.player1?.rating_doubles || 0;
-                    const r2 = p.player2?.rating_doubles || 0;
-                    const avgRating = r1 && r2 ? Math.round((r1 + r2) / 2) : (r1 || r2 || 0);
+            const startingMatches: LocalMatch[] = engineMatches.map((m, i) => ({
+                id: `m${i}`,
+                p1: m.p1.player === 'BYE' ? 'BYE' : m.p1.player ? { id: m.p1.player.id, name: m.p1.player.name, rating: m.p1.player.rating } : null,
+                p2: m.p2.player === 'BYE' ? 'BYE' : m.p2.player ? { id: m.p2.player.id, name: m.p2.player.name, rating: m.p2.player.rating } : null,
+            }));
 
-                    return { id: p.id, name: `${name1.split(' ')[0]} / ${name2.split(' ')[0]}`, rating: avgRating };
-                }
-
-                // Для одиночек
-                const name = p.player1?.full_name || p.guest1?.full_name || 'Игрок';
-                return { id: p.id, name: name, rating: p.player1?.rating_singles || 0 };
-            })
-            .sort((a, b) => b.rating - a.rating);
-    }, [activeCategory, initialParticipants]);
-
-
-
-
-
-
-
-
-    // === Генерация Олимпийки ===
-    const generateSingleElimination = (participantCount: number, seeding: SeedingType) => {
-        let bracketSize = 1;
-        while (bracketSize < participantCount) bracketSize *= 2;
-        const byesCount = bracketSize - participantCount;
-        const matchCount = bracketSize / 2;
-
-        const newMatches: LocalMatch[] = Array.from({ length: matchCount }, (_, i) => ({
-            id: `m${i}`,
-            p1: null,
-            p2: null,
-        }));
-
-        const byePositions = [
-            0,
-            matchCount - 1,
-            Math.floor(matchCount / 2),
-            Math.floor(matchCount / 2) - 1,
-            1,
-            matchCount - 2,
-        ];
-        for (let i = 0; i < byesCount; i++) {
-            const idx = byePositions[i % byePositions.length];
-            if (newMatches[idx] && !newMatches[idx].p2) {
-                newMatches[idx].p2 = 'BYE';
-            }
-        }
-
-        if (activeCategory) {
             setBrackets((prev) => ({
                 ...prev,
                 [activeCategory]: {
                     format: 'SE',
-                    startingMatches: newMatches,
+                    startingMatches,
                     rrPlayers: [],
                     seedingType: seeding,
                 },
             }));
-        }
-        setSettingsOpen(false);
-    };
+        } else if (format === 'RR') {
+            // Для круговой тоже учитываем targetCount
+            const maxPlayers = Math.max(targetCount, playersToUse.length);
+            const rrSlots: Participant[] = Array.from({ length: maxPlayers }, (_, i) => {
+                const p = playersToUse[i];
+                return p ? { id: p.id, name: p.name, rating: p.rating } : null;
+            });
 
-    const generateRoundRobin = (participantCount: number) => {
-        const slots: Participant[] = Array.from({ length: participantCount }, () => null);
-        if (activeCategory) {
             setBrackets((prev) => ({
                 ...prev,
                 [activeCategory]: {
                     format: 'RR',
                     startingMatches: [],
-                    rrPlayers: slots,
+                    rrPlayers: rrSlots,
+                    seedingType: seeding,
                 },
             }));
         }
+
         setSettingsOpen(false);
+        toast.success('Сетка сгенерирована');
     };
 
-    // === Управление слотами ===
+    // Слот-клики и вызов модалки
     const handleSlotClick = (matchIndex: number, slot: 'p1' | 'p2') => {
         setActiveSlot({ type: 'se', matchIndex, slot });
         setSelectorOpen(true);
@@ -276,17 +254,11 @@ export function BracketBuilder({
         if (activeSlot.type === 'se') {
             const next = [...state.startingMatches];
             next[activeSlot.matchIndex][activeSlot.slot] = participant;
-            setBrackets((prev) => ({
-                ...prev,
-                [activeCategory]: { ...state, startingMatches: next },
-            }));
+            setBrackets((prev) => ({ ...prev, [activeCategory]: { ...state, startingMatches: next } }));
         } else {
             const next = [...state.rrPlayers];
             next[activeSlot.index] = participant;
-            setBrackets((prev) => ({
-                ...prev,
-                [activeCategory]: { ...state, rrPlayers: next },
-            }));
+            setBrackets((prev) => ({ ...prev, [activeCategory]: { ...state, rrPlayers: next } }));
         }
 
         setSelectorOpen(false);
@@ -300,10 +272,7 @@ export function BracketBuilder({
         if (!state) return;
         const next = [...state.startingMatches];
         next[matchIndex][slot] = null;
-        setBrackets((prev) => ({
-            ...prev,
-            [activeCategory]: { ...state, startingMatches: next },
-        }));
+        setBrackets((prev) => ({ ...prev, [activeCategory]: { ...state, startingMatches: next } }));
     };
 
     const handleClearRRSlot = (index: number, e: React.MouseEvent) => {
@@ -313,18 +282,14 @@ export function BracketBuilder({
         if (!state) return;
         const next = [...state.rrPlayers];
         next[index] = null;
-        setBrackets((prev) => ({
-            ...prev,
-            [activeCategory]: { ...state, rrPlayers: next },
-        }));
+        setBrackets((prev) => ({ ...prev, [activeCategory]: { ...state, rrPlayers: next } }));
     };
 
-    // === Категории ===
     const handleAddCategory = async (cat: Omit<Category, 'id' | 'status'>) => {
         const result = await createTournamentCategoryAction(
             tournamentId,
-            cat.name, // Discipline
-            cat.ratingGroup, // RatingGroup
+            cat.name,
+            cat.ratingGroup,
             cat.count
         );
 
@@ -333,11 +298,7 @@ export function BracketBuilder({
             return;
         }
 
-        const newCat: Category = {
-            ...cat,
-            id: result.data.id,
-            status: 'draft',
-        };
+        const newCat: Category = { ...cat, id: result.data.id, status: 'draft' };
         setCategories((prev) => [...prev, newCat]);
         setActiveCategory(newCat.id);
         setAddCategoryOpen(false);
@@ -355,37 +316,9 @@ export function BracketBuilder({
         if (activeCategory === id) setActiveCategory(null);
     };
 
-    // === Экспорт (Заглушки, реализуем позже с html-to-image и jsPDF) ===
-    const handleExportPDF = () => {
-        toast.info('Экспорт в PDF будет доступен после сохранения сетки в БД');
-    };
-    const handleExportPNG = () => {
-        toast.info('Экспорт в PNG будет доступен после сохранения сетки в БД');
-    };
-
-    const clearCurrentBracket = () => {
-        if (!activeCategory) return;
-        setBrackets((prev) => {
-            const next = { ...prev };
-            delete next[activeCategory];
-            return next;
-        });
-    };
-
-
     const handleSaveAll = () => {
-        if (!tournamentId) {
-            toast.error('Нет ID турнира');
-            return;
-        }
-        if (!activeCategory || !brackets[activeCategory]) {
-            toast.error('Сетка не создана');
-            return;
-        }
-
-        // Не сохраняем фейковые id вида c1789...
-        if (!/^[0-9a-f-]{36}$/i.test(activeCategory)) {
-            toast.error('Сначала создайте категорию через «Добавить категорию» (нужен UUID из БД)');
+        if (!tournamentId || !activeCategory || !brackets[activeCategory]) {
+            toast.error('Сетка не выбрана');
             return;
         }
 
@@ -396,11 +329,9 @@ export function BracketBuilder({
                 brackets[activeCategory]
             );
             if (res.success) {
-                toast.success('Сетка сохранена');
+                toast.success('Сетка сохранена в Supabase');
                 setCategories((prev) =>
-                    prev.map((c) =>
-                        c.id === activeCategory ? { ...c, status: 'ready' } : c
-                    )
+                    prev.map((c) => (c.id === activeCategory ? { ...c, status: 'ready' } : c))
                 );
             } else {
                 toast.error(res.error || 'Ошибка сохранения');
@@ -413,10 +344,17 @@ export function BracketBuilder({
             <BracketHeader
                 tournamentId={tournamentId}
                 hasBracket={hasBracket}
-                onClearBracket={clearCurrentBracket}
+                onClearBracket={() => {
+                    if (!activeCategory) return;
+                    setBrackets((prev) => {
+                        const next = { ...prev };
+                        delete next[activeCategory];
+                        return next;
+                    });
+                }}
                 onSave={handleSaveAll}
-                onExportPDF={handleExportPDF}
-                onExportPNG={handleExportPNG}
+                onExportPDF={() => toast.info('Экспорт PDF скоро будет доступен')}
+                onExportPNG={() => toast.info('Экспорт PNG скоро будет доступен')}
             />
 
             <div className="flex flex-1 overflow-hidden">
@@ -437,10 +375,7 @@ export function BracketBuilder({
                             <p className="text-sm text-muted max-w-sm mb-6">
                                 Добавьте категорию слева, чтобы начать построение сетки.
                             </p>
-                            <Button
-                                onClick={() => setAddCategoryOpen(true)}
-                                className="bg-accent text-accent-foreground font-bold"
-                            >
+                            <Button onClick={() => setAddCategoryOpen(true)} className="bg-accent text-accent-foreground font-bold">
                                 <Plus className="w-4 h-4 mr-2" /> Добавить категорию
                             </Button>
                         </div>
@@ -455,12 +390,9 @@ export function BracketBuilder({
                                 Сетка {currentCat.name} (Группа {currentCat.ratingGroup}) не создана
                             </h2>
                             <p className="text-sm text-muted max-w-sm mb-8 leading-relaxed">
-                                В категории {currentCat.count} участников. Настройте формат — система сгенерирует структуру автоматически.
+                                Участников зарегистрировано: {availableParticipants.length}. Нажмите «Настроить», чтобы система авторасставила игроков.
                             </p>
-                            <Button
-                                onClick={() => setSettingsOpen(true)}
-                                className="bg-accent text-accent-foreground font-bold px-8 shadow-lg hover:opacity-90"
-                            >
+                            <Button onClick={() => setSettingsOpen(true)} className="bg-accent text-accent-foreground font-bold px-8 shadow-lg hover:opacity-90">
                                 <Settings2 className="w-4 h-4 mr-2" /> Настроить сетку
                             </Button>
                         </div>
@@ -485,20 +417,14 @@ export function BracketBuilder({
             </div>
 
             {addCategoryOpen && (
-                <AddCategoryModal
-                    onClose={() => setAddCategoryOpen(false)}
-                    onCreate={handleAddCategory}
-                />
+                <AddCategoryModal onClose={() => setAddCategoryOpen(false)} onCreate={handleAddCategory} />
             )}
 
             {settingsOpen && currentCat && (
                 <BracketSettingsModal
                     category={currentCat}
                     onClose={() => setSettingsOpen(false)}
-                    onGenerate={(format, seeding) => {
-                        if (format === 'SE') generateSingleElimination(currentCat.count, seeding);
-                        else generateRoundRobin(currentCat.count);
-                    }}
+                    onGenerate={handleGenerateBracket}
                 />
             )}
 

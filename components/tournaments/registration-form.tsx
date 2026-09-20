@@ -18,11 +18,12 @@ const CATEGORY_LABELS: Record<string, string> = {
     WS: 'Женская одиночка',
     MD: 'Мужская пара',
     WD: 'Женская пара',
-    XD: 'Смешанная пара (Микст)',
+    XD: 'Смешанная пара',
 }
 
 const PAIR_CATEGORIES = new Set(['MD', 'WD', 'XD'])
 const ALL_GROUPS = ['A', 'B', 'C', 'D', 'E'] as const
+const ALL_DISCIPLINES = ['MS', 'WS', 'MD', 'WD', 'XD'] as const
 
 type PartnerChoice =
     | null
@@ -59,41 +60,49 @@ export function RegistrationDialog({
                                    }: Props) {
     const [runAction, isPending] = useProgressAction()
 
-    // категории, совместимые с полом и в которых пользователь ещё НЕ участвует.
+    // категории, совместимые с полом
     const genderCompatible = useMemo(
         () => categories.filter((cat) => !currentUserGender || canPlayerJoinCategory(currentUserGender, cat.category)),
         [categories, currentUserGender]
     )
 
-    // Какие группы вообще есть среди совместимых категорий
+    // Доступные дисциплины
+    const disciplinesInTournament = useMemo(() => {
+        const set = new Set<string>()
+        genderCompatible.forEach((c) => set.add(c.category))
+        return ALL_DISCIPLINES.filter((d) => set.has(d))
+    }, [genderCompatible])
+
+    // Доступные группы
     const groupsInTournament = useMemo(() => {
         const set = new Set<string>()
         genderCompatible.forEach((c) => c.rating_group && set.add(c.rating_group))
         return ALL_GROUPS.filter((g) => set.has(g))
     }, [genderCompatible])
 
-    // Мультивыбор групп A–E. По умолчанию выбраны все доступные группы.
+    // Стейты мультивыбора (по умолчанию выбрано всё доступное)
+    const [selectedDisciplines, setSelectedDisciplines] = useState<string[]>(disciplinesInTournament)
     const [selectedGroups, setSelectedGroups] = useState<string[]>(groupsInTournament)
 
-    const toggleGroup = (g: string) =>
-        setSelectedGroups((prev) =>
-            prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g]
-        )
+    const toggleDiscipline = (d: string) =>
+        setSelectedDisciplines((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d])
 
-    // итоговый список для показа: пол-совместимые, не занятые, входящие в выбранные группы.
+    const toggleGroup = (g: string) =>
+        setSelectedGroups((prev) => prev.includes(g) ? prev.filter((x) => x !== g) : [...prev, g])
+
+    // итоговый список
     const availableCategories = useMemo(
         () =>
             genderCompatible.filter((cat) => {
                 if (myParticipation[cat.id]) return false
-                if (selectedGroups.length > 0 && cat.rating_group) {
-                    return selectedGroups.includes(cat.rating_group)
-                }
+                if (selectedDisciplines.length > 0 && !selectedDisciplines.includes(cat.category)) return false
+                if (selectedGroups.length > 0 && cat.rating_group && !selectedGroups.includes(cat.rating_group)) return false
                 return true
             }),
-        [genderCompatible, myParticipation, selectedGroups]
+        [genderCompatible, myParticipation, selectedDisciplines, selectedGroups]
     )
 
-    // Есть ли в принципе куда записываться (без учёта фильтра групп)?
+    // Есть ли в принципе куда записываться
     const hasAnyFreeSlot = useMemo(
         () => genderCompatible.some((cat) => !myParticipation[cat.id]),
         [genderCompatible, myParticipation]
@@ -171,13 +180,11 @@ export function RegistrationDialog({
         })
     }
 
-    // Если у пользователя не заполнен пол
     if (!currentUserGender) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="border-card bg-elevated max-w-sm text-center p-6">
-                    <div
-                        className="w-12 h-12 mx-auto rounded-full bg-warning/10 flex items-center justify-center text-warning mb-3">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-warning/10 flex items-center justify-center text-warning mb-3">
                         <AlertTriangle className="w-6 h-6"/>
                     </div>
                     <DialogHeader>
@@ -187,10 +194,7 @@ export function RegistrationDialog({
                         Для подбора допустимых категорий нужно указать пол в настройках вашего профиля.
                     </p>
                     <div className="flex flex-col gap-2 mt-5">
-                        <Link
-                            href="/profile/settings"
-                            className="w-full py-2.5 bg-accent text-accent-foreground rounded-xl font-bold text-sm"
-                        >
+                        <Link href="/profile/settings" className="w-full py-2.5 bg-accent text-accent-foreground rounded-xl font-bold text-sm">
                             Перейти в настройки
                         </Link>
                         <Button onClick={() => onOpenChange(false)} variant="ghost" className="text-muted text-xs">
@@ -202,13 +206,11 @@ export function RegistrationDialog({
         )
     }
 
-    // Пол задан, но НИ ОДНОЙ подходящей по полу категории нет
     if (genderCompatible.length === 0) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="border-card bg-elevated max-w-sm text-center p-6">
-                    <div
-                        className="w-12 h-12 mx-auto rounded-full bg-warning/10 flex items-center justify-center text-warning mb-3">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-warning/10 flex items-center justify-center text-warning mb-3">
                         <AlertTriangle className="w-6 h-6"/>
                     </div>
                     <DialogHeader>
@@ -225,13 +227,11 @@ export function RegistrationDialog({
         )
     }
 
-    // уже записаны во все доступные категории
     if (!hasAnyFreeSlot) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="border-card bg-elevated max-w-sm text-center p-6">
-                    <div
-                        className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center text-accent mb-3">
+                    <div className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center text-accent mb-3">
                         <Trophy className="w-6 h-6"/>
                     </div>
                     <DialogHeader>
@@ -251,7 +251,7 @@ export function RegistrationDialog({
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-h-[90vh] overflow-hidden border-card bg-elevated p-0 sm:max-w-md"
+                className="max-h-[100vh] overflow-hidden border-card bg-elevated p-0 sm:max-w-md"
                 hideCloseButton
             >
                 <div className="flex items-center justify-between border-b border-card p-4 bg-subtle/30">
@@ -268,13 +268,35 @@ export function RegistrationDialog({
                     </button>
                 </div>
 
-                {/* мультивыбор групп A–E */}
-                {groupsInTournament.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 px-4 pt-3">
-                        <span className="text-[11px] text-muted font-semibold mr-1">Группы:</span>
-                        {groupsInTournament.map((g) => {
-                            const active = selectedGroups.includes(g)
-                            return (
+                <div className="flex flex-col gap-3 pt-3 px-4 pb-2">
+                    {/* Фильтр дисциплин */}
+                    {disciplinesInTournament.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] text-muted font-semibold mr-1 w-16">Дисциплины:</span>
+                            {disciplinesInTournament.map((d) => (
+                                <button
+                                    key={d}
+                                    type="button"
+                                    onClick={() => toggleDiscipline(d)}
+                                    disabled={isPending}
+                                    className={cn(
+                                        'px-2.5 py-1 rounded-lg text-xs font-bold transition-all',
+                                        selectedDisciplines.includes(d)
+                                            ? 'bg-accent text-accent-foreground shadow-sm'
+                                            : 'bg-subtle/50 text-muted hover:text-main'
+                                    )}
+                                >
+                                    {d}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Фильтр групп */}
+                    {groupsInTournament.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-[11px] text-muted font-semibold mr-1 w-16">Группы:</span>
+                            {groupsInTournament.map((g) => (
                                 <button
                                     key={g}
                                     type="button"
@@ -282,22 +304,22 @@ export function RegistrationDialog({
                                     disabled={isPending}
                                     className={cn(
                                         'px-3 py-1 rounded-lg text-xs font-black transition-all',
-                                        active
+                                        selectedGroups.includes(g)
                                             ? 'bg-accent text-accent-foreground shadow-sm'
                                             : 'bg-subtle/50 text-muted hover:text-main'
                                     )}
                                 >
                                     {g}
                                 </button>
-                            )
-                        })}
-                    </div>
-                )}
+                            ))}
+                        </div>
+                    )}
+                </div>
 
-                <div className="overflow-y-auto px-4 py-3 space-y-2 max-h-[calc(90vh-220px)]">
+                <div className="overflow-y-auto scrollbar-none px-4 py-3 space-y-2 max-h-[calc(90vh-250px)]">
                     {availableCategories.length === 0 ? (
                         <p className="text-center text-xs text-muted py-6">
-                            Нет категорий в выбранных группах — измените фильтр выше.
+                            Нет категорий в выбранных фильтрах.
                         </p>
                     ) : availableCategories.map((cat) => {
                         const isPair = PAIR_CATEGORIES.has(cat.category)
@@ -330,13 +352,7 @@ export function RegistrationDialog({
                                         >
                                             {choice.selected && (
                                                 <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
-                                                    <path
-                                                        d="M2 6L5 9L10 3"
-                                                        stroke="currentColor"
-                                                        strokeWidth="2"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    />
+                                                    <path d="M2 6L5 9L10 3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                                                 </svg>
                                             )}
                                         </div>
@@ -345,8 +361,7 @@ export function RegistrationDialog({
                                                 {CATEGORY_LABELS[cat.category] ?? cat.category}
                                             </p>
                                             {cat.rating_group && (
-                                                <span
-                                                    className="inline-block mt-0.5 text-[10px] font-black bg-accent/15 text-accent px-2 py-0.5 rounded">
+                                                <span className="inline-block mt-0.5 text-[10px] font-black bg-accent/15 text-accent px-2 py-0.5 rounded">
                                                   Группа {cat.rating_group}
                                                 </span>
                                             )}
@@ -375,9 +390,9 @@ export function RegistrationDialog({
                     })}
                 </div>
 
-                <div className="border-t border-card p-4 space-y-2 bg-card">
+                <div className="border-t border-card p-4 bg-card">
                     {totalFee !== null && selectedCount > 0 && (
-                        <div className="flex items-center justify-between rounded-xl bg-accent/10 px-3.5 py-2.5">
+                        <div className="flex items-center justify-between rounded-xl bg-accent/10 px-3.5 py-2.5 mb-3">
                           <span className="text-xs text-accent font-medium">
                             Итого за {selectedCount} {categoryWord(selectedCount)}:
                           </span>

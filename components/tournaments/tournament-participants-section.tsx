@@ -14,7 +14,7 @@ import {
 } from '@/app/(main)/tournaments/registration-actions'
 import {
     Trash2, UserPlus, Users, Clock, Loader2, UserX, LogOut,
-    Trophy, CheckCircle2, Info, Filter
+    Trophy, CheckCircle2, Info, ChevronDown
 } from 'lucide-react'
 import {
     MyParticipationInCategory, ParticipantPlayerInfo,
@@ -29,6 +29,8 @@ const CATEGORY_LABELS: Record<string, string> = {
     WD: 'Женская пара',
     XD: 'Смешанная пара',
 }
+
+const CAT_ORDER: Record<string, number> = { MS: 1, WS: 2, MD: 3, WD: 4, XD: 5 }
 
 type Props = {
     tournamentId: string
@@ -51,11 +53,9 @@ export function TournamentParticipantsSection({
                                                   entryFee,
                                                   hasEntryFee,
                                               }: Props) {
-    // Состояния фильтров
     const [selectedDiscipline, setSelectedDiscipline] = useState<string>('ALL')
     const [selectedGroup, setSelectedGroup] = useState<string>('ALL')
 
-    // Доступные группы в этом турнире для второй строки фильтра
     const availableGroups = useMemo(() => {
         const groups = new Set<string>()
         categories.forEach(c => {
@@ -64,13 +64,33 @@ export function TournamentParticipantsSection({
         return Array.from(groups).sort()
     }, [categories])
 
-    // Фильтрация категорий по выбору
+    const myParticipatingCategories = useMemo(() => {
+        return categories.filter(c => myParticipation[c.id])
+    }, [categories, myParticipation])
+
+    // Явно задаём Set<string>, чтобы избежать ошибок TS2345
+    const myDisciplines = useMemo(() => {
+        const set = new Set<string>()
+        myParticipatingCategories.forEach(c => set.add(c.category))
+        return set
+    }, [myParticipatingCategories])
+
+    const myGroups = useMemo(() => {
+        const set = new Set<string>()
+        myParticipatingCategories.forEach(c => {
+            if (c.rating_group) set.add(c.rating_group)
+        })
+        return set
+    }, [myParticipatingCategories])
+
     const filteredCategories = useMemo(() => {
-        return categories.filter(c => {
+        const filtered = categories.filter(c => {
             const matchesDiscipline = selectedDiscipline === 'ALL' || c.category === selectedDiscipline
             const matchesGroup = selectedGroup === 'ALL' || c.rating_group === selectedGroup
             return matchesDiscipline && matchesGroup
         })
+
+        return filtered.sort((a, b) => (CAT_ORDER[a.category] || 99) - (CAT_ORDER[b.category] || 99))
     }, [categories, selectedDiscipline, selectedGroup])
 
     if (categories.length === 0) {
@@ -85,8 +105,6 @@ export function TournamentParticipantsSection({
     return (
         <div className="space-y-4">
             <div className="bg-card border border-card rounded-2xl p-3 space-y-2.5 shadow-sm">
-
-                {/* СТРОКА 1: ДИСЦИПЛИНА */}
                 <div className="flex justify-center items-center gap-1.5 overflow-x-auto scrollbar-hide pb-1">
                     {[
                         { code: 'ALL', label: 'Все' },
@@ -100,18 +118,20 @@ export function TournamentParticipantsSection({
                             key={d.code}
                             onClick={() => setSelectedDiscipline(d.code)}
                             className={cn(
-                                'px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0',
+                                'relative px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0',
                                 selectedDiscipline === d.code
                                     ? 'bg-accent text-accent-foreground shadow-sm'
                                     : 'bg-subtle/50 text-muted hover:text-main'
                             )}
                         >
                             {d.label}
+                            {myDisciplines.has(d.code) && (
+                                <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-accent rounded-full animate-pulse-slow border-[1.5px] border-card shadow-[0_0_6px_var(--accent-glow)]" />
+                            )}
                         </button>
                     ))}
                 </div>
 
-                {/* СТРОКА 2: КАТЕГОРИЯ РЕЙТИНГА (A / B / C / D / E) */}
                 <div className="flex justify-center items-center gap-1.5 overflow-x-auto scrollbar-hide border-t border-subtle/50 pt-2">
                     <button
                         onClick={() => setSelectedGroup('ALL')}
@@ -133,7 +153,7 @@ export function TournamentParticipantsSection({
                                 disabled={!exists}
                                 onClick={() => setSelectedGroup(g)}
                                 className={cn(
-                                    'px-2.5 py-1 rounded-lg text-xs font-black transition-all shrink-0',
+                                    'relative px-2.5 py-1 rounded-lg text-xs font-black transition-all shrink-0',
                                     selectedGroup === g
                                         ? 'bg-accent text-accent-foreground shadow-sm'
                                         : exists
@@ -142,37 +162,80 @@ export function TournamentParticipantsSection({
                                 )}
                             >
                                 {g}
+                                {myGroups.has(g) && (
+                                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-accent rounded-full animate-pulse-slow border-[1.5px] border-card shadow-[0_0_6px_var(--accent-glow)]" />
+                                )}
                             </button>
                         )
                     })}
                 </div>
-
             </div>
 
-            {/* СПИСОК КАТЕГОРИЙ */}
+            {myParticipatingCategories.length > 0 && (
+                <div className="bg-accent/10 border border-accent/20 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-2 shadow-sm mb-2">
+                    <div className="flex items-center gap-1.5 text-accent">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Вы участвуете:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                        {myParticipatingCategories.map(c => (
+                            <span key={c.id} className="text-[10px] font-black bg-accent text-accent-foreground px-2 py-0.5 rounded-md shadow-sm">
+                                {c.category} (Группа {c.rating_group || '?'})
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {filteredCategories.length === 0 ? (
                 <div className="text-center py-8 text-xs text-muted">
                     Нет категорий, соответствующих выбранному фильтру
                 </div>
             ) : (
-                <div className="space-y-3 cv-auto">
-                    {filteredCategories.map((category) => (
-                        <CategoryBlock
-                            key={category.id}
-                            tournamentId={tournamentId}
-                            category={category}
-                            myParticipation={myParticipation[category.id]}
-                            currentUserId={currentUserId}
-                            isCoach={isCoach}
-                            isRegistrationOpen={isRegistrationOpen}
-                        />
-                    ))}
+                <div className="space-y-4 mt-2">
+                    {selectedGroup === 'ALL' ? (
+                        Array.from(new Set(filteredCategories.map(c => c.rating_group || 'Без группы')))
+                            .sort()
+                            .map(groupName => {
+                                const catsInGroup = filteredCategories.filter(c => (c.rating_group || 'Без группы') === groupName)
+                                const countInGroup = catsInGroup.reduce((sum, c) => sum + c.participants.length + c.seekers.length, 0)
+
+                                return (
+                                    <GroupAccordion key={groupName} groupName={groupName} count={countInGroup}>
+                                        {catsInGroup.map((category) => (
+                                            <CategoryBlock
+                                                key={category.id}
+                                                tournamentId={tournamentId}
+                                                category={category}
+                                                myParticipation={myParticipation[category.id]}
+                                                currentUserId={currentUserId}
+                                                isCoach={isCoach}
+                                                isRegistrationOpen={isRegistrationOpen}
+                                            />
+                                        ))}
+                                    </GroupAccordion>
+                                )
+                            })
+                    ) : (
+                        <div className="space-y-3">
+                            {filteredCategories.map((category) => (
+                                <CategoryBlock
+                                    key={category.id}
+                                    tournamentId={tournamentId}
+                                    category={category}
+                                    myParticipation={myParticipation[category.id]}
+                                    currentUserId={currentUserId}
+                                    isCoach={isCoach}
+                                    isRegistrationOpen={isRegistrationOpen}
+                                />
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* РАСЧЁТ ОПЛАТЫ */}
             {hasEntryFee && entryFee && Object.keys(myParticipation).length > 0 && (
-                <div className="rounded-2xl border border-accent bg-accent/10 p-4 mt-4">
+                <div className="rounded-2xl border border-accent bg-accent/10 p-4 mt-6">
                     <div className="flex items-center justify-between">
                         <span className="text-sm font-bold text-accent">
                             К оплате за {Object.keys(myParticipation).length} {categoryWord(Object.keys(myParticipation).length)}
@@ -187,9 +250,36 @@ export function TournamentParticipantsSection({
     )
 }
 
-// ============================================================
-// Один блок категории с отображением Дисциплины и Группы
-// ============================================================
+function GroupAccordion({ groupName, count, children }: { groupName: string, count: number, children: React.ReactNode }) {
+    const [isOpen, setIsOpen] = useState(false)
+    return (
+        <div className="space-y-3">
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className={cn(
+                    "flex w-full items-center justify-between rounded-2xl bg-card border shadow-sm transition-all p-4",
+                    isOpen ? "border-subtle" : "border-card hover:border-subtle"
+                )}
+            >
+                <div className="flex items-center gap-3">
+                    <h3 className="text-sm font-black text-strong uppercase tracking-widest">
+                        {groupName === 'Без группы' ? groupName : `Группа ${groupName}`}
+                    </h3>
+                    <span className="text-[11px] font-mono font-bold bg-subtle text-main px-2 py-1 rounded-md">
+                        {count} уч.
+                    </span>
+                </div>
+                <ChevronDown className={cn("w-5 h-5 text-muted transition-transform", isOpen && "rotate-180")} />
+            </button>
+
+            {isOpen && (
+                <div className="space-y-3 animate-in slide-in-from-top-2 fade-in duration-200">
+                    {children}
+                </div>
+            )}
+        </div>
+    )
+}
 
 function CategoryBlock({
                            tournamentId,
@@ -206,6 +296,12 @@ function CategoryBlock({
     isCoach: boolean
     isRegistrationOpen: boolean
 }) {
+    const [isExpanded, setIsExpanded] = useState(false)
+    const MAX_INITIAL = 5
+
+    const visibleParticipants = isExpanded ? category.participants : category.participants.slice(0, MAX_INITIAL)
+    const hiddenCount = category.participants.length - visibleParticipants.length
+
     const totalCount = category.participants.length + category.seekers.length
     const isBracketReady = !isRegistrationOpen && totalCount > 0
 
@@ -218,7 +314,6 @@ function CategoryBlock({
                         <h3 className="text-sm font-bold text-strong">
                             {CATEGORY_LABELS[category.category] ?? category.category}
                         </h3>
-                        {/* 🏆 ПЛАШКА ГРУППЫ (A / B / C / D / E) */}
                         {category.rating_group && (
                             <span className="text-[10px] font-black bg-accent/15 text-accent border border-accent/30 px-2 py-0.5 rounded-md">
                                 Группа {category.rating_group}
@@ -248,7 +343,6 @@ function CategoryBlock({
                 </div>
             </div>
 
-            {/* Ищут партнёра */}
             {category.is_pair_category && category.seekers.length > 0 && (
                 <div className="space-y-2 rounded-xl bg-warning/5 border border-warning/10 p-3">
                     <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-warning mb-1">
@@ -268,10 +362,9 @@ function CategoryBlock({
                 </div>
             )}
 
-            {/* Участники */}
             {category.participants.length > 0 && (
                 <div className="space-y-2 pt-1">
-                    {category.participants.map((record) => (
+                    {visibleParticipants.map((record) => (
                         <ParticipantRow
                             key={record.id}
                             record={record}
@@ -281,6 +374,15 @@ function CategoryBlock({
                             isRegistrationOpen={isRegistrationOpen}
                         />
                     ))}
+
+                    {hiddenCount > 0 && (
+                        <button
+                            onClick={() => setIsExpanded(true)}
+                            className="w-full py-2.5 mt-2 rounded-xl bg-subtle/30 text-[11px] uppercase tracking-widest font-bold text-muted hover:bg-subtle hover:text-main transition-colors"
+                        >
+                            Показать ещё {hiddenCount}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -369,8 +471,10 @@ function ParticipantRow({
 
     return (
         <div className={cn(
-            'flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 rounded-xl p-2.5 transition-all',
-            iAmInvolved ? 'bg-accent/5 border border-accent/20' : 'bg-subtle/30 border border-transparent hover:border-subtle',
+            'flex flex-wrap sm:flex-nowrap items-center justify-between gap-2 rounded-xl p-2.5 transition-all overflow-hidden',
+            iAmInvolved
+                ? 'bg-accent/10 border-accent/40 shadow-[inset_3px_0_0_0_var(--accent-color)]'
+                : 'bg-subtle/30 border border-transparent hover:border-subtle',
             isPending && 'opacity-50'
         )}>
             <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap sm:flex-nowrap">

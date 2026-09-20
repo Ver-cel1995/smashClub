@@ -33,7 +33,7 @@ export function BracketHeader({
                 <div>
                     <h1 className="text-strong font-bold text-sm">Управление сетками</h1>
                     <p className="text-[10px] text-dim font-mono tracking-widest uppercase mt-0.5">
-                        Кубок Кущёвской 2026
+                        Кубок России 2026
                     </p>
                 </div>
             </div>
