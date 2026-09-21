@@ -12,7 +12,7 @@ export const getTournamentBracketData = cache(async (tournamentId: string) => {
             .maybeSingle(),
         supabase
             .from('tournament_categories')
-            .select('id, category, age_group, rating_group, max_pairs, bracket_format, bracket_status, bracket_generated, participants_count')
+            .select('id, category, age_group, rating_group, max_pairs, bracket_format, bracket_status, bracket_generated, participants_count, bracket_settings')
             .eq('tournament_id', tournamentId),
     ]);
 

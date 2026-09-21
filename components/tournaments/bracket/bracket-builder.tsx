@@ -1,33 +1,38 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import {useEffect, useMemo, useState, useTransition} from 'react';
 import { Plus, Settings2, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BracketHeader } from './bracket-header';
 import { BracketSidebar } from './bracket-sidebar';
 import { BracketSingleElim } from './bracket-single-elim';
 import { BracketRoundRobin } from './bracket-round-robin';
+import { BracketGroupsThenSE } from './bracket-groups-then-se';
 import { AddCategoryModal } from './modals/add-category-modal';
 import { BracketSettingsModal } from './modals/bracket-settings-modal';
 import { ParticipantSelectorModal } from './modals/participant-selector-modal';
 import { toast } from 'sonner';
 import type {
+    BracketFormat,
     BracketState,
     Category,
     Discipline,
-    LocalMatch,
+    LocalMatch, MatchResult,
     Participant,
     RatingGroup,
     SeedingType,
 } from '@/shared/types/bracket';
-import { createTournamentCategoryAction, saveCategoryBracketAction } from "@/app/(main)/tournaments/bracket-actions";
+import {
+    createTournamentCategoryAction,
+    deleteTournamentCategoryAction,
+    saveCategoryBracketAction
+} from "@/app/(main)/tournaments/bracket-actions";
 import { DISCIPLINE_LABELS } from "@/shared/lib/tournament/labels";
 import {
     buildSingleEliminationBracket,
-    generateRoundRobinSchedule,
-    snakeSeeding,
-    uniformSeeding,
-    EnginePlayer
+    buildGroupsThenSE,
+    EnginePlayer,
+    ExtendedFormat,
 } from '@/shared/lib/tournament/bracket-engine';
 
 export function BracketBuilder({
@@ -57,21 +62,25 @@ export function BracketBuilder({
             'C';
         const ready = c.bracket_status === 'ready' || c.bracket_generated === true;
 
+        const actualParticipantCount = (initialParticipants ?? []).filter(
+            (p: any) => p.category_id === c.id && p.status !== 'withdrawn'
+        ).length;
+
         return {
             id: c.id,
             name: c.category,
             desc: DISCIPLINE_LABELS[c.category] ?? c.category,
             ratingGroup: ['A', 'B', 'C', 'D', 'E'].includes(group) ? group : 'C',
-            count: c.max_pairs ?? 8,
+            count: actualParticipantCount,
             status: ready ? 'ready' : 'draft',
             format: c.bracket_format === 'round_robin' ? 'RR' : c.bracket_format === 'single_elim' ? 'SE' : undefined
         };
     }
 
-    // Восстановление сеток из БД
+    // 🎯 ВОССТАНОВЛЕНИЕ ВСЕХ ДАННЫХ СЕТКИ ИЗ БАЗЫ SUPABASE ПРИ F5
     function buildInitialBrackets(): Record<string, BracketState> {
         const result: Record<string, BracketState> = {};
-        const cats = (initialCategories ?? []) as Array<{ id: string; bracket_format?: string | null }>;
+        const cats = (initialCategories ?? []) as Array<{ id: string; bracket_format?: string | null; bracket_settings?: any }>;
 
         const nameOf = (participantId: string | null): Participant => {
             if (!participantId) return null;
@@ -80,27 +89,42 @@ export function BracketBuilder({
             if (p.player2 || p.guest2) {
                 const n1 = p.player1?.full_name || p.guest1?.full_name || 'Игрок 1';
                 const n2 = p.player2?.full_name || p.guest2?.full_name || 'Игрок 2';
-                const r1 = p.player1?.rating_doubles || 0;
-                const r2 = p.player2?.rating_doubles || 0;
+                const r1 = p.player1?.rating_doubles || p.player1?.rating_singles || 0;
+                const r2 = p.player2?.rating_doubles || p.player2?.rating_singles || 0;
                 const avg = r1 && r2 ? Math.round((r1 + r2) / 2) : r1 || r2 || 0;
                 return { id: p.id, name: `${n1.split(' ')[0]} / ${n2.split(' ')[0]}`, rating: avg };
             }
             const name = p.player1?.full_name || p.guest1?.full_name || 'Игрок';
-            return { id: p.id, name, rating: p.player1?.rating_singles || 0 };
+            const rating = p.player1?.rating_singles || p.player1?.rating_doubles || 0;
+            return { id: p.id, name, rating };
         };
 
         for (const cat of cats) {
+            // 🎯 ЗАЩИЩЁННЫЙ ПАРСИНГ JSON ИЗ БАЗЫ
+            let settings = cat.bracket_settings;
+            if (typeof settings === 'string') {
+                try {
+                    settings = JSON.parse(settings);
+                } catch (e) {
+                    console.error("Ошибка парсинга bracket_settings:", e);
+                }
+            }
+
+            if (settings && typeof settings === 'object' && settings.format) {
+                result[cat.id] = settings as BracketState;
+                continue;
+            }
+
+            // Фоллбэк (если JSONB пустой, собираем из старой таблицы матчей)
             const catMatches = (initialMatches ?? [])
                 .filter((m: any) => m.category_id === cat.id)
                 .sort((a: any, b: any) => a.round - b.round || a.position - b.position);
+
             if (catMatches.length === 0) continue;
 
-            if (cat.bracket_format === 'round_robin') {
+            if (cat.bracket_format === 'round_robin' || cat.bracket_format === 'RR') {
                 const players: Participant[] = [];
-                const hasPlayer = (id: string) =>
-                    players.some((x): x is { id: string; name: string; rating: number } =>
-                        !!x && x !== 'BYE' && x.id === id
-                    );
+                const hasPlayer = (id: string) => players.some((x: any) => x && x !== 'BYE' && x.id === id);
                 catMatches.forEach((m: any) => {
                     const p1 = nameOf(m.participant1_id);
                     const p2 = nameOf(m.participant2_id);
@@ -110,22 +134,52 @@ export function BracketBuilder({
                 result[cat.id] = { format: 'RR', startingMatches: [], rrPlayers: players };
             } else {
                 const starting = catMatches
-                    .filter((m: any) => m.round === 1)
+                    .filter((m: any) => m.round === 1 || m.round === 0)
                     .map((m: any, i: number) => ({
-                        id: `m${i}`,
+                        id: m.id || `m${i}`,
                         p1: m.placeholder_p1 === 'BYE' ? ('BYE' as const) : nameOf(m.participant1_id),
                         p2: m.placeholder_p2 === 'BYE' ? ('BYE' as const) : nameOf(m.participant2_id),
                     }));
+
+                const matchResults: Record<string, any> = {};
+                catMatches.forEach((m: any) => {
+                    if (m.winner_id) matchResults[m.id] = { winnerId: m.winner_id, scores: m.score || [] };
+                });
+
                 result[cat.id] = {
-                    format: 'SE',
+                    format: (cat.bracket_format as BracketFormat) || 'SE',
                     startingMatches: starting,
                     rrPlayers: [],
-                    seedingType: 'SNAKE',
+                    matchResults,
                 };
             }
         }
         return result;
     }
+
+    const handleDeleteEmptyCategories = async () => {
+        const emptyCategories = categories.filter((c) => c.count === 0);
+        if (emptyCategories.length === 0) {
+            toast.info('Нет пустых категорий');
+            return;
+        }
+
+        let deletedCount = 0;
+        for (const cat of emptyCategories) {
+            const res = await deleteTournamentCategoryAction(tournamentId, cat.id);
+            if (res.success) deletedCount++;
+        }
+
+        toast.success(`Удалено пустых категорий: ${deletedCount}`);
+        setCategories((prev) => prev.filter((c) => c.count > 0));
+    };
+
+
+    const handleEditCategory = (id: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setActiveCategory(id);
+        setSettingsOpen(true); // Заново открываем модалку настроек для этой категории!
+    };
 
     const [categories, setCategories] = useState<Category[]>(
         (initialCategories ?? []).map(mapDbCategory)
@@ -134,7 +188,6 @@ export function BracketBuilder({
     const [isSaving, startSavingTransition] = useTransition();
     const [brackets, setBrackets] = useState<Record<string, BracketState>>(buildInitialBrackets);
 
-    // Модалки
     const [addCategoryOpen, setAddCategoryOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
     const [selectorOpen, setSelectorOpen] = useState(false);
@@ -143,28 +196,30 @@ export function BracketBuilder({
         | { type: 'rr'; index: number }
         | null
     >(null);
+    const [isDirty, setIsDirty] = useState(false);
+
 
     const currentCat = categories.find((c) => c.id === activeCategory);
     const currentBracket = activeCategory ? brackets[activeCategory] : null;
     const hasBracket = !!currentBracket;
 
-    // Подготовка списка участников текущей категории
     const availableParticipants = useMemo(() => {
         if (!activeCategory || !initialParticipants) return [];
 
         return initialParticipants
-            .filter(p => p.category_id === activeCategory && p.status === 'confirmed')
+            .filter(p => p.category_id === activeCategory && p.status !== 'withdrawn')
             .map(p => {
                 if (p.player2 || p.guest2) {
                     const name1 = p.player1?.full_name || p.guest1?.full_name || 'Игрок 1';
                     const name2 = p.player2?.full_name || p.guest2?.full_name || 'Игрок 2';
-                    const r1 = p.player1?.rating_doubles || 0;
-                    const r2 = p.player2?.rating_doubles || 0;
+                    const r1 = p.player1?.rating_doubles || p.player1?.rating_singles || 0;
+                    const r2 = p.player2?.rating_doubles || p.player2?.rating_singles || 0;
                     const avgRating = r1 && r2 ? Math.round((r1 + r2) / 2) : (r1 || r2 || 0);
                     return { id: p.id, name: `${name1.split(' ')[0]} / ${name2.split(' ')[0]}`, rating: avgRating };
                 }
                 const name = p.player1?.full_name || p.guest1?.full_name || 'Игрок';
-                return { id: p.id, name: name, rating: p.player1?.rating_singles || 0 };
+                const rating = p.player1?.rating_singles || p.player1?.rating_doubles || 0;
+                return { id: p.id, name, rating };
             })
             .sort((a, b) => b.rating - a.rating);
     }, [activeCategory, initialParticipants]);
@@ -172,70 +227,175 @@ export function BracketBuilder({
     const selectedParticipantIds = useMemo(() => {
         const ids = new Set<string>();
         Object.values(brackets).forEach((state) => {
-            state.startingMatches.forEach((m) => {
-                if (m.p1 && m.p1 !== 'BYE') ids.add(m.p1.id);
-                if (m.p2 && m.p2 !== 'BYE') ids.add(m.p2.id);
+            if (!state) return;
+
+            // Проверка с опциональной цепочкой ?. для startingMatches
+            state.startingMatches?.forEach((m) => {
+                if (m.p1 && typeof m.p1 === 'object' && 'id' in m.p1) {
+                    ids.add(m.p1.id);
+                }
+                if (m.p2 && typeof m.p2 === 'object' && 'id' in m.p2) {
+                    ids.add(m.p2.id);
+                }
             });
-            state.rrPlayers.forEach((p) => {
-                if (p && p !== 'BYE') ids.add(p.id);
+
+            // Проверка с опциональной цепочкой ?. для rrPlayers
+            state.rrPlayers?.forEach((p) => {
+                if (p && typeof p === 'object' && 'id' in p) {
+                    ids.add(p.id);
+                }
             });
         });
         return ids;
     }, [brackets]);
 
-    // === ГЕНЕРАЦИЯ СЕТКИ ПО АЛГОРИТМАМ BADMINTON4U / BWF ===
-    const handleGenerateBracket = (format: string, seeding: SeedingType, groupCount = 4, autoSeed = true) => {
-        if (!activeCategory || !currentCat) return;
 
-        // Если стоит автопосев — берем реальных участников, иначе генерируем пустой шаблон
-        const playersToUse: EnginePlayer[] = autoSeed ? availableParticipants : [];
 
-        // Сколько слотов мы ожидаем (по настройкам категории)
-        const targetCount = currentCat.count || 8;
+    // Функция ввода счёта судьёй
+    const handleScoreSubmit = (matchId: string, result: MatchResult) => {
+        if (!activeCategory) return;
 
-        if (format === 'SE' || format === 'APP12') {
-            // Передаем targetCount в движок!
-            const engineMatches = buildSingleEliminationBracket(playersToUse, targetCount);
+        setBrackets((prev) => {
+            const current = prev[activeCategory];
+            if (!current) return prev;
 
-            const startingMatches: LocalMatch[] = engineMatches.map((m, i) => ({
-                id: `m${i}`,
-                p1: m.p1.player === 'BYE' ? 'BYE' : m.p1.player ? { id: m.p1.player.id, name: m.p1.player.name, rating: m.p1.player.rating } : null,
-                p2: m.p2.player === 'BYE' ? 'BYE' : m.p2.player ? { id: m.p2.player.id, name: m.p2.player.name, rating: m.p2.player.rating } : null,
-            }));
+            const nextResults = {
+                ...(current.matchResults || {}),
+                [matchId]: result,
+            };
 
-            setBrackets((prev) => ({
+            return {
                 ...prev,
                 [activeCategory]: {
-                    format: 'SE',
-                    startingMatches,
-                    rrPlayers: [],
-                    seedingType: seeding,
+                    ...current,
+                    matchResults: nextResults,
                 },
-            }));
-        } else if (format === 'RR') {
-            // Для круговой тоже учитываем targetCount
-            const maxPlayers = Math.max(targetCount, playersToUse.length);
-            const rrSlots: Participant[] = Array.from({ length: maxPlayers }, (_, i) => {
-                const p = playersToUse[i];
-                return p ? { id: p.id, name: p.name, rating: p.rating } : null;
-            });
+            };
+        });
 
-            setBrackets((prev) => ({
-                ...prev,
-                [activeCategory]: {
-                    format: 'RR',
-                    startingMatches: [],
-                    rrPlayers: rrSlots,
-                    seedingType: seeding,
-                },
-            }));
-        }
-
-        setSettingsOpen(false);
-        toast.success('Сетка сгенерирована');
+        setIsDirty(true); // Помечаем, что есть несохранённые данные
+        toast.success('Результат матча записан');
     };
 
-    // Слот-клики и вызов модалки
+    // 🎯 АВТОСОХРАНЕНИЕ В БАЗУ КАЖДЫЕ 12 СЕКУНД
+    useEffect(() => {
+        if (!isDirty || !activeCategory || !brackets[activeCategory]) return;
+
+        const timer = setTimeout(async () => {
+            const res = await saveCategoryBracketAction(
+                tournamentId,
+                activeCategory,
+                brackets[activeCategory]
+            );
+            if (res.success) {
+                setIsDirty(false);
+                toast.success('Автосохранение выполнено', { duration: 2000 });
+            }
+        }, 12000); // 12 секунд - оптимально для нагрузок базы
+
+        return () => clearTimeout(timer);
+    }, [isDirty, activeCategory, brackets, tournamentId]);
+
+
+
+
+    // 🎯 ПОЛНАЯ ГЕНЕРАЦИЯ ДЛЯ ВСЕХ ФОРМАТОВ
+    const handleGenerateBracket = (
+        format: ExtendedFormat,
+        seeding: SeedingType,
+        groupCount = 16,
+        advanceCount = 2,
+        autoSeed = true
+    ) => {
+        if (!activeCategory || !currentCat) return;
+
+        const mapSlotToParticipant = (p: any): Participant => {
+            if (!p) return null;
+            if (p === 'BYE') return 'BYE';
+            if (typeof p === 'object' && 'id' in p && 'name' in p) {
+                return { id: p.id, name: p.name, rating: p.rating ?? 0 };
+            }
+            return null;
+        };
+
+        try {
+            const playersToUse: EnginePlayer[] = autoSeed ? availableParticipants : [];
+
+            if (format === 'RR_THEN_SE') {
+                const data = buildGroupsThenSE(
+                    playersToUse,
+                    groupCount,
+                    advanceCount,
+                    seeding === 'UNIFORM' ? 'UNIFORM' : 'SNAKE'
+                );
+
+                setBrackets((prev) => ({
+                    ...prev,
+                    [activeCategory]: {
+                        format: 'RR_THEN_SE',
+                        startingMatches: [],
+                        rrPlayers: [],
+                        seedingType: seeding,
+                        groupsThenSE: data,
+                    },
+                }));
+                toast.success(`Схема готова: ${groupCount} групп → плей-офф на ${groupCount * advanceCount} чел.`);
+            } else if (format === 'RR' || format === 'ROUND_ROBIN_DOUBLE') {
+                const rrSlots: Participant[] = Array.from(
+                    { length: Math.max(playersToUse.length, currentCat.count || 4) },
+                    (_, i) => {
+                        const p = playersToUse[i];
+                        return p ? { id: p.id, name: p.name, rating: p.rating } : null;
+                    }
+                );
+
+                setBrackets((prev) => ({
+                    ...prev,
+                    [activeCategory]: {
+                        format,
+                        startingMatches: [],
+                        rrPlayers: rrSlots,
+                        seedingType: seeding,
+                    },
+                }));
+                toast.success('Круговая схема сгенерирована');
+            } else {
+                // SE, APP12, DOUBLE_ELIM, SWISS, SE_WITH_PLACES -> рендерим олимпийское дерево
+                const r1 = buildSingleEliminationBracket(playersToUse);
+
+                const startingMatches: LocalMatch[] = r1.map((m, i) => ({
+                    id: m.id || `m${i}`,
+                    p1: mapSlotToParticipant(m.p1),
+                    p2: mapSlotToParticipant(m.p2),
+                }));
+
+                setBrackets((prev) => ({
+                    ...prev,
+                    [activeCategory]: {
+                        format,
+                        startingMatches,
+                        rrPlayers: [],
+                        seedingType: seeding,
+                    },
+                }));
+
+                const formatNames: Record<string, string> = {
+                    SE: 'Олимпийка (Прил. 11)',
+                    APP12: 'Олимпийка (Прил. 12)',
+                    SWISS: 'Швейцарская система',
+                    DOUBLE_ELIM: 'Двойное выбывание',
+                    SE_WITH_PLACES: 'Олимпийка + Места',
+                };
+                toast.success(`${formatNames[format] || 'Схема'} сгенерирована`);
+            }
+
+            setSettingsOpen(false);
+        } catch (err: any) {
+            console.error('[Bracket generate error]', err);
+            toast.error('Ошибка генерации схемы');
+        }
+    };
+
     const handleSlotClick = (matchIndex: number, slot: 'p1' | 'p2') => {
         setActiveSlot({ type: 'se', matchIndex, slot });
         setSelectorOpen(true);
@@ -305,8 +465,16 @@ export function BracketBuilder({
         setTimeout(() => setSettingsOpen(true), 150);
     };
 
-    const handleDeleteCategory = (id: string, e: React.MouseEvent) => {
+    const handleDeleteCategory = async (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
+
+        const res = await deleteTournamentCategoryAction(tournamentId, id);
+        if (!res.success) {
+            toast.error(res.error || 'Ошибка при удалении категории');
+            return;
+        }
+
+        toast.success('Категория удалена');
         setCategories((prev) => prev.filter((c) => c.id !== id));
         setBrackets((prev) => {
             const next = { ...prev };
@@ -364,6 +532,8 @@ export function BracketBuilder({
                     brackets={brackets}
                     onSelectCategory={setActiveCategory}
                     onDeleteCategory={handleDeleteCategory}
+                    onEditCategory={handleEditCategory}
+                    onDeleteEmptyCategories={handleDeleteEmptyCategories}
                     onAddCategory={() => setAddCategoryOpen(true)}
                 />
 
@@ -398,20 +568,31 @@ export function BracketBuilder({
                         </div>
                     )}
 
-                    {currentBracket?.format === 'SE' && (
-                        <BracketSingleElim
-                            startingMatches={currentBracket.startingMatches}
-                            onSlotClick={handleSlotClick}
-                            onSlotClear={handleClearSESlot}
-                        />
-                    )}
+                    {/* 🏆 РЕНДЕР ОЛИМПИЙСКИХ ФОРМАТОВ */}
+                    {currentBracket &&
+                        ['SE', 'APP12', 'SWISS', 'DOUBLE_ELIM', 'SE_WITH_PLACES'].includes(currentBracket.format) && (
+                            <BracketSingleElim
+                                startingMatches={currentBracket.startingMatches}
+                                matchResults={currentBracket.matchResults}
+                                onSlotClick={handleSlotClick}
+                                onSlotClear={handleClearSESlot}
+                                onScoreSubmit={handleScoreSubmit}
+                            />
+                        )}
 
-                    {currentBracket?.format === 'RR' && (
-                        <BracketRoundRobin
-                            rrPlayers={currentBracket.rrPlayers}
-                            onSlotClick={handleRRSlotClick}
-                            onSlotClear={handleClearRRSlot}
-                        />
+                    {/* 🏆 РЕНДЕР КРУГОВЫХ ФОРМАТОВ */}
+                    {currentBracket &&
+                        ['RR', 'ROUND_ROBIN_DOUBLE'].includes(currentBracket.format) && (
+                            <BracketRoundRobin
+                                rrPlayers={currentBracket.rrPlayers}
+                                onSlotClick={handleRRSlotClick}
+                                onSlotClear={handleClearRRSlot}
+                            />
+                        )}
+
+                    {/* 🏆 РЕНДЕР "ГРУППЫ -> СЕТКА" */}
+                    {currentBracket?.format === 'RR_THEN_SE' && currentBracket.groupsThenSE && (
+                        <BracketGroupsThenSE data={currentBracket.groupsThenSE} />
                     )}
                 </main>
             </div>
