@@ -173,7 +173,7 @@ export function BracketSettingsModal({ category, onClose, onGenerate }: Props) {
                             {seBracketInfo.config.hasQualifyingRound ? (
                                 <div className="space-y-2">
                                     <div className="grid grid-cols-2 gap-2 text-[11px]">
-                                        <div className="bg-accent/10 border border-accent/20 rounded-lg p-2">
+                                        <div className="bg-accent/10 border-accent/20 rounded-lg p-2">
                                             <p className="text-dim font-bold uppercase text-[9px] tracking-wider mb-0.5">Квалификация</p>
                                             <p className="text-accent font-black text-sm">
                                                 {seBracketInfo.config.qualifyingMatches} матчей
@@ -207,7 +207,7 @@ export function BracketSettingsModal({ category, onClose, onGenerate }: Props) {
                                 </div>
                             ) : (
                                 <div className="text-[11px] text-muted bg-success/10 border border-success/20 rounded-lg p-2 text-success">
-                                    ✅ N = {playerCount} — уже степень 2, квалификация не нужна.
+                                    ✅ N = {playerCount} - уже степень 2, квалификация не нужна.
                                 </div>
                             )}
                         </div>
@@ -302,13 +302,13 @@ export function BracketSettingsModal({ category, onClose, onGenerate }: Props) {
                             {[
                                 {
                                     id: 'SNAKE',
-                                    label: 'Змейка 🐍',
+                                    label: 'Змейка',
                                     desc: 'Равные по силе группы (стандарт B4U)',
                                     stats: 'Балансирует суммы рейтингов групп',
                                 },
                                 {
                                     id: 'UNIFORM',
-                                    label: 'Равномерный 📊',
+                                    label: 'Равномерный',
                                     desc: 'По слоям рейтинга (быстрее)',
                                     stats: 'Группа A всегда сильнейшая',
                                 },

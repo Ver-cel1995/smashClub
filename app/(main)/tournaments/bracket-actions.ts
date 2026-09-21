@@ -100,49 +100,28 @@ export async function saveCategoryBracketAction(
     bracketState: BracketState
 ): Promise<ActionResult<void>> {
     try {
-        // Валидация UUID
-        const uuidRe =
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-        if (!uuidRe.test(categoryId)) {
-            return {
-                success: false,
-                error: 'Некорректный ID категории. Создайте категорию заново через «Добавить категорию».',
-            };
-        }
-        if (!uuidRe.test(tournamentId)) {
+        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+        if (!uuidRe.test(categoryId) || !uuidRe.test(tournamentId)) {
             return { success: false, error: 'Некорректный ID турнира' };
         }
 
         const auth = await assertCoach();
         if (!auth.ok) return { success: false, error: auth.error };
-
         const supabase = auth.supabase;
 
         // 1. Удаляем старые матчи категории
-        const { error: delErr } = await supabase
-            .from('tournament_matches')
-            .delete()
-            .eq('category_id', categoryId);
+        const { error: delErr } = await supabase.from('tournament_matches').delete().eq('category_id', categoryId);
+        if (delErr) return { success: false, error: delErr.message };
 
-        if (delErr) {
-            console.error('[Save Bracket] delete:', delErr);
-            return { success: false, error: delErr.message };
-        }
-
-        // 2. Single Elimination — пишем стартовый раунд
-        if (bracketState.format === 'SE' && bracketState.startingMatches.length > 0) {
-            // participant1_id / participant2_id — это FK на tournament_participants.id
-            // В конструкторе мы кладём profile id. Если слот = participant record id — ок.
-            // Пока сохраняем как есть; позже маппим profile → participant.
+        // 2. Single Elimination — пишем ТОЛЬКО стартовый раунд для публичного просмотра (остальное восстановит UI из JSONB)
+        if (['SE', 'APP12', 'SWISS', 'DOUBLE_ELIM', 'SE_WITH_PLACES'].includes(bracketState.format) && bracketState.startingMatches.length > 0) {
             const rows = bracketState.startingMatches.map((match, idx) => {
-                const p1 =
-                    match.p1 && match.p1 !== 'BYE' ? match.p1.id : null;
-                const p2 =
-                    match.p2 && match.p2 !== 'BYE' ? match.p2.id : null;
+                const p1 = match.p1 && match.p1 !== 'BYE' ? match.p1.id : null;
+                const p2 = match.p2 && match.p2 !== 'BYE' ? match.p2.id : null;
+                const res = bracketState.matchResults?.[match.id];
 
                 return {
                     category_id: categoryId,
-                    // ВАЖНО: в схеме колонка называется round, не round_number
                     round: 1,
                     position: idx + 1,
                     participant1_id: p1,
@@ -150,41 +129,28 @@ export async function saveCategoryBracketAction(
                     match_type: 'main',
                     placeholder_p1: match.p1 === 'BYE' ? 'BYE' : null,
                     placeholder_p2: match.p2 === 'BYE' ? 'BYE' : null,
-                    status: 'scheduled' as const,
-                    score: [] as unknown as Record<string, never>,
+                    status: res?.winnerId ? 'completed' : 'scheduled',
+                    winner_id: res?.winnerId || null,
+                    score: res?.scores || [],
                 };
             });
 
-            const { error: insErr } = await supabase
-                .from('tournament_matches')
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                .insert(rows as any);
-
-            if (insErr) {
-                console.error('[Save Bracket] insert:', insErr);
-                return { success: false, error: insErr.message };
-            }
+            const { error: insErr } = await supabase.from('tournament_matches').insert(rows as any);
+            if (insErr) return { success: false, error: insErr.message };
         }
 
-        // 3. Статус категории
+        // 3. СТАТУС КАТЕГОРИИ: ВАЖНО — СОХРАНЯЕМ ВЕСЬ BRACKET_STATE КАК ЕСТЬ
         const { error: catErr } = await supabase
             .from('tournament_categories')
             .update({
                 bracket_generated: true,
                 bracket_format: bracketState.format === 'SE' ? 'single_elim' : 'round_robin',
                 bracket_status: 'ready',
-                bracket_settings: {
-                    format: bracketState.format,
-                    seedingType: bracketState.seedingType ?? 'SNAKE',
-                    updated_at: new Date().toISOString(),
-                },
+                bracket_settings: bracketState as any, // ← ЭТО ПОЧИНИТ ПУСТУЮ СЕТКУ ПРИ F5
             })
             .eq('id', categoryId);
 
-        if (catErr) {
-            console.error('[Save Bracket] category update:', catErr);
-            return { success: false, error: catErr.message };
-        }
+        if (catErr) return { success: false, error: catErr.message };
 
         revalidatePath(`/tournaments/${tournamentId}`);
         revalidatePath(`/tournaments/${tournamentId}/bracket`);

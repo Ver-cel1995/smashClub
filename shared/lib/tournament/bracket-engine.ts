@@ -1,5 +1,3 @@
-// shared/lib/tournament/bracket-engine.ts
-
 import type { BracketFormat, SeedingType } from '@/shared/types/bracket';
 
 // ============================================================
@@ -415,7 +413,7 @@ export function validateGroupSetup(
         }
     }
 
-    if (status === 'OK') messages.push(`✅ Конфигурация корректна: ${groupCount} групп, ${totalMatches} матчей (~${hours}ч на ${courtCount} кортах).`);
+    if (status === 'OK') messages.push(`Конфигурация корректна: ${groupCount} групп, ${totalMatches} матчей (~${hours}ч на ${courtCount} кортах).`);
 
     return { status, messages, suggestedGroupCount, suggestedAdvance, matchEstimate: { groupStage: groupMatches, playoff: playoffMatches, total: totalMatches, estimatedHours: hours } };
 }
@@ -683,11 +681,9 @@ export function buildFullBracketRounds(
         let winner: EnginePlayer | null = null;
         let isAutoAdvanced = false;
 
-        // Автопроход из-за BYE в 1-м раунде
         if (p1 && p1 !== 'BYE' && p2 === 'BYE') { winner = p1; isAutoAdvanced = true; }
         if (p2 && p2 !== 'BYE' && p1 === 'BYE') { winner = p2; isAutoAdvanced = true; }
 
-        // Ручной ввод счёта судьёй
         const res = matchResults[m.id];
         if (res && res.winnerId) {
             if (p1 && typeof p1 === 'object' && 'id' in p1 && p1.id === res.winnerId) {
@@ -697,12 +693,13 @@ export function buildFullBracketRounds(
             }
         }
 
-        return { id: m.id, position: m.position, p1, p2, winner, isAutoAdvanced, hasResult: !!res };
+        // ВАЖНО: Добавлено result: res
+        return { id: m.id, position: m.position, p1, p2, winner, isAutoAdvanced, hasResult: !!res, result: res };
     });
 
     rounds.push({ id: `r1`, name: getRoundName(currentMatchesCount, roundIndex), matchCount: currentMatchesCount, matches: r1Matches });
 
-    // --- РАУНДЫ 2 И ДАЛЬШЕ (ПРОДВИЖЕНИЕ ПОБЕДИТЕЛЕЙ) ---
+    // --- РАУНДЫ 2 И ДАЛЬШЕ ---
     let prevRoundMatches = r1Matches;
 
     while (currentMatchesCount > 1) {
@@ -714,29 +711,21 @@ export function buildFullBracketRounds(
             const sourceMatch1 = prevRoundMatches[i * 2];
             const sourceMatch2 = prevRoundMatches[i * 2 + 1];
 
-            const p1: EnginePlayer | { placeholder: string } | null = sourceMatch1?.winner
-                ? sourceMatch1.winner
-                : { placeholder: `Поб. М${i * 2 + 1}` };
-
-            const p2: EnginePlayer | { placeholder: string } | null = sourceMatch2?.winner
-                ? sourceMatch2.winner
-                : { placeholder: `Поб. М${i * 2 + 2}` };
+            const p1 = sourceMatch1?.winner ? sourceMatch1.winner : { placeholder: `Поб. М${i * 2 + 1}` };
+            const p2 = sourceMatch2?.winner ? sourceMatch2.winner : { placeholder: `Поб. М${i * 2 + 2}` };
 
             let winner: EnginePlayer | null = null;
             let isAutoAdvanced = false;
             const matchId = `main_r${roundIndex}_m${i + 1}`;
 
-            // Проверка ручного счёта судьи (с защитой типов 'id' in p)
             const res = matchResults[matchId];
             if (res && res.winnerId) {
-                if (p1 && typeof p1 === 'object' && 'id' in p1 && p1.id === res.winnerId) {
-                    winner = p1 as EnginePlayer;
-                } else if (p2 && typeof p2 === 'object' && 'id' in p2 && p2.id === res.winnerId) {
-                    winner = p2 as EnginePlayer;
-                }
+                if (p1 && typeof p1 === 'object' && 'id' in p1 && p1.id === res.winnerId) winner = p1 as EnginePlayer;
+                else if (p2 && typeof p2 === 'object' && 'id' in p2 && p2.id === res.winnerId) winner = p2 as EnginePlayer;
             }
 
-            nextRoundMatches.push({ id: matchId, position: i + 1, p1, p2, winner, isAutoAdvanced, hasResult: !!res });
+            // ВАЖНО: Добавлено result: res
+            nextRoundMatches.push({ id: matchId, position: i + 1, p1, p2, winner, isAutoAdvanced, hasResult: !!res, result: res });
         }
 
         rounds.push({ id: `r${roundIndex}`, name: getRoundName(currentMatchesCount, roundIndex), matchCount: currentMatchesCount, matches: nextRoundMatches });

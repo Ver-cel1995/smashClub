@@ -49,7 +49,7 @@ async function seed() {
                 tournament_id: tournamentId,
                 category: 'MS',
                 rating_group: 'C',
-                max_pairs: 64
+                max_pairs: 18
             })
             .select('id')
             .single();
@@ -65,7 +65,7 @@ async function seed() {
 
     const createdPlayerIds = [];
 
-    for (let i = 1; i <= 64; i++) {
+    for (let i = 1; i <= 18; i++) {
         const firstName = faker.person.firstName();
         const lastName = faker.person.lastName();
         const fullName = `${lastName} ${firstName}`;
@@ -99,8 +99,8 @@ async function seed() {
                 gender: i % 2 === 0 ? 'male' : 'female',
             }, { onConflict: 'id' });
 
-        if (i % 16 === 0 || i === 64) {
-            console.log(`... Создано ${i}/64 игроков`);
+        if (i % 16 === 0 || i === 18) {
+            console.log(`... Создано ${i}/18 игроков`);
         }
     }
 

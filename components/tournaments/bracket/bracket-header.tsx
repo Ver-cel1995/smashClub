@@ -1,12 +1,13 @@
 'use client';
 
-import { ChevronLeft, FileText, Image as ImageIcon, CheckCircle2, Loader2 } from 'lucide-react';
+import { ChevronLeft, FileText, CheckCircle2, Loader2, Save } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 
 interface Props {
     tournamentId: string;
     hasBracket: boolean;
+    activeCategory?: string | null; // <-- Добавили проп
     isSavingAuto?: boolean;
     onClearBracket: () => void;
     onSave: () => void;
@@ -17,6 +18,7 @@ interface Props {
 export function BracketHeader({
                                   tournamentId,
                                   hasBracket,
+                                  activeCategory,
                                   isSavingAuto,
                                   onClearBracket,
                                   onSave,
@@ -39,7 +41,6 @@ export function BracketHeader({
 
             <div className="flex justify-end items-center gap-3">
                 {hasBracket ? (
-                    // РЕЖИМ СУДЕЙСТВА: Автосохранение, экспорт
                     <>
                         <div className="flex items-center gap-2 mr-4 text-xs font-medium text-muted bg-subtle/50 px-3 py-1.5 rounded-lg border border-subtle">
                             {isSavingAuto ? (
@@ -52,17 +53,20 @@ export function BracketHeader({
                             <FileText className="w-4 h-4" /> PDF
                         </Button>
                     </>
-                ) : (
-                    // РЕЖИМ СОЗДАНИЯ (если мы сбросили сетку)
+                ) : activeCategory ? (
+                    // ПОКАЗЫВАЕМ КНОПКИ ТОЛЬКО ЕСЛИ ВЫБРАНА КАТЕГОРИЯ
                     <>
                         <Button onClick={onClearBracket} variant="ghost" className="text-muted hover:text-danger text-xs">
                             Сбросить настройки
                         </Button>
-                        <Button onClick={onSave} className="h-9 text-xs font-bold bg-accent text-accent-foreground hover:opacity-90">
-                            Сохранить сетку
+                        <Button
+                            onClick={onSave}
+                            className="h-9 text-xs font-bold bg-accent text-accent-foreground hover:opacity-90 shadow-[0_0_15px_rgba(163,230,53,0.3)] animate-pulse-slow"
+                        >
+                            <Save className="w-4 h-4 mr-1.5" /> Подтвердить и сохранить
                         </Button>
                     </>
-                )}
+                ) : null}
             </div>
         </header>
     );

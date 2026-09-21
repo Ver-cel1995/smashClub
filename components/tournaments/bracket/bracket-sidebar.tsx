@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Plus, Trash2, Filter, Eraser, AlertTriangle, CheckCircle2, Clock, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { Category, BracketState } from '@/shared/types/bracket';
+import type { Category, BracketState, BracketFormat, SeedingType } from '@/shared/types/bracket';
 
 interface Props {
     categories: Category[];
@@ -11,10 +11,28 @@ interface Props {
     brackets: Record<string, BracketState>;
     onSelectCategory: (id: string) => void;
     onDeleteCategory: (id: string, e: React.MouseEvent) => void;
-    onEditCategory: (id: string, e: React.MouseEvent) => void; // ← НОВЫЙ ПРОП
+    onEditCategory: (id: string, e: React.MouseEvent) => void;
     onDeleteEmptyCategories?: () => void;
     onAddCategory: () => void;
 }
+
+const FORMAT_SHORT: Record<string, string> = {
+    SE: 'Олимпийка',
+    APP12: 'Прил. 12',
+    SWISS: 'Швейцарка',
+    DOUBLE_ELIM: 'Двойн. выб.',
+    SE_WITH_PLACES: 'Олимп. + места',
+    RR_THEN_SE: 'Группы → Сетка',
+    RR: 'Круговая',
+    ROUND_ROBIN_DOUBLE: 'Круговая ×2',
+};
+
+const SEEDING_SHORT: Record<string, string> = {
+    SNAKE: 'Змейка',
+    UNIFORM: 'Равномерный',
+    RATING: 'По рейтингу',
+    RANDOM: 'Жребий',
+};
 
 export function BracketSidebar({
                                    categories,
@@ -32,8 +50,8 @@ export function BracketSidebar({
     const emptyCount = categories.filter((c) => c.count === 0).length;
     const displayedCategories = hideEmpty ? categories.filter((c) => c.count > 0) : categories;
 
-    const readyCategories = displayedCategories.filter(c => brackets[c.id]);
-    const draftCategories = displayedCategories.filter(c => !brackets[c.id]);
+    const readyCategories = displayedCategories.filter((c) => brackets[c.id]);
+    const draftCategories = displayedCategories.filter((c) => !brackets[c.id]);
 
     const handleDeleteClick = (cat: Category, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -47,55 +65,88 @@ export function BracketSidebar({
         }
     };
 
-    const renderCategory = (cat: Category, isReady: boolean) => (
-        <div
-            key={cat.id}
-            className={`group flex flex-col p-3 rounded-xl border cursor-pointer transition-all ${
-                activeCategory === cat.id
-                    ? 'border-accent bg-accent/10 shadow-[inset_3px_0_0_#C6F432]'
-                    : 'border-subtle bg-subtle/20 hover:border-main hover:bg-subtle/40'
-            }`}
-            onClick={() => onSelectCategory(cat.id)}
-        >
-            <div className="flex justify-between items-center w-full mb-1">
-                <div className="flex items-center gap-2">
-                    <span className="font-bold text-strong text-sm">{cat.name}</span>
-                    <span className="text-[10px] bg-subtle text-accent border border-accent/20 px-1.5 py-0.5 rounded font-mono font-bold">
-                        {cat.ratingGroup}
-                    </span>
-                </div>
-                <div className="flex items-center gap-1">
-                    {isReady && (
-                        <span className="text-[10px] bg-success/15 text-success px-1.5 py-0.5 rounded flex items-center gap-1 mr-1">
-                            <CheckCircle2 className="w-3 h-3" />
+    const renderCategory = (cat: Category, isReady: boolean) => {
+        const bracket = brackets[cat.id];
+        const formatLabel = bracket?.format
+            ? FORMAT_SHORT[bracket.format] || bracket.format
+            : cat.format
+                ? FORMAT_SHORT[cat.format] || cat.format
+                : null;
+        const seedingLabel = bracket?.seedingType
+            ? SEEDING_SHORT[bracket.seedingType] || bracket.seedingType
+            : null;
+
+        return (
+            <div
+                key={cat.id}
+                className={`group flex flex-col p-3 rounded-xl border cursor-pointer transition-all ${
+                    activeCategory === cat.id
+                        ? 'border-accent bg-accent/10 shadow-[inset_3px_0_0_#C6F432]'
+                        : 'border-subtle bg-subtle/20 hover:border-main hover:bg-subtle/40'
+                }`}
+                onClick={() => onSelectCategory(cat.id)}
+            >
+                {/* Верхняя строка: название + группа + кнопки */}
+                <div className="flex justify-between items-center w-full mb-1">
+                    <div className="flex items-center gap-2">
+                        <span className="font-bold text-strong text-sm">{cat.name}</span>
+                        <span className="text-[10px] bg-subtle text-accent border border-accent/20 px-1.5 py-0.5 rounded font-mono font-bold">
+                            {cat.ratingGroup}
                         </span>
-                    )}
-                    {/* ⚙️ КНОПКА РЕДАКТИРОВАНИЯ СЕТКИ */}
-                    {isReady && (
+                    </div>
+                    <div className="flex items-center gap-1">
+                        {isReady && (
+                            <span className="text-[10px] bg-success/15 text-success px-1.5 py-0.5 rounded flex items-center gap-1 mr-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                            </span>
+                        )}
+                        {isReady && (
+                            <button
+                                type="button"
+                                onClick={(e) => onEditCategory(cat.id, e)}
+                                className="opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-accent hover:bg-accent/10 rounded transition-all"
+                                title="Изменить настройки сетки"
+                            >
+                                <Settings className="w-3.5 h-3.5" />
+                            </button>
+                        )}
                         <button
                             type="button"
-                            onClick={(e) => onEditCategory(cat.id, e)}
-                            className="opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-accent hover:bg-accent/10 rounded transition-all"
-                            title="Изменить настройки сетки"
+                            onClick={(e) => handleDeleteClick(cat, e)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-danger hover:bg-danger/10 rounded transition-all"
+                            title="Удалить категорию"
                         >
-                            <Settings className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                    )}
-                    <button
-                        type="button"
-                        onClick={(e) => handleDeleteClick(cat, e)}
-                        className="opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-danger hover:bg-danger/10 rounded transition-all"
-                        title="Удалить категорию"
-                    >
-                        <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    </div>
                 </div>
+
+                {/* Описание + кол-во участников */}
+                <span className="text-xs text-muted">
+                    {cat.desc} ·{' '}
+                    <strong className={cat.count > 0 ? 'text-accent' : 'text-dim'}>
+                        {cat.count} уч.
+                    </strong>
+                </span>
+
+                {/* Бейджи формата и посева — только если сетка создана */}
+                {isReady && (formatLabel || seedingLabel) && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        {formatLabel && (
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-accent/10 text-accent border border-accent/25 px-1.5 py-0.5 rounded">
+                                {formatLabel}
+                            </span>
+                        )}
+                        {seedingLabel && (
+                            <span className="text-[10px] font-medium tracking-wider bg-subtle text-muted border border-subtle px-1.5 py-0.5 rounded">
+                                {seedingLabel}
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
-            <span className="text-xs text-muted">
-                {cat.desc} · <strong className={cat.count > 0 ? "text-accent" : "text-dim"}>{cat.count} уч.</strong>
-            </span>
-        </div>
-    );
+        );
+    };
 
     return (
         <>
@@ -138,7 +189,7 @@ export function BracketSidebar({
                                 <CheckCircle2 className="w-3 h-3" /> Готовые ({readyCategories.length})
                             </h2>
                             <div className="flex flex-col gap-2">
-                                {readyCategories.map(c => renderCategory(c, true))}
+                                {readyCategories.map((c) => renderCategory(c, true))}
                             </div>
                         </div>
                     )}
@@ -149,7 +200,7 @@ export function BracketSidebar({
                                 <Clock className="w-3 h-3" /> Требуют настройки ({draftCategories.length})
                             </h2>
                             <div className="flex flex-col gap-2">
-                                {draftCategories.map(c => renderCategory(c, false))}
+                                {draftCategories.map((c) => renderCategory(c, false))}
                             </div>
                         </div>
                     )}
@@ -173,14 +224,25 @@ export function BracketSidebar({
                         <div className="space-y-1">
                             <h3 className="text-base font-bold text-strong">Удалить категорию?</h3>
                             <p className="text-xs text-muted">
-                                Вы действительно хотите удалить <strong className="text-strong">{categoryToDelete.name}</strong>? Все сетки этой категории будут удалены из базы.
+                                Вы действительно хотите удалить{' '}
+                                <strong className="text-strong">{categoryToDelete.name}</strong>? Все
+                                сетки этой категории будут удалены.
                             </p>
                         </div>
                         <div className="flex gap-2 pt-2">
-                            <Button type="button" variant="outline" onClick={() => setCategoryToDelete(null)} className="flex-1 border-subtle">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => setCategoryToDelete(null)}
+                                className="flex-1 border-subtle"
+                            >
                                 Отмена
                             </Button>
-                            <Button type="button" onClick={confirmDelete} className="flex-1 bg-danger text-white hover:bg-danger/90 font-bold">
+                            <Button
+                                type="button"
+                                onClick={confirmDelete}
+                                className="flex-1 bg-danger text-white hover:bg-danger/90 font-bold"
+                            >
                                 Удалить
                             </Button>
                         </div>
