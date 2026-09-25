@@ -3,6 +3,7 @@ import { Toaster } from 'sonner'
 import './globals.css'
 import { ReactNode } from 'react'
 import { ThemeProvider } from '@/shared/lib/theme/theme-provider'
+import {InstallPwaBanner} from "@/components/ui/install-pwa-banner";
 
 export const metadata: Metadata = {
     title: 'SmashClub',
@@ -111,6 +112,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 }}
                 offset={70}
             />
+            <InstallPwaBanner />
         </ThemeProvider>
         </body>
         </html>
